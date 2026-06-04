@@ -18,14 +18,16 @@ page.
 
 ## How the set is organized
 
-The nine pages fall into three movements. The **conceptual grounding** (pages 1–2)
+The ten pages fall into four movements. The **conceptual grounding** (pages 1–2)
 establishes what a data mesh is and why Kubernetes is a natural substrate for one. The
 **implementation** (pages 3–8) builds the system: the services and their data products,
 the contracts and catalog that make them discoverable, the data planes they communicate
 over, progressive delivery with mutual TLS, elastic scaling and recovery, and the
-observability to see it all. The closing page (9) steps back to the **failure modes** —
-the conceptual and organizational anti-patterns that derail data-mesh efforts even when
-the technology is sound.
+observability to see it all. The **failure modes** (page 9) steps back to the
+conceptual and organizational anti-patterns that derail data-mesh efforts even when
+the technology is sound. The **summary** (page 10) closes by reorganizing the same
+material by principle — for each of the four principles, the value it delivers and the
+implementation pieces that realize it.
 
 ## The pages
 
@@ -56,6 +58,9 @@ the technology is sound.
 - [**9 · Anti-patterns**]({{ '/docs/09-anti-patterns/' | relative_url }}) —
   The conceptual and organizational ways data-mesh efforts go wrong, drawn from the
   literature, so you can recognize them early.
+- [**10 · Summary**]({{ '/docs/10-summary/' | relative_url }}) —
+  Each principle, reorganized: the value it delivers, the implementation pieces that
+  realize it, and the failure mode when it's missing.
 
 ## If you have time for only a few
 

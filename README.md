@@ -11,7 +11,7 @@ presentations, the diagrams, and the historical decision log.
 
 ## What's here
 
-- **`_docs/`** — the nine reading-set pages (00-index through 09-anti-patterns).
+- **`_docs/`** — the ten reading-set pages (00-index through 10-summary).
   The published site renders these at `https://patterncatalyst.github.io/datamesh-reference-arch-python/docs/<name>/`.
 - **`examples/lgtm-datamesh/`** — the runnable code: five domain services
   plus a GraphQL gateway, helm charts, Kafka and Postgres operators,

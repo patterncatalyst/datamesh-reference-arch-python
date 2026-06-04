@@ -42,7 +42,10 @@ permalink: /
             <a href="{{ '/docs/02-kubernetes-substrate/' | relative_url }}">Kubernetes substrate</a>)
             ground the implementation pages that follow; the
             <a href="{{ '/docs/09-anti-patterns/' | relative_url }}">anti-patterns</a>
-            page closes the set with the failure modes to watch for.
+            page surfaces the failure modes to watch for; and the closing
+            <a href="{{ '/docs/10-summary/' | relative_url }}">summary</a>
+            reorganizes everything by principle — what each delivers, and
+            the implementation pieces that realize it.
         </p>
 
         <div class="cards">
@@ -55,6 +58,8 @@ permalink: /
                     {%- assign card_eyebrow = "Index" -%}
                 {%- elsif doc.order == 9 -%}
                     {%- assign card_eyebrow = "Anti-patterns" -%}
+                {%- elsif doc.order == 10 -%}
+                    {%- assign card_eyebrow = "Summary" -%}
                 {%- else -%}
                     {%- assign card_eyebrow = "Page " | append: two_digit -%}
                 {%- endif -%}
