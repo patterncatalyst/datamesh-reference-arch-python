@@ -1,0 +1,92 @@
+---
+layout: default
+title: Home
+permalink: /
+---
+
+<section class="hero hero--compact">
+    <div class="container">
+        <span class="hero__eyebrow">Data mesh · reference implementation</span>
+        <h1>A data mesh, end to end.</h1>
+        <p class="hero__lead">
+            A working data-mesh reference: a domain of services modeling
+            order-placement-through-shipment, each owning its data, its
+            API surface, and its operational lifecycle, communicating
+            through a deliberate mix of REST, gRPC, GraphQL, and Kafka —
+            with contracts, a catalog, progressive delivery, autoscaling,
+            and full observability.
+        </p>
+        <p class="hero__lead">
+            It's organized as its own reading set — read straight through
+            for the full build, or jump to the concept you came for.
+        </p>
+        <div class="hero__cta">
+            <a class="btn btn--primary"
+               href="{{ '/docs/00-index/' | relative_url }}">
+                Start with the index →
+            </a>
+            <a class="btn btn--secondary"
+               href="{{ '/docs/01-concepts/' | relative_url }}">
+                Skip to concepts
+            </a>
+        </div>
+    </div>
+</section>
+
+<section class="section">
+    <div class="container">
+        <h2 class="section-heading">The set</h2>
+        <p class="section-sub">
+            Read in order the first time. The conceptual pages
+            (<a href="{{ '/docs/01-concepts/' | relative_url }}">concepts</a>,
+            <a href="{{ '/docs/02-kubernetes-substrate/' | relative_url }}">Kubernetes substrate</a>)
+            ground the implementation pages that follow; the
+            <a href="{{ '/docs/09-anti-patterns/' | relative_url }}">anti-patterns</a>
+            page closes the set with the failure modes to watch for.
+        </p>
+
+        <div class="cards">
+            {%- assign datamesh_docs = site.docs
+                  | where_exp: "doc", "doc.order != nil"
+                  | sort: "order" -%}
+            {%- for doc in datamesh_docs -%}
+                {%- assign two_digit = doc.order | prepend: '0' | slice: -2, 2 -%}
+                {%- if doc.order == 0 -%}
+                    {%- assign card_eyebrow = "Index" -%}
+                {%- elsif doc.order == 9 -%}
+                    {%- assign card_eyebrow = "Anti-patterns" -%}
+                {%- else -%}
+                    {%- assign card_eyebrow = "Page " | append: two_digit -%}
+                {%- endif -%}
+                <a class="card" href="{{ doc.url | relative_url }}">
+                    <div class="card__eyebrow">{{ card_eyebrow }}</div>
+                    <h3 class="card__title">
+                        <span class="card__num">{{ two_digit }}</span>
+                        {{ doc.title }}
+                    </h3>
+                    <p class="card__desc">{{ doc.description }}</p>
+                </a>
+            {%- endfor -%}
+        </div>
+    </div>
+</section>
+
+<section class="section-tight">
+    <div class="container">
+        <h2 class="section-heading">What you'll need to run it</h2>
+        <p>
+            A Kubernetes cluster you can administer — the reference was
+            developed on minikube on Fedora with rootless podman, but
+            anything that gives you cluster-admin on a node with enough
+            headroom (16 GB RAM, ~16 vCPU recommended) will work. The
+            <a href="https://github.com/{{ site.github_username }}/{{ site.github_repo }}/tree/main/examples/lgtm-datamesh">runnable
+            example tree</a> ships the helm charts, manifests, scripts,
+            and demos that bring the whole system up.
+        </p>
+        <p>
+            The presentation deck and *Data Mesh 101* slides live under
+            <code>presentation/</code> in the repo, paired with the
+            implementation pages here.
+        </p>
+    </div>
+</section>

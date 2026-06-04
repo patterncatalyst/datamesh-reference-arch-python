@@ -1,0 +1,74 @@
+# ────────────────────────────────────────────────────────────────────────────
+# Project: datamesh-reference-arch-python
+# Site identity, GitHub link target, and baseurl. Build configuration below
+# generally doesn't need changes.
+# ────────────────────────────────────────────────────────────────────────────
+
+# Site identity
+title: "Data Mesh Reference Architecture · Python"
+description: "A working data-mesh reference implementation in Python — services across REST, gRPC, GraphQL, and Kafka, deployed via helm, with contracts, a catalog, progressive delivery, autoscaling, and full observability."
+brand_emoji: "🕸️"   # Single emoji that appears next to the title in the header
+
+# GitHub identity for header link and example sourcing
+github_username: "patterncatalyst"
+github_repo: "datamesh-reference-arch-python"
+
+# baseurl
+# - On user/org Pages site (USERNAME.github.io): set to ""
+# - On project Pages site (USERNAME.github.io/PROJECT): set to "/PROJECT"
+# - For local dev override at runtime: bundle exec jekyll serve --baseurl ""
+baseurl: "/datamesh-reference-arch-python"
+
+# url is set at deploy time; leave blank for GitHub Pages auto-detection
+url: ""
+
+# ────────────────────────────────────────────────────────────────────────────
+# Build configuration — generally don't change these.
+# ────────────────────────────────────────────────────────────────────────────
+
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+
+permalink: pretty
+
+# Collections — _docs and _plans are not Jekyll defaults; this enables them.
+# Unlike the upstream minikube-tutorial repo, this site's _docs IS the
+# data-mesh content (it's not nested under a parent tutorial). There's no
+# separate _capstone collection.
+collections:
+  docs:
+    output: true
+    permalink: /docs/:name/
+  plans:
+    output: false
+
+# Default front-matter — saves typing `layout: tutorial` on every doc.
+defaults:
+  - scope:
+      path: ""
+      type: docs
+    values:
+      layout: tutorial
+      sectionid: docs
+  - scope:
+      path: ""
+      type: plans
+    values:
+      layout: plan
+
+# Files that Jekyll should not process or include in the built site.
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - vendor/
+  - node_modules/
+  - examples/   # ← important: trailing slash; runnable code lives here, not site content
+  - scripts/
+  - README.md
+  - LICENSE
+  - PRD.md
+  - LESSONS-LEARNED.md
+  - GETTING-STARTED.md
+  - STARTING-WITH-CLAUDE.md
