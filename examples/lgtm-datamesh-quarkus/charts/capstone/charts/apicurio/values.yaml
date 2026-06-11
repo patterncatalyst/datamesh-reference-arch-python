@@ -1,0 +1,27 @@
+# Apicurio Registry 2.6 — schema registry.
+# Pinned to 2.6.x to match the Quarkus apicurio-registry-avro serde client
+# (bundled with Quarkus 3.15), which speaks the Apicurio v2 REST API
+# (/apis/registry/v2). The Python tree uses Registry 3.x; this is a deliberate,
+# self-contained divergence for the Quarkus port — see DRA-002.
+#
+# Dev-scale: the *-mem image is in-memory (data is not persisted across
+# restarts; the producer re-registers on startup, so this is harmless for the
+# demo). Production sets a real backend (SQL on CloudNativePG, or kafkasql).
+
+replicas: 1
+
+image:
+  repository: apicurio/apicurio-registry-mem
+  tag: "2.6.2.Final"
+  pullPolicy: IfNotPresent
+
+service:
+  port: 8080
+  targetPort: 8080
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 512Mi
+  limits:
+    memory: 1Gi

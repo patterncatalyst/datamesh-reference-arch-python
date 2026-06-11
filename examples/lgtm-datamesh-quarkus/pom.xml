@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <!--
+    lgtm-datamesh-quarkus — parent aggregator POM.
+
+    A Quarkus (JVM) port of the Python/FastAPI data-mesh reference example that
+    lives next door in examples/lgtm-datamesh/. Same architecture, same demos,
+    same wire contracts (REST, gRPC on :50051, GraphQL, Kafka + Avro/Apicurio) —
+    a JVM-native implementation. See README.md and _plans/decisions.md (DRA-002).
+
+    Pins the Quarkus platform BOM and shared build config once; each service is
+    a module under services/. Java 21 (the JVM analog of the Python tree's
+    UBI 9 python-312 base, CAP-005).
+  -->
+
+  <groupId>com.patterncatalyst.datamesh</groupId>
+  <artifactId>lgtm-datamesh-quarkus-parent</artifactId>
+  <version>0.1.0</version>
+  <packaging>pom</packaging>
+  <name>lgtm-datamesh-quarkus (parent)</name>
+  <description>Quarkus port of the data-mesh reference architecture example.</description>
+
+  <modules>
+    <module>services/inventory-service</module>
+    <module>services/order-service</module>
+    <module>services/notification-service</module>
+    <module>services/graphql-gateway</module>
+    <module>services/review-service</module>
+    <module>services/payment-service</module>
+    <module>services/shipping-service</module>
+  </modules>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    <maven.compiler.release>21</maven.compiler.release>
+
+    <!-- Quarkus platform (LTS, Java 21). -->
+    <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
+    <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
+    <quarkus.platform.version>3.15.1</quarkus.platform.version>
+
+    <compiler-plugin.version>3.13.0</compiler-plugin.version>
+    <surefire-plugin.version>3.5.0</surefire-plugin.version>
+    <skipITs>true</skipITs>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>${quarkus.platform.group-id}</groupId>
+        <artifactId>${quarkus.platform.artifact-id}</artifactId>
+        <version>${quarkus.platform.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>${quarkus.platform.group-id}</groupId>
+          <artifactId>quarkus-maven-plugin</artifactId>
+          <version>${quarkus.platform.version}</version>
+          <extensions>true</extensions>
+          <executions>
+            <execution>
+              <goals>
+                <goal>build</goal>
+                <goal>generate-code</goal>
+                <goal>generate-code-tests</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>${compiler-plugin.version}</version>
+          <configuration>
+            <parameters>true</parameters>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>${surefire-plugin.version}</version>
+          <configuration>
+            <systemPropertyVariables>
+              <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
+              <maven.home>${maven.home}</maven.home>
+            </systemPropertyVariables>
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
+
+  <profiles>
+    <!--
+      Native build profile (optional showcase — see README "Native images").
+      Activate with -Dnative. Not wired into the default bootstrap because it
+      is slower and heavier on RAM than the JVM build.
+    -->
+    <profile>
+      <id>native</id>
+      <activation>
+        <property>
+          <name>native</name>
+        </property>
+      </activation>
+      <properties>
+        <skipITs>false</skipITs>
+        <quarkus.native.enabled>true</quarkus.native.enabled>
+      </properties>
+    </profile>
+  </profiles>
+</project>

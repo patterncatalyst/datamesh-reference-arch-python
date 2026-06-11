@@ -12,6 +12,17 @@ are, the one service we build end-to-end as a template for the rest, and how a d
 product is packaged and shipped as a container image. This is the first
 implementation-heavy page — the conceptual scaffolding is behind us.
 
+> **Two implementations, one architecture.** The services described here are
+> implemented twice in the repo: in Python/FastAPI under
+> `examples/lgtm-datamesh/` (the tree this reading set walks through) and in
+> Quarkus/JVM under `examples/lgtm-datamesh-quarkus/`. Both expose the same
+> ports, speak the same wire contracts, and run the same five-act demo against
+> the same platform — the clearest demonstration that the data-mesh shape is
+> independent of language or framework. The Quarkus port additionally emits
+> native OpenTelemetry traces and Prometheus metrics from every service. See
+> `_plans/decisions.md` (DRA-002) for the rationale and the stack-specific
+> differences.
+
 ## What a data product looks like here
 
 A data product, in the abstract, is the *architectural quantum* of a data mesh: the

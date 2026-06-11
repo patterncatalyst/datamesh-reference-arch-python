@@ -53,4 +53,68 @@ as the audit trail of how the implementation was built.
 
 ---
 
-## DRA-002 — *(reserved for the next decision)*
+## DRA-002 — Add a Quarkus (JVM) port of the runnable example
+
+**Status:** decided; implemented in `examples/lgtm-datamesh-quarkus/`.
+
+**Context.** The reference's central claim is that data-mesh *architecture* —
+domain ownership, data-as-a-product, a self-serve platform, federated
+governance — is independent of any one language or framework. The only
+runnable example was Python/FastAPI, which leaves that claim implicit. A second
+implementation of the *same* architecture, demos, and wire contracts on a
+different stack makes the claim concrete and gives JVM-shop readers a starting
+point in their own ecosystem. Quarkus is a strong fit: it has first-class,
+built-in support for every protocol the reference uses (REST, gRPC, GraphQL,
+Kafka) plus reactive Postgres, Avro/Apicurio, health, config, and — unlike the
+Python services — native OpenTelemetry tracing and Micrometer/Prometheus
+metrics.
+
+**Decision.** Add a parallel example tree `examples/lgtm-datamesh-quarkus/` that
+mirrors the Python tree's layout and behaviour. The Python example is left
+byte-for-byte unchanged; the two sit side by side. Specifics:
+
+- **Full 1:1 service set** — all seven services (order, inventory, payment,
+  shipping, notification, review) plus the GraphQL gateway, as Quarkus modules
+  under a Maven aggregator.
+- **Reactive throughout** — Hibernate Reactive Panache + the Vert.x reactive
+  Postgres client mirror the Python async model; SmallRye Reactive Messaging
+  carries Kafka.
+- **JVM mode by default**, native (GraalVM) documented as an optional showcase
+  (Java 21 on UBI 9 `openjdk-21`, the analog of CAP-005's `python-312`).
+- **Identical wire contracts** so the platform layer, KEDA scalers, Istio
+  canary, and Apicurio subjects are reused unchanged: gRPC on `:50051`, topic
+  `order-placed`, Avro subject `order-placed-value`, the same CNPG-secret env
+  contract, and the `/version` canary signal (v2 adds `currency`).
+- **Richer observability** — every Quarkus service exports OTLP traces to the
+  shared Tempo and Prometheus metrics at `/q/metrics` (the chart adds scrape
+  annotations). The Python tree relies on Istio sidecar metrics only.
+
+**Consequences / accepted divergences from the CAP-era choices.**
+
+- **gRPC stubs are generated at build time** from each service's
+  `src/main/proto` via `quarkus-grpc`, rather than committed per service
+  (CAP-013). Still "codegen in-process", but no stubs are committed;
+  `scripts/sync-protos.sh` keeps each service's proto copy in sync with the
+  canonical `proto/`.
+- **Apicurio is pinned to 2.6.x** (the Python tree uses 3.2.4) to match the
+  Apicurio Avro serde client bundled with Quarkus 3.15 (v2 REST API). This is
+  self-contained to the Quarkus tree.
+- **Health/SDL/OpenAPI paths follow Quarkus conventions** — `/q/health/live`,
+  `/q/health/ready`, OpenAPI at `/q/openapi`, GraphQL SDL at
+  `/graphql/schema.graphql` (vs the Python `/health`, `/healthz`,
+  `/openapi.json`, `/sdl`). The chart probes and demo scripts are adapted.
+- **Schema management** mirrors the Python intent: services that seed
+  deterministic data (inventory, review) or evolve schema (notification, like
+  the Python Alembic choice) use Flyway; schema-only services use Hibernate
+  generation. The per-service Postgres schema boundary (CAP-003) is preserved.
+- **Tests use Quarkus Dev Services** (Testcontainers Postgres/Kafka/Apicurio)
+  rather than the Python tree's SQLite-in-memory; this needs a container
+  runtime, which the repo already assumes.
+
+This is consistent with the PRD's "reference implementation, not a framework"
+non-goal: it is a second concrete implementation, not an abstraction layer over
+both.
+
+---
+
+## DRA-003 — *(reserved for the next decision)*

@@ -1,0 +1,24 @@
+# inventory-service — JVM-mode container (UBI 9 OpenJDK 21).
+#
+# The JVM analog of the Python tree's UBI 9 python-312 image (CAP-005). The
+# Quarkus fast-jar is built on the host first (scripts/build-image.sh runs the
+# Maven build), then copied in — keeping the image build small and fast. The
+# UBI openjdk-21-runtime base ships a non-root user (185) and the run-java
+# entrypoint. For a tiny native image instead, see README "Native images".
+FROM registry.access.redhat.com/ubi9/openjdk-21-runtime:1.21
+
+ENV LANGUAGE='en_US:en'
+
+# Quarkus fast-jar layout: copy least- to most-frequently changing layers.
+COPY --chown=185 target/quarkus-app/lib/ /deployments/lib/
+COPY --chown=185 target/quarkus-app/*.jar /deployments/
+COPY --chown=185 target/quarkus-app/app/ /deployments/app/
+COPY --chown=185 target/quarkus-app/quarkus/ /deployments/quarkus/
+
+EXPOSE 8080
+# gRPC server (CheckStock)
+EXPOSE 50051
+USER 185
+
+ENV JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
+ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"

@@ -1,0 +1,51 @@
+# payment-service subchart values.
+
+replicas: 1
+
+image:
+  # In-cluster registry address (CAP-009). build-image.sh pushes to
+  # 127.0.0.1:<port>; the kubelet pulls from localhost:5000.
+  repository: localhost:5000/payment-service
+  tag: v1
+  # Always: the :v1 tag is mutable during the dev loop, and the node caches
+  # images by tag — IfNotPresent would serve a stale cached :v1 after a
+  # rebuild. Local-registry pulls are cheap, so Always guarantees the pod
+  # runs what was just pushed (CAP-015).
+  pullPolicy: Always
+
+service:
+  port: 80
+  targetPort: 8080
+
+# Postgres connection. The CloudNativePG operator generates a Secret named
+# "<cluster>-app" holding the app user's credentials; we reference it by key.
+postgres:
+  clusterName: capstone-postgres
+  appSecret: capstone-postgres-app
+  schema: payments
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 320Mi
+  limits:
+    memory: 768Mi
+
+# /health is liveness; /healthz is readiness (checks Postgres).
+probes:
+  # r28: startupProbe gates liveness/readiness until the app has finished booting.
+  # Python services (imports + gRPC channels + schema build) can take 10-30s; a 5s
+  # liveness initialDelay was killing them mid-boot (and the gateway OOM-looped at
+  # 256Mi). 30 x 2s = 60s startup grace.
+  startup:
+    path: /q/health/live
+    failureThreshold: 30
+    periodSeconds: 2
+  liveness:
+    path: /q/health/live
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  readiness:
+    path: /q/health/ready
+    initialDelaySeconds: 5
+    periodSeconds: 5

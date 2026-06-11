@@ -17,6 +17,13 @@ presentations, the diagrams, and the historical decision log.
   plus a GraphQL gateway, helm charts, Kafka and Postgres operators,
   Istio service mesh, KEDA autoscaling, Prometheus/Tempo/Grafana/Kiali
   observability, and the demo scripts that exercise it end to end.
+- **`examples/lgtm-datamesh-quarkus/`** — a **Quarkus/JVM port** of the
+  runnable example: the same architecture, the same five-act demo, and the
+  same wire contracts (gRPC `:50051`, Kafka `order-placed`, Avro
+  `order-placed-value`) on a JVM-native stack — and, unlike the Python tree,
+  native OpenTelemetry tracing and Prometheus metrics on every service. It
+  reuses the same platform layer and helm patterns. See **DRA-002** in
+  `_plans/decisions.md`.
 - **`presentation/`** — two paired decks: *Data Mesh 101* (the
   conceptual deck) and *Data Mesh on OpenShift* (the implementation deck).
 - **`assets/diagrams/`** — paired SVG + Excalidraw sources for every figure.
