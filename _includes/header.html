@@ -5,10 +5,9 @@
       <span>{{ site.title | default: "Tutorial" }}</span>
     </a>
     <nav class="site-nav" aria-label="Primary">
-      <a href="{{ '/docs/00-outline/' | relative_url }}"
-         {% if page.url contains '/docs/' %}aria-current="page"{% endif %}>Tutorial</a>
-      <a href="{{ '/docs/01-prerequisites/' | relative_url }}">Prerequisites</a>
-      <!-- Add custom nav items here -->
+      <a href="{{ '/docs/00-index/' | relative_url }}"
+         {% if page.url contains '/docs/' %}aria-current="page"{% endif %}>Start here</a>
+      <a href="{{ '/docs/10-summary/' | relative_url }}">Summary</a>
       <a href="https://github.com/{{ site.github_username }}/{{ site.github_repo }}"
          rel="noopener">GitHub ↗</a>
     </nav>
