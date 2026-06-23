@@ -68,6 +68,7 @@ exclude:
   - scripts/
   - README.md
   - LICENSE
+  - _plans/archive/   # archived capstone plans contain inline {% %} prose Liquid can't parse
   - PRD.md
   - LESSONS-LEARNED.md
   - GETTING-STARTED.md
