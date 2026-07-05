@@ -155,7 +155,7 @@ echo "$healthz" | grep -q '"status":"ready"' || fail "/healthz not ready: $healt
 step "POST a new order"
 created=$(curl -fsS -X POST "$BASE/orders" \
     -H 'Content-Type: application/json' \
-    -d '{"customer_id":"cust-1001","item_sku":"SKU-ABC-42","quantity":3,"amount":"59.97"}') \
+    -d '{"customer_id":"cust-1001","item_sku":"WIDGET-001","quantity":3,"amount":"59.97"}') \
     || fail "POST /orders failed"
 order_id=$(echo "$created" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])') \
     || fail "could not parse order id from: $created"

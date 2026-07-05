@@ -134,9 +134,9 @@ ok "core services Ready"
 step "Seeding one order (gives the catalog data to ingest)"
 kubectl port-forward -n "$NS" svc/order-service 18080:80 >/dev/null 2>&1 &
 SEED_PF=$!; sleep 3
-curl -s -o /dev/null --max-time 8 -X POST "http://127.0.0.1:18080/orders" \
+curl -fs -o /dev/null --max-time 8 -X POST "http://127.0.0.1:18080/orders" \
     -H 'Content-Type: application/json' \
-    --data '{"customer_id":"cust-1001","item_sku":"SKU-ABC-42","quantity":1,"amount":19.99}' \
+    --data '{"customer_id":"cust-1001","item_sku":"WIDGET-001","quantity":1,"amount":19.99}' \
     && ok "seed order placed" || printf '    (seed skipped — place one later via smoke-order.sh)\n'
 kill "$SEED_PF" 2>/dev/null || true
 
