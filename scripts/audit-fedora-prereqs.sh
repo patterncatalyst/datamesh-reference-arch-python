@@ -89,6 +89,74 @@ else
     echo "          sudo sysctl -p /etc/sysctl.d/99-kubernetes.conf"
 fi
 
+section "kernel modules (CNI portmap in a rootless node needs legacy iptables NAT)"
+MISSING_MODS=""
+for m in ip_tables iptable_nat ip6_tables; do
+    if [[ -d "/sys/module/${m}" ]]; then
+        printf '  %-12s loaded\n' "$m"
+    else
+        printf '  %-12s NOT LOADED\n' "$m"
+        MISSING_MODS="${MISSING_MODS} ${m}"
+    fi
+done
+if [[ -z "$MISSING_MODS" ]]; then
+    echo "  STATUS: ✓ OK — hostPort pods (registry proxy) can start"
+else
+    echo "  STATUS: ⚠ the rootless minikube node cannot modprobe these itself;"
+    echo "          hostPort pods will fail sandbox creation. Fix:"
+    echo ""
+    echo "          sudo sh -c 'printf \"ip_tables\\niptable_nat\\nip6_tables\\n\" > /etc/modules-load.d/99-kubernetes-iptables.conf'"
+    echo "          sudo systemctl restart systemd-modules-load"
+fi
+
+section "podman pids_limit (capstone node runs ~2000+ tasks — CAP-040)"
+PIDS_LIMIT=$(
+    grep -hsE '^[[:space:]]*pids_limit[[:space:]]*=' \
+        "${HOME}/.config/containers/containers.conf" \
+        /etc/containers/containers.conf 2>/dev/null \
+        | tail -1 | grep -oE '[0-9]+' | tail -1 || true
+)
+PIDS_LIMIT="${PIDS_LIMIT:-2048}"
+echo "  effective pids_limit = ${PIDS_LIMIT} (0 = unlimited)"
+if [[ "$PIDS_LIMIT" == "0" ]] || (( PIDS_LIMIT >= 8192 )); then
+    echo "  STATUS: ✓ OK for the full meshed capstone"
+else
+    echo "  STATUS: ⚠ the node would cap TOTAL processes across all pods at ${PIDS_LIMIT}"
+    echo "          and the last pods fail to fork (EAGAIN, runc exit 128). Fix"
+    echo "          BEFORE creating the node:"
+    echo ""
+    echo "          mkdir -p ~/.config/containers"
+    echo "          printf '[containers]\\npids_limit = 0\\n' >> ~/.config/containers/containers.conf"
+fi
+
+section "istio distribution (setup-kiali.sh needs samples/addons/kiali.yaml)"
+ISTIO_CURRENT="${HOME}/.local/share/istio-current"
+if [[ -f "${ISTIO_CURRENT}/samples/addons/kiali.yaml" ]]; then
+    echo "  ${ISTIO_CURRENT} → $(readlink -f "$ISTIO_CURRENT" 2>/dev/null || echo "$ISTIO_CURRENT")"
+    echo "  STATUS: ✓ full distribution present (istioctl alone is not enough)"
+else
+    echo "  STATUS: ⚠ ${ISTIO_CURRENT}/samples/addons/kiali.yaml not found —"
+    echo "          bootstrap tier 9 (Kiali) will fail. Fix:"
+    echo ""
+    echo "          curl -fsSL https://github.com/istio/istio/releases/download/1.26.2/istio-1.26.2-linux-amd64.tar.gz | tar xz -C ~/.local/share"
+    echo "          ln -sfn ~/.local/share/istio-1.26.2 ~/.local/share/istio-current"
+fi
+
+section "minikube minimum version (1.35's registry addon pins a dead image digest)"
+if command -v minikube >/dev/null 2>&1; then
+    MK_VERSION="$(minikube version --short 2>/dev/null | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' || echo v0.0.0)"
+    echo "  minikube ${MK_VERSION} at $(command -v minikube)"
+    if [[ "$(printf '%s\n' "v1.36.0" "$MK_VERSION" | sort -V | head -1)" == "v1.36.0" ]]; then
+        echo "  STATUS: ✓ OK (>= 1.36)"
+    else
+        echo "  STATUS: ⚠ too old — the registry addon can never come up on < 1.36."
+        echo "          Install a current minikube (e.g. to ~/.local/bin, which"
+        echo "          precedes /usr/local/bin on PATH)."
+    fi
+else
+    echo "  (minikube not present)"
+fi
+
 section "done"
 echo "Paste the entire output above (from === platform === down) into"
 echo "the iteration thread so version pins can be set from real data."
