@@ -117,16 +117,28 @@ printf '    order id=%s\n' "$ORDER_ID"
 
 # ── 7. poll notification /received for the event ──────────────────────────────
 step "Polling notification-service /received for the order.placed event"
+# ~180s window, not ~60s: when the bootstrap-applied KEDA ScaledObject has
+# notification-service scaled to zero, this very event is what wakes it —
+# KEDA's kafka lag poll + pod start + consumer-group join must fit here.
 seen=0
-for i in $(seq 1 30); do
-    RECV="$(curl -fsS "http://127.0.0.1:${LOCAL_NOTIF}/received" 2>/dev/null || echo '[]')"
+for i in $(seq 1 90); do
+    if ! RECV="$(curl -fsS "http://127.0.0.1:${LOCAL_NOTIF}/received" 2>/dev/null)"; then
+        # A port-forward pins the pod it attached to at start. With the KEDA
+        # ScaledObject applied, that pod can be replaced or scaled away at any
+        # moment (helm sets replicas=1, KEDA reconciles to 0, the tested event
+        # wakes a NEW pod) — leaving us polling a dead tunnel forever. Re-attach
+        # to the Service and treat this attempt as "not yet".
+        kill "$PF_N" 2>/dev/null
+        kubectl port-forward -n "$NS" service/notification-service "${LOCAL_NOTIF}:80" >/dev/null 2>&1 & PF_N=$!
+        RECV='[]'
+    fi
     if printf '%s' "$RECV" | python3 -c "import sys,json; d=json.load(sys.stdin); sys.exit(0 if any(e.get('order_id')=='$ORDER_ID' and e.get('event_type')=='order.placed' for e in d) else 1)" 2>/dev/null; then
         printf '    ✓ notification consumed order.placed for %s (after ~%ds)\n' "$ORDER_ID" "$((i*2))"
         seen=1; break
     fi
     sleep 2
 done
-(( seen )) || fail "notification-service did not consume the order.placed event within ~60s"
+(( seen )) || fail "notification-service did not consume the order.placed event within ~180s"
 
 printf '\n✓ SUCCESS — async spine verified (order.placed: order-service → Kafka → notification-service)\n'
 
