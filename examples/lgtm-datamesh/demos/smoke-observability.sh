@@ -15,8 +15,12 @@
 set -uo pipefail
 
 NS="observability"
-PROM_PORT="9090"
-GRAF_PORT="3000"
+# Local port-forward ports. NOT 9090/3000: Fedora ships Cockpit on host 9090
+# (the port-forward silently fails to bind and the queries hit Cockpit — a
+# false FAIL on the reference platform), and 3000 is a common dev-server port.
+# Override per run: PROM_PORT=9091 ./demos/smoke-observability.sh
+PROM_PORT="${PROM_PORT:-19090}"
+GRAF_PORT="${GRAF_PORT:-13000}"
 PROM_PF=""
 GRAF_PF=""
 
@@ -63,7 +67,7 @@ step "Port-forwarding Prometheus ($PROM_PORT → prometheus-server:80)"
 kubectl port-forward -n "$NS" svc/prometheus-server "${PROM_PORT}:80" >/dev/null 2>&1 &
 PROM_PF=$!
 for _ in $(seq 1 15); do
-    curl -s -o /dev/null --max-time 2 "http://127.0.0.1:${PROM_PORT}/-/ready" && break
+    curl -sf -o /dev/null --max-time 2 "http://127.0.0.1:${PROM_PORT}/-/ready" && break
     sleep 1
 done
 
@@ -94,7 +98,7 @@ step "Port-forwarding Grafana ($GRAF_PORT → grafana:80)"
 kubectl port-forward -n "$NS" svc/grafana "${GRAF_PORT}:80" >/dev/null 2>&1 &
 GRAF_PF=$!
 for _ in $(seq 1 15); do
-    curl -s -o /dev/null --max-time 2 "http://127.0.0.1:${GRAF_PORT}/api/health" && break
+    curl -sf -o /dev/null --max-time 2 "http://127.0.0.1:${GRAF_PORT}/api/health" && break
     sleep 1
 done
 
