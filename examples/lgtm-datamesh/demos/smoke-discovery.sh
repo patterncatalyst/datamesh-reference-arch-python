@@ -89,6 +89,17 @@ for svc in "${DEPLOY[@]}"; do
     kubectl rollout status "deployment/${svc}" -n "$NS" --timeout=120s || fail "${svc} rollout failed"
 done
 
+# The SDL fetch port-forwards straight to the gateway Service, but the
+# bootstrap-applied KEDA HTTPScaledObject scales the gateway to zero when idle
+# (rollout status on a 0-replica deployment succeeds instantly, so the loop
+# above doesn't catch it). Wake it by hand; KEDA re-adopts it afterwards.
+gw_avail="$(kubectl get deploy graphql-gateway -n "$NS" -o jsonpath='{.status.availableReplicas}' 2>/dev/null)"
+if ! [[ "$gw_avail" =~ ^[1-9][0-9]*$ ]]; then
+    step "graphql-gateway is scaled to zero — waking it for the SDL fetch"
+    kubectl scale deploy graphql-gateway -n "$NS" --replicas=1 >/dev/null 2>&1
+    kubectl rollout status deployment/graphql-gateway -n "$NS" --timeout=120s || fail "graphql-gateway did not wake"
+fi
+
 # ── port-forwards ─────────────────────────────────────────────────────────────
 step "Port-forwards: order(${LOCAL_ORDER}) gateway(${LOCAL_GW}) apicurio(${LOCAL_APIC})"
 kubectl port-forward -n "$NS" service/order-service "${LOCAL_ORDER}:80" >/dev/null 2>&1 & PF_O=$!

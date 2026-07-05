@@ -208,10 +208,13 @@ preflight() {
     if want_act trace; then
         # trace bypasses the interceptor and port-forwards directly to the
         # graphql-gateway Service — see CAP-046. Confirm the Deployment + Service
-        # are both there so the port-forward has something to attach to.
-        check "graphql-gateway Deployment available" \
-              "kubectl -n $NS get deploy graphql-gateway -o jsonpath='{.status.availableReplicas}' 2>/dev/null | grep -qE '^[1-9][0-9]*$'" \
-              "kubectl -n $NS rollout status deploy/graphql-gateway   (or re-run bootstrap-capstone.sh)"
+        # are both there so the port-forward has something to attach to. Zero
+        # available replicas is fine here: bootstrap applies the KEDA
+        # HTTPScaledObject, which scales the gateway to zero when idle, and the
+        # trace act wakes it before port-forwarding.
+        check "graphql-gateway Deployment exists" \
+              "kubectl -n $NS get deploy graphql-gateway >/dev/null 2>&1" \
+              "helm upgrade --install graphql-gateway charts/capstone/charts/graphql-gateway -n $NS   (or re-run bootstrap-capstone.sh)"
         check "graphql-gateway Service exists" \
               "kubectl -n $NS get svc graphql-gateway >/dev/null 2>&1" \
               "kubectl -n $NS get svc graphql-gateway   (or re-run bootstrap-capstone.sh)"
@@ -286,6 +289,19 @@ prompt_enter "press Enter to start"
 trace_act() {
     local pf_pid=0 result=0
     local query='{"query":"{ order(id: \"trace-probe\") { id itemSku quantity stock { sku quantityOnHand available } } }"}'
+
+    # The direct port-forward needs a live pod behind the Service, but the KEDA
+    # HTTPScaledObject (applied by bootstrap) scales the gateway to zero when
+    # idle — and only interceptor traffic wakes it, which is exactly the path
+    # this act bypasses (CAP-046). Wake it by hand; KEDA reconciles afterwards.
+    local avail
+    avail="$(kubectl -n "$NS" get deploy graphql-gateway -o jsonpath='{.status.availableReplicas}' 2>/dev/null)"
+    if ! [[ "$avail" =~ ^[1-9][0-9]*$ ]]; then
+        info "graphql-gateway is scaled to zero — waking it (KEDA re-adopts it after the act)"
+        kubectl -n "$NS" scale deploy graphql-gateway --replicas=1 >/dev/null 2>&1
+        kubectl -n "$NS" rollout status deploy/graphql-gateway --timeout=120s >/dev/null 2>&1 \
+            || { narrate "✗ graphql-gateway did not become Ready after wake"; return 1; }
+    fi
 
     info "starting port-forward: graphql-gateway Service (capstone) → 127.0.0.1:8080"
     info "  (bypasses keda-add-ons-http-interceptor-proxy — see CAP-046)"

@@ -122,16 +122,28 @@ printf '    ✓ schema registered\n'
 
 # ── 7b. assert the event was consumed (proves Avro decode via registry) ───────
 step "Polling notification-service /received for the decoded order.placed event"
+# ~180s window, not ~60s: when the bootstrap-applied KEDA ScaledObject has
+# notification-service scaled to zero, this very event is what wakes it —
+# KEDA's kafka lag poll + pod start + consumer-group join must fit here.
 seen=0
-for i in $(seq 1 30); do
-    RECV="$(curl -fsS "http://127.0.0.1:${LOCAL_NOTIF}/received" 2>/dev/null || echo '[]')"
+for i in $(seq 1 90); do
+    if ! RECV="$(curl -fsS "http://127.0.0.1:${LOCAL_NOTIF}/received" 2>/dev/null)"; then
+        # A port-forward pins the pod it attached to at start. With the KEDA
+        # ScaledObject applied, that pod can be replaced or scaled away at any
+        # moment (helm sets replicas=1, KEDA reconciles to 0, the tested event
+        # wakes a NEW pod) — leaving us polling a dead tunnel forever. Re-attach
+        # to the Service and treat this attempt as "not yet".
+        kill "$PF_N" 2>/dev/null
+        kubectl port-forward -n "$NS" service/notification-service "${LOCAL_NOTIF}:80" >/dev/null 2>&1 & PF_N=$!
+        RECV='[]'
+    fi
     if printf '%s' "$RECV" | python3 -c "import sys,json; d=json.load(sys.stdin); sys.exit(0 if any(e.get('order_id')=='$ORDER_ID' and e.get('event_type')=='order.placed' and e.get('item_sku')=='WIDGET-001' for e in d) else 1)" 2>/dev/null; then
         printf '    ✓ notification decoded order.placed for %s (after ~%ds)\n' "$ORDER_ID" "$((i*2))"
         seen=1; break
     fi
     sleep 2
 done
-(( seen )) || fail "notification did not consume/decode the Avro event within ~60s"
+(( seen )) || fail "notification did not consume/decode the Avro event within ~180s"
 
 printf '\n✓ SUCCESS — order.placed flows as registered Avro: schema in Apicurio + event decoded by the consumer via the registry\n'
 

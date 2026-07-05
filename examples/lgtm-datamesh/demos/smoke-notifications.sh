@@ -35,6 +35,10 @@ step() { printf '\n==> %s\n' "$1"; }
 fail() {
     printf '\nFAILED: %s\n' "$1" >&2
     printf '\n--- notification-service pods (incl. init container) ---\n' >&2
+    # Deployment + ScaledObject first: an empty pod list here usually means
+    # KEDA has it scaled to zero, not that the deploy is missing.
+    kubectl get deploy notification-service -n "$NS" 2>&1 || true
+    kubectl get scaledobject -n "$NS" 2>&1 || true
     kubectl get pods -n "$NS" -l "app.kubernetes.io/name=notification-service" -o wide 2>&1 || true
     kubectl logs -n "$NS" -l "app.kubernetes.io/name=notification-service" -c migrate --tail=40 2>&1 || true
     kubectl logs -n "$NS" -l "app.kubernetes.io/name=notification-service" --tail=30 2>&1 || true
@@ -46,7 +50,16 @@ fail() {
 check_received() {
     # $1 = order_id to look for in /received
     local recv
-    recv="$(curl -fsS "http://127.0.0.1:${LOCAL_NOTIF}/received" 2>/dev/null || echo '[]')"
+    if ! recv="$(curl -fsS "http://127.0.0.1:${LOCAL_NOTIF}/received" 2>/dev/null)"; then
+        # A port-forward pins the pod it attached to at start. With the KEDA
+        # ScaledObject applied, that pod can be replaced or scaled away at any
+        # moment (helm sets replicas=1, KEDA reconciles to 0, the tested event
+        # wakes a NEW pod) — leaving us polling a dead tunnel forever. Re-attach
+        # to the Service and report "not yet" for this attempt.
+        kill "$PF_N" 2>/dev/null
+        kubectl port-forward -n "$NS" service/notification-service "${LOCAL_NOTIF}:80" >/dev/null 2>&1 & PF_N=$!
+        return 1
+    fi
     printf '%s' "$recv" | python3 -c "import sys,json; d=json.load(sys.stdin); sys.exit(0 if any(e.get('order_id')=='$1' for e in d) else 1)" 2>/dev/null
 }
 
@@ -120,12 +133,15 @@ ORDER_ID="$(curl -fsS -X POST "http://127.0.0.1:${LOCAL_ORDER}/orders" -H 'Conte
 printf '    order id=%s\n' "$ORDER_ID"
 
 step "Waiting for the notification to be persisted (/received, DB-backed)"
+# ~180s window, not ~60s: when the bootstrap-applied KEDA ScaledObject has
+# notification-service scaled to zero, this very event is what wakes it —
+# KEDA's kafka lag poll + pod start + consumer-group join must fit here.
 seen=0
-for i in $(seq 1 30); do
+for i in $(seq 1 90); do
     if check_received "$ORDER_ID"; then printf '    ✓ persisted after ~%ds\n' "$((i*2))"; seen=1; break; fi
     sleep 2
 done
-(( seen )) || fail "notification was not persisted within ~60s"
+(( seen )) || fail "notification was not persisted within ~180s"
 
 # ── durability: restart notification, the row must still be there ─────────────
 step "Restarting notification-service to prove durability (in-memory would lose it)"
