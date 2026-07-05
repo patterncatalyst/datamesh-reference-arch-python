@@ -106,9 +106,24 @@ printf '    order id=%s\n' "$ORDER_ID"
 # ── 6. query the gateway and assert stitched response ─────────────────────────
 step "Querying graphql-gateway for the order + nested stock (REST + gRPC stitched)"
 GQL_QUERY="$(printf '{"query":"{ order(id: \\"%s\\") { id itemSku quantity stock { sku quantityOnHand available } } }"}' "$ORDER_ID")"
-RESP="$(curl -fsS -X POST "http://127.0.0.1:${LOCAL_GQL}/graphql" \
-    -H 'Content-Type: application/json' \
-    -d "$GQL_QUERY")" || fail "GraphQL query failed"
+RESP=""
+for attempt in 1 2 3; do
+    RESP="$(curl -fsS -X POST "http://127.0.0.1:${LOCAL_GQL}/graphql" \
+        -H 'Content-Type: application/json' \
+        -d "$GQL_QUERY")" && break
+    # The gateway is KEDA-managed (HTTPScaledObject, scaledownPeriod 30s): with
+    # no interceptor traffic it can scale to zero between the rollout gate and
+    # this query, killing the pinned port-forward. Wake it, re-attach, retry.
+    printf '    query attempt %d failed — waking the gateway and retrying\n' "$attempt"
+    kubectl scale deploy graphql-gateway -n "$NS" --replicas=1 >/dev/null 2>&1
+    kubectl rollout status deployment/graphql-gateway -n "$NS" --timeout=120s >/dev/null 2>&1
+    kill "$PF_G" 2>/dev/null
+    kubectl port-forward -n "$NS" service/graphql-gateway "${LOCAL_GQL}:80" >/dev/null 2>&1 &
+    PF_G=$!
+    sleep 2
+    RESP=""
+done
+[[ -n "$RESP" ]] || fail "GraphQL query failed"
 printf '    %s\n' "$RESP"
 
 python3 - "$RESP" "$ORDER_ID" <<'PY' || fail "GraphQL response missing stitched fields"

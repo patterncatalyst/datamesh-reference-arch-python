@@ -110,11 +110,27 @@ sleep 3
 
 # ── publish ───────────────────────────────────────────────────────────────────
 step "Publishing discovery contracts (OpenAPI + Protobuf + GraphQL SDL)"
-APICURIO_URL="http://127.0.0.1:${LOCAL_APIC}" \
-ORDER_URL="http://127.0.0.1:${LOCAL_ORDER}" \
-GATEWAY_URL="http://127.0.0.1:${LOCAL_GW}" \
-PROTO_PATH="$PROTO_PATH" APICURIO_GROUP="$GROUP" \
-    ./scripts/publish-discovery-contracts.sh || fail "publishing discovery contracts failed"
+published=0
+for attempt in 1 2 3; do
+    if APICURIO_URL="http://127.0.0.1:${LOCAL_APIC}" \
+       ORDER_URL="http://127.0.0.1:${LOCAL_ORDER}" \
+       GATEWAY_URL="http://127.0.0.1:${LOCAL_GW}" \
+       PROTO_PATH="$PROTO_PATH" APICURIO_GROUP="$GROUP" \
+           ./scripts/publish-discovery-contracts.sh; then
+        published=1; break
+    fi
+    # The wake above is not enough on its own: the HTTPScaledObject's
+    # scaledownPeriod is 30s, so the gateway can drop back to zero between the
+    # rollout gate and the SDL fetch, killing the pinned port-forward mid-
+    # publish. Re-wake, re-attach, and retry — publishing is idempotent.
+    printf '    publish attempt %d failed — re-waking the gateway and retrying\n' "$attempt"
+    kubectl scale deploy graphql-gateway -n "$NS" --replicas=1 >/dev/null 2>&1
+    kubectl rollout status deployment/graphql-gateway -n "$NS" --timeout=120s >/dev/null 2>&1
+    kill "$PF_G" 2>/dev/null
+    kubectl port-forward -n "$NS" service/graphql-gateway "${LOCAL_GW}:80" >/dev/null 2>&1 & PF_G=$!
+    sleep 2
+done
+(( published )) || fail "publishing discovery contracts failed"
 
 # ── assert all four contract types are in the registry ────────────────────────
 step "Verifying contracts are registered in Apicurio"

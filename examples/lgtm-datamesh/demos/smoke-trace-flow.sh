@@ -84,9 +84,18 @@ fi
 # which is the downstream hop we want in the trace. With a real order the
 # inventory gRPC hop appears too (see smoke-graphql.sh).
 GQL_BODY='{"query":"{ order(id: \"trace-probe\") { id itemSku quantity stock { sku quantityOnHand available } } }"}'
-CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 \
-    -H "Host: $HOST" -H "Content-Type: application/json" \
-    -X POST --data "$GQL_BODY" "http://127.0.0.1:${GQL_PORT}/graphql" || echo "000")
+# Retry transient non-200s: the 0.12.2 interceptor has a cold-start race
+# (CAP-046) where the first POSTs after a scale-from-zero can 502 while its
+# route to the fresh endpoint warms up.
+CODE="000"
+for attempt in 1 2 3 4 5; do
+    CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 \
+        -H "Host: $HOST" -H "Content-Type: application/json" \
+        -X POST --data "$GQL_BODY" "http://127.0.0.1:${GQL_PORT}/graphql" || echo "000")
+    [[ "$CODE" == "200" ]] && break
+    printf '    attempt %d got HTTP %s — retrying (interceptor cold-start race, CAP-046)\n' "$attempt" "$CODE"
+    sleep 3
+done
 [[ "$CODE" == "200" ]] \
     || fail "gateway did not return 200 for the GraphQL query (HTTP $CODE) — see dump"
 printf '    ✓ gateway processed the query (HTTP 200) — a trace should now be exporting\n'
