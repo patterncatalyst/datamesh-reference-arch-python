@@ -38,6 +38,16 @@ the KEDA HTTP add-on's interceptor (see CAP-047 in the decision-log
 archive) and port-forwards to the gateway directly — the trace itself
 still demonstrates spans across three products in Tempo.
 
+The smokes under `demos/` uninstall the service releases they deployed
+when they pass (CAP-008), so after running some of them the cluster can
+be missing shared services. To put the workloads back in their bootstrap
+state (all six services + the KEDA scalers) so the smokes can run in any
+order:
+
+```bash
+./scripts/restore-baseline.sh
+```
+
 ## Directory layout
 
 ```
@@ -49,7 +59,7 @@ examples/lgtm-datamesh/
 │                              the original to avoid breaking internal
 │                              references inside the chart tree)
 ├── scripts/                 ← bootstrap, setup-* helpers per component,
-│                              teardown
+│                              restore-baseline, teardown
 ├── proto/                   ← protobuf definitions for the gRPC services
 ├── postman/                 ← Postman collection for live API demos
 ├── demos/                   ← smoke-* scripts + walkthrough.sh orchestrator
