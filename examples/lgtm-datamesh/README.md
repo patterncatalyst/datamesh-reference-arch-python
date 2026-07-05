@@ -96,16 +96,38 @@ RAM-constrained.
       > /etc/modules-load.d/99-kubernetes-iptables.conf'
   sudo systemctl restart systemd-modules-load
   ```
-- Kernel `fs.inotify.max_user_instances` raised and podman's default
-  `pids_limit` raised or unlimited (the profile setup checks both and
-  prints the fix commands)
+- Kernel `fs.inotify.max_user_instances` raised (the capstone runs many
+  controllers; Fedora's default of 128 is not enough):
+
+  ```bash
+  sudo sh -c 'printf "fs.inotify.max_user_instances = 512\nfs.inotify.max_user_watches = 524288\n" \
+      > /etc/sysctl.d/99-kubernetes.conf'
+  sudo sysctl -p /etc/sysctl.d/99-kubernetes.conf
+  ```
+- Podman's default `pids_limit` raised or unlimited — the fully-meshed
+  stack runs ~2000+ tasks on the node and saturates the 2048 default
+  (CAP-040). Must be set **before** the node is created:
+
+  ```bash
+  mkdir -p ~/.config/containers
+  printf '[containers]\npids_limit = 0\n' >> ~/.config/containers/containers.conf
+  ```
+
+  (The profile setup checks both of these and prints the same fixes.)
 - Standard tooling: minikube **1.36 or newer** (1.35's registry addon
   pins a `kube-registry-proxy` image digest that no longer exists on
   gcr.io, so the addon can never come up), kubectl, helm, istioctl —
   with the full Istio distribution unpacked at
   `~/.local/share/istio-current` (`setup-kiali.sh` applies
   `samples/addons/kiali.yaml` from it; the `istioctl` binary alone is
-  not enough)
+  not enough):
+
+  ```bash
+  curl -fsSL https://github.com/istio/istio/releases/download/1.26.2/istio-1.26.2-linux-amd64.tar.gz \
+      | tar xz -C ~/.local/share
+  ln -sfn ~/.local/share/istio-1.26.2 ~/.local/share/istio-current
+  cp ~/.local/share/istio-current/bin/istioctl ~/.local/bin/
+  ```
 
 The bootstrap script audits prerequisites before doing any work.
 
