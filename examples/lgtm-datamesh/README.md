@@ -85,9 +85,27 @@ RAM-constrained.
 - 64 GB RAM (the `capstone` minikube profile uses 24 GB; the rest is host
   headroom)
 - 1 TB disk (≥30 GB free for image cache + PVs)
-- Kernel `fs.inotify.max_user_instances` raised (the bootstrap checks
-  this and tells you the fix command)
-- Standard tooling: minikube, kubectl, helm
+- Legacy iptables kernel modules loaded on the host. Fedora is
+  nftables-only out of the box, and the rootless minikube node cannot
+  `modprobe` them itself — without them the CNI portmap plugin fails and
+  hostPort pods (the registry proxy first) never start. Load them now
+  and persist across reboots:
+
+  ```bash
+  sudo sh -c 'printf "ip_tables\niptable_nat\nip6_tables\n" \
+      > /etc/modules-load.d/99-kubernetes-iptables.conf'
+  sudo systemctl restart systemd-modules-load
+  ```
+- Kernel `fs.inotify.max_user_instances` raised and podman's default
+  `pids_limit` raised or unlimited (the profile setup checks both and
+  prints the fix commands)
+- Standard tooling: minikube **1.36 or newer** (1.35's registry addon
+  pins a `kube-registry-proxy` image digest that no longer exists on
+  gcr.io, so the addon can never come up), kubectl, helm, istioctl —
+  with the full Istio distribution unpacked at
+  `~/.local/share/istio-current` (`setup-kiali.sh` applies
+  `samples/addons/kiali.yaml` from it; the `istioctl` binary alone is
+  not enough)
 
 The bootstrap script audits prerequisites before doing any work.
 
