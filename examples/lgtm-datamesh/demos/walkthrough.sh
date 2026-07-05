@@ -233,7 +233,7 @@ preflight() {
     fi
     if want_act lineage; then
         check "OpenMetadata server Ready" \
-              "ready_by_label openmetadata 'app.kubernetes.io/name=openmetadata'" \
+              "ready_by_label $NS 'app.kubernetes.io/name=openmetadata'" \
               "./scripts/setup-openmetadata.sh"
         check "OpenMetadata ingestion has run (catalog populated)" \
               "kubectl get job -n $NS om-ingest-postgres om-ingest-kafka om-declare-lineage --no-headers 2>/dev/null | wc -l | grep -q '^3$'" \
