@@ -39,6 +39,38 @@ if ! command -v podman >/dev/null 2>&1; then
     exit 1
 fi
 
+# Confirm the legacy iptables NAT kernel modules are loaded on the HOST.
+# Fedora is nftables-only out of the box; inside the rootless node the CNI
+# portmap plugin needs the legacy ip_tables/iptable_nat modules and cannot
+# modprobe them itself ("Operation not permitted") — without them, hostPort
+# pods (the registry proxy first) fail sandbox creation forever. Loaded
+# loadable modules and builtins both appear under /sys/module/.
+missing_mods=()
+for m in ip_tables iptable_nat ip6_tables; do
+    [[ -d "/sys/module/${m}" ]] || missing_mods+=("$m")
+done
+if (( ${#missing_mods[@]} > 0 )); then
+    printf 'ERROR: kernel module(s) not loaded: %s\n' "${missing_mods[*]}" >&2
+    printf 'The CNI portmap plugin inside the rootless node needs them and cannot\n' >&2
+    printf 'load them itself. Load now and persist across reboots:\n' >&2
+    printf '  sudo sh -c '\''printf "ip_tables\\niptable_nat\\nip6_tables\\n" > /etc/modules-load.d/99-kubernetes-iptables.conf'\''\n' >&2
+    printf '  sudo systemctl restart systemd-modules-load\n' >&2
+    exit 1
+fi
+printf '==> iptables kernel modules OK (ip_tables iptable_nat ip6_tables)\n'
+
+# Confirm minikube is new enough. 1.35's registry addon pins a
+# kube-registry-proxy image digest that no longer exists on gcr.io, so
+# `minikube addons enable registry` can never succeed on it.
+mk_version="$(minikube version --short 2>/dev/null | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' || echo v0.0.0)"
+if [[ "$(printf '%s\n' "v1.36.0" "$mk_version" | sort -V | head -1)" != "v1.36.0" ]]; then
+    printf 'ERROR: minikube %s is too old (need >= 1.36).\n' "$mk_version" >&2
+    printf '1.35'\''s registry addon pins a dead kube-registry-proxy image digest and\n' >&2
+    printf 'cannot come up. Install a current minikube (e.g. to ~/.local/bin).\n' >&2
+    exit 1
+fi
+printf '==> minikube version OK (%s)\n' "$mk_version"
+
 # Confirm inotify limits (§1's tweak). Capstone runs many controllers; the
 # Fedora default fs.inotify.max_user_instances=128 is insufficient.
 inotify_instances=$(sysctl -n fs.inotify.max_user_instances 2>/dev/null || echo 0)
