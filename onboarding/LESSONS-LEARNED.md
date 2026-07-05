@@ -2,9 +2,11 @@
 
 This document distills the hard-won lessons from building this reference,
 drawn from the decisions in `_plans/archive/capstone-decisions.md`
-(CAP-001 through CAP-047). It's organised forward-looking — what to take
-away when starting your own data mesh on Kubernetes — rather than as a
-journal of what happened.
+(CAP-001 through CAP-047) and from the July 2026 smoke-test campaign that
+brought the full stack up from nothing on a fresh Fedora 44 host and ran
+every demo script to green (commits `5403d06`–`e22b318`). It's organised
+forward-looking — what to take away when starting your own data mesh on
+Kubernetes — rather than as a journal of what happened.
 
 The structure is intentional: the architectural lessons (where you have
 the most leverage to make or unmake the system) come first; the
@@ -228,6 +230,84 @@ CAP-007, CAP-009, CAP-010 — three CAPs because it took that many
 iterations to land. The lesson: rootless minikube has its own
 image-distribution shape and `docker push localhost:5000/img` is not it.
 
+### A port-forward pins its pod — poll loops must re-attach under autoscalers
+
+`kubectl port-forward svc/x` picks one pod at connect time and stays
+bound to it. Under a scale-to-zero autoscaler that's a trap with several
+interlocking parts, discovered when three smokes failed against a
+healthy system:
+
+- **"Rolled out" is not "still running."** Helm sets `replicas: 1`, the
+  rollout gate passes, and KEDA reconciles the deployment back to 0
+  within its polling interval (5s for the notification ScaledObject;
+  the gateway's HTTPScaledObject has `scaledownPeriod: 30`). A rollout
+  gate passing guarantees nothing seconds later. And
+  `kubectl rollout status` on a 0-replica deployment succeeds
+  *instantly* — it can't serve as a liveness check at all.
+- **The tested event is what wakes the consumer.** With the consumer
+  scaled to zero, the smoke's own order creates the lag that wakes a
+  NEW pod — which consumes and persists the event while the smoke polls
+  the dead tunnel to the OLD pod.
+- **`curl ... || echo '[]'` turns a dead tunnel into "not consumed
+  yet."** The fallback that made the poll loop robust to slow starts
+  also made it blind to transport failure. The event was in Postgres
+  the whole time; the smoke reported it missing.
+
+The fixes (commits `764aa3f`, `1093d78`, `e22b318`): on curl failure,
+kill and re-establish the port-forward against the Service, then treat
+that attempt as "not yet"; size poll windows for scale-from-zero
+(lag-poll + pod start + consumer-group join), not for a warm consumer;
+and for paths that go through the KEDA HTTP interceptor, retry transient
+non-200s (the 0.12.2 interceptor can 502 the first POSTs after a
+scale-from-zero — CAP-046's cold-start race).
+
+The lesson generalises twice over. Any test that tunnels into a cluster
+managed by an autoscaler must treat the tunnel as unreliable — and any
+fallback that silently swallows transport errors in a poll loop should
+be treated as a smell. When a poll says the data never arrived, check
+the datastore directly before believing it.
+
+### Well-known local ports are booby-trapped on the verified platform
+
+The observability smoke port-forwarded Prometheus to local 9090 — and
+Fedora, the reference's verified platform, ships Cockpit listening on
+host 9090 by default. The port-forward's bind failure was silenced by
+`>/dev/null 2>&1`, the readiness probe's `curl` (without `-f`) was
+satisfied by Cockpit's 404, and the smoke then "queried Prometheus,"
+got nothing, and reported the metrics pipeline broken. Nothing was
+broken.
+
+Three small rules fall out (commit `b320e20`): don't default test
+tooling to well-known ports (9090, 3000, 8080) — pick high odd ones and
+make them env-overridable; always `-f` a readiness probe so a port
+squatter answering 404 can't satisfy it; and when a smoke contradicts
+what you can observe directly, suspect the smoke's transport before the
+system under test.
+
+### Fresh-host bring-up finds the assumptions your dev machine hides
+
+Two bring-up blockers existed on a clean Fedora 44 host that no
+long-lived dev machine would surface:
+
+- **The CNI portmap plugin needs legacy `ip_tables`/`iptable_nat`
+  kernel modules, and a rootless node can't load them.** Fedora is
+  nftables-only out of the box; inside the rootless podman node,
+  `modprobe` gets `Operation not permitted`, and every hostPort pod
+  (starting with the registry proxy) fails sandbox creation. The host
+  must load the modules — persist them via `/etc/modules-load.d/` so a
+  reboot doesn't silently re-break the cluster.
+- **Pinned addon image digests rot.** minikube 1.35's registry addon
+  pins a `kube-registry-proxy` digest that no longer exists on gcr.io;
+  the addon can never come up on that minikube version regardless of
+  configuration. The fix was upgrading minikube, not debugging the
+  cluster.
+
+The lesson is CAP-044's ("test the bootstrap on a fresh profile") taken
+one level further: test on a fresh *host* occasionally, because the
+bootstrap also accumulates couplings to host state — loaded kernel
+modules, tool versions, listening ports — that a fresh profile on the
+same machine can't expose.
+
 ### `imagePullPolicy: Always` for mutable tags during development
 
 The reference uses `:v1` as a development tag (not for production, where
@@ -286,6 +366,29 @@ a fix during the same iteration, the dotted suffix prevents the older
 download from masking the newer one. Memorialised in the archive's
 later CAPs as "the rule I keep forgetting."
 
+### Smoke suites need an explicit baseline — and more than one run order
+
+The smokes clean up the service releases they deployed when they pass
+(CAP-008). Individually that's good hygiene; as a *suite* it means every
+passing smoke can remove a shared service the next smoke assumes, and a
+failure then indicts the run order rather than anything the failing
+smoke actually tests (smoke-order 503'd twice because an earlier smoke's
+cleanup had removed inventory-service). The remedy is an explicit,
+idempotent baseline-restore step (`scripts/restore-baseline.sh`) run
+between groups, which makes the order not matter.
+
+The second half of the lesson: a suite that has only ever passed in one
+order hasn't demonstrated order independence. The same 24 scripts were
+run in a deliberately shuffled order and one more latent race fell out —
+a smoke that had passed two full runs on lucky timing (smoke-kafka's
+dead-tunnel poll, `e22b318`). Shuffling the order is the cheapest chaos
+test a suite can get.
+
+And when a fix lands, verify it *under the conditions that failed* — the
+retry paths here were confirmed by watching them fire in the logs (two
+dead-tunnel attempts then success; one 502 then 200), not by a pass on a
+warm cluster that might never have exercised them.
+
 ### Decision log with rejected alternatives
 
 The most useful part of each CAP isn't the decision — it's the
@@ -335,3 +438,13 @@ A short list:
    diagrams would have been vendor-neutral from the start. The
    `/docs/10-summary/` page contextualises them, which is the right
    call now — but the rewrite would have been the right call earlier.
+
+6. **Re-baseline the smokes when the platform under them changes.** The
+   scale-to-zero scalers were added in r26b, but the smokes written
+   before that (avro, notifications, kafka, discovery, order) kept
+   assuming an always-on target — and kept passing, on lucky timing,
+   until a fresh-host campaign in a different run order exposed all of
+   them at once. When a cross-cutting platform behaviour changes (an
+   autoscaler, a mesh policy, a new operator), re-run the *existing*
+   test suite against the new reality deliberately, rather than letting
+   each old assumption surface as a one-off flake months later.
