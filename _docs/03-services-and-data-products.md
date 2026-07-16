@@ -1,6 +1,6 @@
 ---
 title: "Services & data products"
-order: 3
+order: 4
 description: The services, the order-service template, and the anatomy of a data product — its ports, its internal transformation, and the container image that ships it.
 duration: 30 min
 ---

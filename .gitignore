@@ -2,3 +2,11 @@
 /apply-r*.sh
 /test-r*.sh
 /diagnose-*.sh
+
+# Jekyll build output
+_site/
+Gemfile.lock
+
+# Node.js
+node_modules/
+package-lock.json

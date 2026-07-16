@@ -1,6 +1,6 @@
 ---
 title: "Kubernetes as the substrate"
-order: 2
+order: 3
 description: Why Kubernetes is a natural substrate for a data mesh, and how the four principles map onto namespaces, operators, RBAC, and platform primitives.
 duration: 15 min
 ---

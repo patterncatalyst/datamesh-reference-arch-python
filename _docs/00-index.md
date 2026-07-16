@@ -18,47 +18,50 @@ page.
 
 ## How the set is organized
 
-The ten pages fall into four movements. The **conceptual grounding** (pages 1–2)
-establishes what a data mesh is and why Kubernetes is a natural substrate for one. The
-**implementation** (pages 3–8) builds the system: the services and their data products,
-the contracts and catalog that make them discoverable, the data planes they communicate
-over, progressive delivery with mutual TLS, elastic scaling and recovery, and the
-observability to see it all. The **failure modes** (page 9) steps back to the
-conceptual and organizational anti-patterns that derail data-mesh efforts even when
-the technology is sound. The **summary** (page 10) closes by reorganizing the same
-material by principle — for each of the four principles, the value it delivers and the
-implementation pieces that realize it.
+The eleven pages fall into four movements. The **conceptual grounding** (pages 1–3)
+establishes the landscape of data architectures, what a data mesh is, and why Kubernetes
+is a natural substrate for one. The **implementation** (pages 4–9) builds the system:
+the services and their data products, the contracts and catalog that make them
+discoverable, the data planes they communicate over, progressive delivery with mutual
+TLS, elastic scaling and recovery, and the observability to see it all. The **failure
+modes** (page 10) steps back to the conceptual and organizational anti-patterns that
+derail data-mesh efforts even when the technology is sound. The **summary** (page 11)
+closes by reorganizing the same material by principle — for each of the four principles,
+the value it delivers and the implementation pieces that realize it.
 
 ## The pages
 
-- [**1 · Concepts & principles**]({{ '/docs/01-concepts/' | relative_url }}) —
+- [**1 · Data architectures**]({{ '/docs/01-data-architectures/' | relative_url }}) —
+  The landscape from pipelines to lakes to mesh — what each pattern is, the problem
+  it solves, and why the mesh is a different kind of answer.
+- [**2 · Concepts & principles**]({{ '/docs/01-concepts/' | relative_url }}) —
   What a data mesh is, operational versus analytical data, and Dehghani's four
   principles. The grounding before any commands.
-- [**2 · Kubernetes as the substrate**]({{ '/docs/02-kubernetes-substrate/' | relative_url }}) —
+- [**3 · Kubernetes as the substrate**]({{ '/docs/02-kubernetes-substrate/' | relative_url }}) —
   Why the four principles map cleanly onto namespaces, operators, RBAC, and platform
   primitives, and the shape of the system you'll build.
-- [**3 · Services & data products**]({{ '/docs/03-services-and-data-products/' | relative_url }}) —
+- [**4 · Services & data products**]({{ '/docs/03-services-and-data-products/' | relative_url }}) —
   The anatomy of a data product, the five domain services plus the gateway, and the
   order-service template the others follow.
-- [**4 · Contracts & the catalog**]({{ '/docs/04-contracts-and-catalog/' | relative_url }}) —
+- [**5 · Contracts & the catalog**]({{ '/docs/04-contracts-and-catalog/' | relative_url }}) —
   Versioned contracts in a registry, the runtime-versus-discovery distinction, and why a
   catalog is a mesh requirement rather than an add-on.
-- [**5 · The data planes**]({{ '/docs/05-data-planes/' | relative_url }}) —
+- [**6 · The data planes**]({{ '/docs/05-data-planes/' | relative_url }}) —
   The synchronous read layer (REST, gRPC, a GraphQL gateway) and the asynchronous event
   backbone — and why the capstone uses all of them.
-- [**6 · Progressive delivery & mTLS**]({{ '/docs/06-progressive-delivery-mtls/' | relative_url }}) —
+- [**7 · Progressive delivery & mTLS**]({{ '/docs/06-progressive-delivery-mtls/' | relative_url }}) —
   Evolving a contract in the open with a v1→v2 canary, mTLS for free, and the decision to
   mesh selectively rather than namespace-wide.
-- [**7 · Elastic & resilient**]({{ '/docs/07-elastic-and-resilient/' | relative_url }}) —
+- [**8 · Elastic & resilient**]({{ '/docs/07-elastic-and-resilient/' | relative_url }}) —
   Scaling to demand and to zero with KEDA, and the cloud-native recoverability the
   platform provides.
-- [**8 · Observability**]({{ '/docs/08-observability/' | relative_url }}) —
+- [**9 · Observability**]({{ '/docs/08-observability/' | relative_url }}) —
   Metrics, distributed traces across products, and the live view of traffic moving
   through the mesh.
-- [**9 · Anti-patterns**]({{ '/docs/09-anti-patterns/' | relative_url }}) —
+- [**10 · Anti-patterns**]({{ '/docs/09-anti-patterns/' | relative_url }}) —
   The conceptual and organizational ways data-mesh efforts go wrong, drawn from the
   literature, so you can recognize them early.
-- [**10 · Summary**]({{ '/docs/10-summary/' | relative_url }}) —
+- [**11 · Summary**]({{ '/docs/10-summary/' | relative_url }}) —
   Each principle, reorganized: the value it delivers, the implementation pieces that
   realize it, and the failure mode when it's missing.
 

@@ -1,9 +1,14 @@
 ---
 title: "Concepts & principles"
-order: 1
+order: 2
 description: What a data mesh is, operational vs. analytical data, and Dehghani's four principles — the conceptual grounding before any commands.
 duration: 20 min
 ---
+
+The [previous page]({{ '/docs/01-data-architectures/' | relative_url }}) covered the
+landscape of data architectures — pipelines, warehouses, and lakes — and where the mesh
+sits in relation to all of them. This page goes deeper into what a data mesh actually
+is and the four principles it rests on.
 
 Before any commands, it's worth being precise about what a data mesh actually is —
 because the term gets attached to a lot of things it isn't. This page is a working

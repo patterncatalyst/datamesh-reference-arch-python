@@ -1,6 +1,6 @@
 ---
 title: "Progressive delivery & mTLS"
-order: 6
+order: 7
 description: Evolving a contract in the open with an Istio v1→v2 canary, and the decision to mesh selectively rather than enabling injection namespace-wide.
 duration: 25 min
 ---

@@ -1,6 +1,6 @@
 ---
 title: "Anti-patterns"
-order: 9
+order: 10
 description: The conceptual and organizational ways data-mesh efforts go wrong, drawn from the literature — so you can recognize them early.
 duration: 15 min
 ---
