@@ -1,6 +1,6 @@
 ---
 title: "Summary — the four principles, realized"
-order: 10
+order: 11
 description: A closing summary — for each of the four data-mesh principles, the value it delivers, the implementation pieces that realize it, and what happens without it.
 duration: 10 min
 ---

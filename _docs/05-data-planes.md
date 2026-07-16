@@ -1,6 +1,6 @@
 ---
 title: "The data planes"
-order: 5
+order: 6
 description: The async backbone of Kafka events and the read layer of GraphQL composing REST and gRPC — when to reach for each, and why the capstone uses all of them.
 duration: 25 min
 ---

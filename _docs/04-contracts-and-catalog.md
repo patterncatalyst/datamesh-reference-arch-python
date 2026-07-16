@@ -1,6 +1,6 @@
 ---
 title: "Contracts & the catalog"
-order: 4
+order: 5
 description: Versioned contracts in Apicurio and discovery plus lineage in OpenMetadata — and why a catalog is a mesh requirement, not an optional add-on.
 duration: 25 min
 ---

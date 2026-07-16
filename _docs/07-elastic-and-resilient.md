@@ -1,6 +1,6 @@
 ---
 title: "Elastic & resilient"
-order: 7
+order: 8
 description: Scaling to demand and to zero with KEDA, and the cloud-native recoverability the platform provides when things fail.
 duration: 20 min
 ---

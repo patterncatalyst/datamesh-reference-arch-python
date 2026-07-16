@@ -1,0 +1,22 @@
+{
+  "01-architecture-evolution": {
+    "w": 3278,
+    "h": 1556
+  },
+  "01-data-lake-architecture": {
+    "w": 3278,
+    "h": 1444
+  },
+  "01-data-mesh-decentralized": {
+    "w": 3278,
+    "h": 1444
+  },
+  "01-data-pipeline-architecture": {
+    "w": 3278,
+    "h": 1333
+  },
+  "01-data-warehouse-architecture": {
+    "w": 3278,
+    "h": 1444
+  }
+}

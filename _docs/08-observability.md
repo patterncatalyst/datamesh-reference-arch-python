@@ -1,6 +1,6 @@
 ---
 title: "Observability"
-order: 8
+order: 9
 description: Seeing what the mesh is doing — metrics, distributed traces across products, and the live view of traffic between them.
 duration: 20 min
 ---

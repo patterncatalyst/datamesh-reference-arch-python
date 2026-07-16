@@ -8,13 +8,37 @@ it step by step.
 ```
 presentation/
 ├── data-mesh-101/
-│   ├── The_Data_Mesh_Updated.pptx     ← source/reference deck (design source of truth)
-│   └── diagrams/                       ← 15 paired SVG + Excalidraw diagrams
+│   ├── The_Data_Mesh_Updated.pptx     ← original 101 deck (design source of truth)
+│   ├── The_Data_Mesh_101.pptx         ← generated 101 deck with architecture disambiguation
+│   ├── build-101.js                    ← deck builder (pptxgenjs)
+│   ├── makediagrams-101.js             ← generates 5 architecture disambiguation diagrams
+│   ├── raster-101.js                   ← SVG → PNG rasterizer for deck embedding
+│   ├── newsvg/                         ← generated SVG + Excalidraw pairs
+│   ├── dpng/                           ← rasterized PNGs + dims.json
+│   ├── diagrams/                       ← 15 paired SVG + Excalidraw diagrams (original 101)
+│   └── package.json                    ← local deps (sharp, pptxgenjs)
+├── data-mesh-openshift/
+│   ├── Data_Mesh_on_OpenShift.pptx     ← generated implementation deck
+│   ├── build-deck.js                   ← deck builder
+│   ├── deck-lib.js                     ← design-system helpers
+│   ├── svglib.js                       ← SVG + Excalidraw dual-emitter
+│   ├── makediagrams.js                 ← generates 17-* diagrams
+│   └── ...
 └── README.md                           ← this file
 ```
 
-The 101 deck is concept-only (no live demo). The new deck (Phase D) reuses its
-visual language and tells the implementation story.
+The 101 deck is concept-only (no live demo). The implementation deck (data-mesh-openshift)
+reuses its visual language and tells the implementation story.
+
+## Building the 101 deck
+
+```bash
+cd presentation/data-mesh-101
+npm install                           # sharp + pptxgenjs (first time only)
+node makediagrams-101.js              # → newsvg/ + assets/diagrams/
+node raster-101.js                    # → dpng/*.png + dpng/dims.json
+node build-101.js                     # → The_Data_Mesh_101.pptx
+```
 
 ## Design system (extracted from the 101 deck — match this in the new deck)
 

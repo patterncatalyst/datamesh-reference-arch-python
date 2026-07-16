@@ -1,0 +1,16 @@
+{
+  "name": "data-mesh-101",
+  "version": "1.0.0",
+  "description": "",
+  "main": "build-101.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "pptxgenjs": "^4.0.1",
+    "sharp": "^0.35.3"
+  }
+}
