@@ -113,7 +113,7 @@ dashboards:
               "id": 2,
               "type": "timeseries",
               "title": "order-service request rate by response code (Istio mesh)",
-              "description": "From the Envoy sidecar's istio_requests_total — no application instrumentation. Drive it with demos/smoke-canary.sh.",
+              "description": "From the Envoy sidecar's istio_requests_total — no application instrumentation. Drive it with demos/demo-canary-verify.sh.",
               "gridPos": { "h": 9, "w": 24, "x": 0, "y": 10 },
               "datasource": { "type": "prometheus", "uid": "prometheus" },
               "fieldConfig": {

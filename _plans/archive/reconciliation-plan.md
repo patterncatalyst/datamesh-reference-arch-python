@@ -182,17 +182,17 @@ are still aspirational.
 | **verified (Fedora 44)** | `examples/11-istio`                   | §11     | r12e user run: full §11 happy path passed — 13 phases from pre-flight through routing assertions. v1-pin proven by 1/10 distinct hashes, 50/50 split proven by 2/20 with 55/45 distribution. SUCCESS banner with verified counts; cleanup trap restored kubectl context |
 | **verified (Fedora 44)** | `examples/12-keda-kafka`              | §12     | r13b user run: full demo passed end-to-end. 0→3→0 replica lifecycle with 200 messages produced and drained. See `_plans/reconciliation-plan.md` Section B for individual claim promotions |
 | **verified (Fedora 44)** | `examples/12-keda-http`               | §12     | r13f user run: full demo passed end-to-end after r13c (tightened assertions) + r13d (`-host` fix) + r13e (parsing fix). Cold-start 3s/200/nginx content; hey 500/500 at 4500 req/s with all 200s; scale-up to 1 replica then back to 0 after 37s. See `_plans/reconciliation-plan.md` Section B for individual claim promotions |
-| **verified (Fedora 44)** | `examples/17-capstone` (order-service walking skeleton) | §17 | r21c user run (`demos/smoke-order.sh`): image built (UBI 9 + Poetry, root-builder venv fix) → pushed to in-cluster registry → CloudNativePG primary Ready in ~5–35s → order-service rolled out → `GET /healthz` ready → `POST /orders` returned a UUID order → direct `psql` confirmed 1 row in `orders.orders`. Six iterations (r21→r21c) to get here, almost all image-distribution friction on rootless-podman+containerd; resolved via the registry (CAP-007/009) + `MINIKUBE_ROOTLESS` (CAP-010) |
-| **verified (Fedora 44)** | `examples/17-capstone` (inventory-service health skeleton) | §17 | r22 user run (`demos/smoke-service.sh inventory`): scaffolded from the order-service template, built → registry → rolled out → `GET /health` ok → `GET /healthz` ready → `inventory` schema confirmed in Postgres. First scaffold-generated service; green on first run |
-| **verified (Fedora 44)** | `examples/17-capstone` (payment-service health skeleton) | §17 | r22 user run (`demos/smoke-service.sh payment`): scaffolded (schema `payments`), built → registry → rolled out → `/health` ok → `/healthz` ready → schema confirmed |
-| **verified (Fedora 44)** | `examples/17-capstone` (shipping-service health skeleton) | §17 | r22 user run (`demos/smoke-service.sh shipping`): scaffolded (schema `shipping`), built → registry → rolled out → `/health` ok → `/healthz` ready → schema confirmed |
-| **verified (Fedora 44)** | `examples/17-capstone` (notification-service health skeleton) | §17 | r22 user run (`demos/smoke-service.sh notification`): scaffolded (schema `notifications`), built → registry → rolled out → `/health` ok → `/healthz` ready → schema confirmed. Gets a `/health` surface despite being Kafka-consumer-only (CAP-011) |
+| **verified (Fedora 44)** | `examples/17-capstone` (order-service walking skeleton) | §17 | r21c user run (`demos/demo-order.sh`): image built (UBI 9 + Poetry, root-builder venv fix) → pushed to in-cluster registry → CloudNativePG primary Ready in ~5–35s → order-service rolled out → `GET /healthz` ready → `POST /orders` returned a UUID order → direct `psql` confirmed 1 row in `orders.orders`. Six iterations (r21→r21c) to get here, almost all image-distribution friction on rootless-podman+containerd; resolved via the registry (CAP-007/009) + `MINIKUBE_ROOTLESS` (CAP-010) |
+| **verified (Fedora 44)** | `examples/17-capstone` (inventory-service health skeleton) | §17 | r22 user run (`demos/demo-service.sh inventory`): scaffolded from the order-service template, built → registry → rolled out → `GET /health` ok → `GET /healthz` ready → `inventory` schema confirmed in Postgres. First scaffold-generated service; green on first run |
+| **verified (Fedora 44)** | `examples/17-capstone` (payment-service health skeleton) | §17 | r22 user run (`demos/demo-service.sh payment`): scaffolded (schema `payments`), built → registry → rolled out → `/health` ok → `/healthz` ready → schema confirmed |
+| **verified (Fedora 44)** | `examples/17-capstone` (shipping-service health skeleton) | §17 | r22 user run (`demos/demo-service.sh shipping`): scaffolded (schema `shipping`), built → registry → rolled out → `/health` ok → `/healthz` ready → schema confirmed |
+| **verified (Fedora 44)** | `examples/17-capstone` (notification-service health skeleton) | §17 | r22 user run (`demos/demo-service.sh notification`): scaffolded (schema `notifications`), built → registry → rolled out → `/health` ok → `/healthz` ready → schema confirmed. Gets a `/health` surface despite being Kafka-consumer-only (CAP-011) |
 | **verified (Fedora 44)** | `examples/17-capstone` `scripts/setup-kiali.sh` installs ONLY the Kiali addon (not the full `samples/addons/` bundle) and patches the `kiali` ConfigMap so `external_services` points at the capstone's existing `observability`-namespace Prometheus/Grafana/Tempo — single observability stack, no second TSDB (CAP-042, Phase E.0) | §17 | Cluster-confirmed in two sessions: deployment in `istio-system` reaches Ready, ConfigMap `config.yaml` contains `prometheus-server.observability` and `server.web_root: /kiali` (the corrected value that resolves the addon startup-probe 404). Lesson: addon startup probe checks `/kiali/healthz`, so `web_root` must be `/kiali` — initial attempt with `/` produced `Webroot: //` and a probe-404 loop |
-| **verified (Fedora 44)** | `examples/17-capstone` `demos/smoke-kiali.sh` verifies Kiali is Ready, wired to the capstone Prometheus, `/healthz` responds, `/api/namespaces` lists `capstone`, and the graph API answers (CAP-042, Phase E.0) | §17 | Cluster-confirmed: `./demos/smoke-kiali.sh` PASSes; the walkthrough's topology act port-forwards Kiali at `http://localhost:20001/kiali` and the graph for namespace `capstone` shows the products and their edges with a canary split when one is up |
+| **verified (Fedora 44)** | `examples/17-capstone` `demos/demo-kiali.sh` verifies Kiali is Ready, wired to the capstone Prometheus, `/healthz` responds, `/api/namespaces` lists `capstone`, and the graph API answers (CAP-042, Phase E.0) | §17 | Cluster-confirmed: `./demos/demo-kiali.sh` PASSes; the walkthrough's topology act port-forwards Kiali at `http://localhost:20001/kiali` and the graph for namespace `capstone` shows the products and their edges with a canary split when one is up |
 | **verified (Fedora 44)** | `examples/17-capstone` `demos/walkthrough.sh` orchestrates the five-act presenter walkthrough (trace → scale → canary → lineage → topology) over the existing demo/smoke scripts; Enter-to-advance between acts; preflight covers Tempo/Prometheus/Istio/KEDA/OpenMetadata/Kiali with per-act applicability; `--only` / `--skip` validated against the act list (CAP-043, Phase E) | §17 | Cluster-confirmed for 4 of 5 acts: **scale**, **canary**, **lineage**, **topology** all PASS end-to-end with Enter-driven advance. **trace** remains the open issue — the KEDA HTTP add-on interceptor returns 502 with `X-Keda-Http-Cold-Start: true` because uvicorn's cold-start exceeds the interceptor's `DialRetryTimeout` budget (~15s). Documented as a follow-up; not blocking the walkthrough. Lesson: `KEDA_HTTP_INTERCEPTOR_*` env-var names from earlier KEDA HTTP versions are NOT honored by 0.12.2; the real envs are `KEDA_*` (no `HTTP_INTERCEPTOR_` infix) |
 | **unverified** | `examples/17-capstone` `scripts/bootstrap-capstone.sh` now produces a walkthrough-ready cluster in one command: 10 steps (was 8), with step 9 = `setup-kiali.sh` and step 10 = `ingest-openmetadata.sh` (CAP-044). `demos/walkthrough.sh` preflight enforces both: a missing Kiali or unrun ingestion fails fast with the specific fix script in the message, instead of failing mid-act | §17 | Pending cluster run. Verify: on a fresh profile, `./scripts/bootstrap-capstone.sh` finishes with all 10 steps green; `./demos/walkthrough.sh` then runs without operator intervention beyond Enter. Offline: `bash -n` clean on both scripts; step numerators renumbered 1/10..10/10; `--help` and bogus-arg validation unchanged |
 | **unverified** | `examples/17-capstone` `keda/gateway-httpscaledobject.yaml` `replicas.min: 1` (CAP-045) remains the active manifest on `main`. CAP-046's planned migration to `InterceptorRoute` is deferred (see CAP-047 below) — the file is NOT deleted, the `min: 1` workaround stays as the gateway's warm-baseline mechanism while the upstream interceptor bug is open | §17 | Cluster-verifiable: `kubectl get httpscaledobject -n capstone graphql-gateway -o yaml` shows `replicas.min: 1`; gateway Deployment stays at one ready replica between requests. The CAP-046 row below is also superseded by CAP-047 |
-| **superseded by CAP-047** | `examples/17-capstone` Phase F: KEDA HTTP add-on 0.12.2 → 0.14.0 (`scripts/setup-keda.sh` version bump), migration of `graphql-gateway` from `HTTPScaledObject` (v1alpha1) to `InterceptorRoute` (v1beta1) + separate `ScaledObject`. New `timeouts.readiness: 60s` on the InterceptorRoute is the configurable cold-start budget that 0.12.2 didn't expose. `minReplicaCount: 0` restored — scale-to-zero works again. Updated apply-points in `scripts/bootstrap-capstone.sh`, `demos/smoke-keda-http.sh`, `demos/smoke-trace-flow.sh` (curl timeout 30s → 90s) (CAP-046) | §17 | Attempt made on the `phase-f-keda-http-014` branch; branch discarded after discovery of the upstream interceptor regression. Historical row retained — work product (manifest shapes, design) preserved for the re-attempt once upstream issue `kedacore/http-add-on#1668` ships a fix. See the CAP-047 rows below |
+| **superseded by CAP-047** | `examples/17-capstone` Phase F: KEDA HTTP add-on 0.12.2 → 0.14.0 (`scripts/setup-keda.sh` version bump), migration of `graphql-gateway` from `HTTPScaledObject` (v1alpha1) to `InterceptorRoute` (v1beta1) + separate `ScaledObject`. New `timeouts.readiness: 60s` on the InterceptorRoute is the configurable cold-start budget that 0.12.2 didn't expose. `minReplicaCount: 0` restored — scale-to-zero works again. Updated apply-points in `scripts/bootstrap-capstone.sh`, `demos/demo-keda-http.sh`, `demos/demo-trace-flow.sh` (curl timeout 30s → 90s) (CAP-046) | §17 | Attempt made on the `phase-f-keda-http-014` branch; branch discarded after discovery of the upstream interceptor regression. Historical row retained — work product (manifest shapes, design) preserved for the re-attempt once upstream issue `kedacore/http-add-on#1668` ships a fix. See the CAP-047 rows below |
 | **verified (Fedora 44)** | `examples/17-capstone` `demos/walkthrough.sh` Act 1 (trace) port-forwards directly to `svc/graphql-gateway` (capstone namespace) and sends the GraphQL POST there, bypassing `keda-add-ons-http-interceptor-proxy`. The KEDA HTTP-add-on's interceptor has an upstream Go panic on POST forwarding (`invalid concurrent Body.Read call`) in v0.14.0, filed at `kedacore/http-add-on#1668`. The trace itself (HTTP server → REST client → gRPC client spans across three products, stitched in Tempo) is unchanged; only the entry path differs (CAP-047) | §17 | Validated against the upstream sample app `traefik/whoami` using KEDA's own Getting Started manifests — panic reproduces, ruling out anything specific to our gateway. The cluster-side bypass (direct port-forward to the gateway Service) returns `200 OK` with the GraphQL response. Preflight gains two checks for the trace act: graphql-gateway Deployment available + Service exists. Offline: `bash -n` clean; the new `trace_act` function self-cleans its port-forward through the cleanup trap |
 | **deferred — upstream blocker** | `examples/17-capstone` upgrade of KEDA HTTP add-on from 0.12.2 to 0.14.0 with InterceptorRoute migration (CAP-046) is paused on `main`. Cluster stays on 0.12.2; gateway uses `HTTPScaledObject` with `replicas.min: 1` (CAP-045). Pickup criterion: upstream issue `kedacore/http-add-on#1668` closes against a tagged binary release ≥ 0.14.1; at that point CAP-046's migration plan is re-runnable on a fresh branch and supersedes CAP-047 (CAP-047) | §17 | Tracking the upstream issue is the verification trigger. Once a fix is released: bump `scripts/setup-keda.sh` `KEDA_HTTP_VERSION`, apply the two new manifests from CAP-046's body, re-run `./demos/walkthrough.sh --only trace --no-preflight` first through the interceptor (must pass), then `--skip trace --no-preflight` (the four existing acts must still pass), promote both rows to verified, supersede CAP-047, ship |
 
@@ -2127,7 +2127,7 @@ have to derive them.
          - `examples/17-capstone/charts/capstone/charts/order-service/`
            — helm subchart (Deployment with CNPG-secret-sourced
            Postgres env + Health Probes; Service)
-         - `examples/17-capstone/demos/smoke-order.sh` — the
+         - `examples/17-capstone/demos/demo-order.sh` — the
            walking-skeleton verification (build, deploy, exercise
            REST, query Postgres directly to confirm persistence,
            cleanup trap)
@@ -2157,7 +2157,7 @@ have to derive them.
 
          **Verification status — UNVERIFIED pending real Fedora 44 run:**
          - `setup-postgres-operator.sh` installs the operator → unverified
-         - `smoke-order.sh` passes end-to-end → unverified
+         - `demo-order.sh` passes end-to-end → unverified
          - order-service image builds with Poetry on UBI 9 → unverified
          - CloudNativePG provisions a working cluster on rootless
            podman minikube → unverified (flagged as a risk in r19 —
@@ -2262,7 +2262,7 @@ have to derive them.
            - New `scripts/build-image.sh` — builds on the host with podman, loads
              into the profile with `minikube image load`, verifies presence
              (CAP-007)
-           - `demos/smoke-order.sh` rewritten to (a) build via `build-image.sh`
+           - `demos/demo-order.sh` rewritten to (a) build via `build-image.sh`
              instead of `minikube image build`, and (b) leave failed resources in
              place with an inline diagnostic dump rather than tearing down on
              failure (CAP-008)
@@ -2271,7 +2271,7 @@ have to derive them.
            - Manual confirmation path provided to the user (host podman build +
              `minikube image load` + `helm upgrade` + `kubectl rollout status`)
              before the corrected smoke test ships
-           - Once the corrected `smoke-order.sh` passes end-to-end on Fedora 44,
+           - Once the corrected `demo-order.sh` passes end-to-end on Fedora 44,
              these rows promote to `verified (Fedora 44)`:
              - order-service image builds with Poetry on UBI 9
              - image loads into the capstone profile and is pullable
@@ -2339,7 +2339,7 @@ have to derive them.
              `poetry.lock*` glob.
 
              **Verification:** once `build-image.sh` produces an image and
-             `smoke-order.sh` passes end-to-end on Fedora 44, the r21 rows promote to
+             `demo-order.sh` passes end-to-end on Fedora 44, the r21 rows promote to
              `verified (Fedora 44)`. This is the last expected blocker before the
              walking skeleton is green.
 
@@ -2419,7 +2419,7 @@ have to derive them.
                (1) persist it in minikube config (`minikube config set rootless true`,
                done in `setup-capstone-profile.sh`), and (2) `export MINIKUBE_ROOTLESS=true`
                at the top of every capstone script (`build-image.sh`,
-               `setup-capstone-profile.sh`, `smoke-order.sh`, and the apply/test
+               `setup-capstone-profile.sh`, `demo-order.sh`, and the apply/test
                scaffolding).
              - **Consequences:**
                - (+) Eliminates an entire class of intermittent, hard-to-diagnose failures
@@ -2448,7 +2448,7 @@ have to derive them.
                  (CAP-010, CAP-009)
                - `charts/capstone/charts/order-service/values.yaml`: `image.repository`
                  → `localhost:5000/order-service`
-               - `demos/smoke-order.sh`: builds+pushes via the new `build-image.sh`;
+               - `demos/demo-order.sh`: builds+pushes via the new `build-image.sh`;
                  diagnostic dump now queries the registry catalog; exports
                  `MINIKUBE_ROOTLESS=true`
                - decision log: CAP-007 revised, CAP-009 and CAP-010 added
@@ -2498,7 +2498,7 @@ have to derive them.
   `scripts/scaffold-service.sh` (stamps out a new service from the proven
   order-service template, parameterised by `<name> <schema>`;
   auto-generates `poetry.lock` per CAP-001 when poetry is present; refuses
-  to overwrite an existing service) and `demos/smoke-service.sh` (generic
+  to overwrite an existing service) and `demos/demo-service.sh` (generic
   health smoke test for any scaffolded service: build + push image to the
   in-cluster registry, ensure the shared Postgres cluster is Ready, deploy
   the subchart, assert `GET /health` and `GET /healthz`, confirm the
@@ -2510,7 +2510,7 @@ have to derive them.
 
   The four services — inventory, payment, shipping, notification — were
   generated and verified **incrementally, one at a time**, each its own
-  commit. All four came back green on first run: `smoke-service.sh` built
+  commit. All four came back green on first run: `demo-service.sh` built
   each image → pushed to the registry → rolled out → asserted `/health`
   and `/healthz` → confirmed the service's schema in Postgres. **Verified
   count: 112 → 116** (one row per service in Section C). The scaffold
@@ -2546,15 +2546,15 @@ have to derive them.
   executed), proto + buf configs parse, both charts render to valid
   Kubernetes YAML with the gRPC port (inventory: containerPorts 8080+50051,
   `GRPC_PORT` env, Service `grpc` port; order: `INVENTORY_GRPC_ADDR` env),
-  both Containerfiles copy `gen/`, and `smoke-grpc.sh` + `gen-protos.sh`
+  both Containerfiles copy `gen/`, and `demo-grpc.sh` + `gen-protos.sh`
   pass `bash -n`. **Cluster verification pending** on Fedora 44 via
-  `gen-protos.sh` → `poetry lock` (×2) → `smoke-grpc.sh`: the smoke test
+  `gen-protos.sh` → `poetry lock` (×2) → `demo-grpc.sh`: the smoke test
   asserts an in-stock order returns 201, an out-of-stock order 409, and an
   excess-quantity order 409 — all decided by the gRPC round-trip. Verified
   count holds at **116** until that run passes; then the order→inventory
   call is the 117th fact.
 
-- ✅ **r23** verified (Fedora 44) — `smoke-grpc.sh` green: in-stock order
+- ✅ **r23** verified (Fedora 44) — `demo-grpc.sh` green: in-stock order
   201, out-of-stock 409, excess-quantity 409, all decided by the
   order→inventory `CheckStock` gRPC round-trip. Two infra issues surfaced
   and were fixed en route (both unrelated to the gRPC code): a regressed
@@ -2571,7 +2571,7 @@ have to derive them.
   services and two protocols into one response. No GraphQL added to the
   existing services. Includes the gateway chart (stateless — no Postgres),
   `gen-protos.sh` updated to distribute the inventory client stubs to the
-  gateway too, and `smoke-graphql.sh` (places an in-stock order via REST,
+  gateway too, and `demo-graphql.sh` (places an in-stock order via REST,
   then queries the gateway and asserts the response carries both the order
   fields and nested `stock { quantityOnHand available }`). Decision
   **CAP-016** recorded (gateway orchestration vs true subgraph federation);
@@ -2582,13 +2582,13 @@ have to derive them.
   gateway's app modules compile (`py_compile`), `Chart.yaml`/`values.yaml`
   parse, the Deployment/Service render to valid Kubernetes YAML
   (`image: localhost:5000/graphql-gateway:v1`, `ORDER_REST_URL` +
-  `INVENTORY_GRPC_ADDR` env), and `smoke-graphql.sh` passes `bash -n`.
+  `INVENTORY_GRPC_ADDR` env), and `demo-graphql.sh` passes `bash -n`.
   **Cluster verification pending** on Fedora 44 via `gen-protos.sh` →
-  `poetry lock`/`install` (gateway) → `smoke-graphql.sh`. Verified count
+  `poetry lock`/`install` (gateway) → `demo-graphql.sh`. Verified count
   holds at **117** until that run passes; then the federated query is the
   118th fact.
 
-- ✅ **r24** verified (Fedora 44) — `smoke-graphql.sh` green: a single
+- ✅ **r24** verified (Fedora 44) — `demo-graphql.sh` green: a single
   GraphQL query to the gateway returned `order` (from order-service, REST)
   with nested `stock { quantityOnHand available }` (from inventory-service,
   gRPC) stitched into one response. One version issue fixed en route: the
@@ -2605,7 +2605,7 @@ have to derive them.
   `events.py` producer (publish after commit, keyed by order id) wired into
   `place_order`, notification-service's `consumer.py` (aiokafka background
   task, idempotent by order_id) + `GET /received`, Kafka env on both charts,
-  and `smoke-kafka.sh` (places an in-stock order, polls notification's
+  and `demo-kafka.sh` (places an in-stock order, polls notification's
   `/received` for the event). Decision **CAP-017** recorded (Strimzi
   single-node KRaft + aiokafka + JSON-now/registry-later; dual-write,
   at-least-once, and durability simplifications documented with their
@@ -2617,13 +2617,13 @@ have to derive them.
   Kafka chart CRs and the order/notification deployments render to valid
   YAML (KafkaNodePool/Kafka/KafkaTopic; `KAFKA_BOOTSTRAP` + `KAFKA_ORDER_TOPIC`
   on both, `KAFKA_GROUP` on notification), and `setup-kafka-operator.sh` +
-  `smoke-kafka.sh` pass `bash -n`. **Cluster verification pending** on Fedora
+  `demo-kafka.sh` pass `bash -n`. **Cluster verification pending** on Fedora
   44 via `setup-kafka-operator.sh` (first time) → `poetry lock`/`install`
   (order + notification, aiokafka added) → `gen-protos.sh` (order still needs
-  its stubs) → `smoke-kafka.sh`. Verified count holds at **118** until that
+  its stubs) → `demo-kafka.sh`. Verified count holds at **118** until that
   run passes; then the async flow is the 119th fact.
 
-- ✅ **r25** verified (Fedora 44) — `smoke-kafka.sh` green: the Strimzi
+- ✅ **r25** verified (Fedora 44) — `demo-kafka.sh` green: the Strimzi
   operator installed cleanly (9 CRDs), the single-node KRaft Kafka cluster
   reached Ready (broker pod Running, entity operator Running, `order-placed`
   topic READY True), order-service published `order.placed` and
@@ -2682,7 +2682,7 @@ final reader shouldn't see. Items:
   rewired to register the schema on startup and Avro-encode (replacing JSON),
   notification-service's consumer rewired to fetch the writer schema by id and
   decode, `fastavro`+`httpx` deps on both, `APICURIO_URL` chart env, and
-  `demos/smoke-avro.sh` (asserts the schema is registered in Apicurio **and**
+  `demos/demo-avro.sh` (asserts the schema is registered in Apicurio **and**
   the event is consumed/decoded end-to-end). Decision **CAP-019** recorded;
   §17 prose updated — the async-spine and contracts sections now state the
   event is registered Avro (runtime contract real), with discovery contracts
@@ -2696,7 +2696,7 @@ final reader shouldn't see. Items:
   wire-format round-trip is code-reviewed against the documented format
   (fastavro not installable offline). **Cluster verification pending** on
   Fedora 44 via `setup-kafka-operator.sh` (if needed) → `poetry lock`/`install`
-  (order + notification) → `gen-protos.sh` → `smoke-avro.sh`. Verified count
+  (order + notification) → `gen-protos.sh` → `demo-avro.sh`. Verified count
   holds at **119** until that run passes; then the registered-Avro flow is the
   120th fact.
 
@@ -2704,7 +2704,7 @@ final reader shouldn't see. Items:
   Apicurio, completing the registry half of CAP-018. Ships a `/sdl` endpoint
   on graphql-gateway (returns the Strawberry SDL), a reusable
   `scripts/publish-discovery-contracts.sh` (stdlib Python, native v3 API,
-  idempotent), and `demos/smoke-discovery.sh` (deploys inventory/order/gateway,
+  idempotent), and `demos/demo-discovery.sh` (deploys inventory/order/gateway,
   publishes OpenAPI + Protobuf + GraphQL SDL, asserts each is retrievable from
   Apicurio's v3 API plus the Avro runtime subject via ccompat). Three discovery
   artifacts in the `default` group: `order-service-openapi` (OPENAPI, from the
@@ -2715,9 +2715,9 @@ final reader shouldn't see. Items:
   remaining layer.
 
   **Validated statically** (Claude env): gateway `main.py` compiles with the
-  new `/sdl` route; `publish-discovery-contracts.sh` and `smoke-discovery.sh`
+  new `/sdl` route; `publish-discovery-contracts.sh` and `demo-discovery.sh`
   pass `bash -n`; the embedded Python publisher compiles. **Cluster
-  verification pending** on Fedora 44 via `smoke-discovery.sh` (needs Apicurio
+  verification pending** on Fedora 44 via `demo-discovery.sh` (needs Apicurio
   + the services up; gateway rebuilt for `/sdl`). Verified count holds at
   **120** until that run passes; then the three discovery artifacts are the
   121st–123rd facts.
@@ -2735,7 +2735,7 @@ final reader shouldn't see. Items:
   `alembic` added to pyproject, the Containerfile copying `alembic.ini` +
   `alembic/`, a `migrate` init container in the notification Deployment
   (`alembic upgrade head`, same image + PG env), and
-  `demos/smoke-notifications.sh` (asserts the migration ran, the table exists,
+  `demos/demo-notifications.sh` (asserts the migration ran, the table exists,
   an event is persisted, and it **survives a pod restart**). Decision
   **CAP-021** recorded; §17 async-spine prose updated.
 
@@ -2746,7 +2746,7 @@ final reader shouldn't see. Items:
   container (command `alembic upgrade head`, workingDir `/opt/app-root/src`,
   full PG env) and the app container intact; pyproject parses with
   `alembic ^1.18`. **Cluster verification pending** on Fedora 44 via
-  `smoke-notifications.sh` (needs `poetry lock`/`install` for alembic, rebuild,
+  `demo-notifications.sh` (needs `poetry lock`/`install` for alembic, rebuild,
   Apicurio + Kafka + Postgres up). The async env.py `run_sync` flow, the
   `pg_insert(...).on_conflict_do_nothing(...)` upsert, and the init-container
   PATH/cwd resolution are the cluster-only unknowns. Verified count holds at
@@ -2776,7 +2776,7 @@ final reader shouldn't see. Items:
   **r25c re-verification + smoke fix** (2026-05-22, post host-reboot rebuild):
   after a host reboot destroyed the `capstone` node container, the profile was
   recreated (rootless, via `setup-capstone-profile.sh`) and CNPG reinstalled.
-  Re-running `smoke-notifications.sh` showed the migration init container
+  Re-running `demo-notifications.sh` showed the migration init container
   succeed (`Running upgrade -> 0001_create_notifications`), the app reach
   `/healthz` 200, and the table created — but the smoke's verification step
   reported the table "not found". **Root cause: a smoke-script bug, not an r25c
@@ -2804,14 +2804,14 @@ final reader shouldn't see. Items:
   the `openmetadata` database + role inside the existing cluster via
   `kubectl exec` psql, creates the password secret + a placeholder
   `airflow-secrets`, then `helm upgrade --install`s deps + server from the
-  official charts pinned to 1.12.8), and `demos/smoke-openmetadata.sh` (waits
+  official charts pinned to 1.12.8), and `demos/demo-openmetadata.sh` (waits
   for rollout, asserts the version API reports 1.12.8, confirms the
   `openmetadata` db is populated). The §17 catalog-as-mesh-requirement prose,
   the deploy walkthrough, and CAP-022 (with the live-deploy lessons) shipped in
   the **r27-docs** / r27 doc commits.
 
   **Verified on Fedora 44** via `setup-openmetadata.sh` then
-  `smoke-openmetadata.sh`: server rolled out, the `run-db-migrations` init
+  `demo-openmetadata.sh`: server rolled out, the `run-db-migrations` init
   container connected to CloudNativePG over `sslmode=require` (no `prefer`
   fallback needed) and populated **168 tables** in the `openmetadata` database,
   the version API serves 1.12.8, OpenSearch came up single-node with no
@@ -2845,7 +2845,7 @@ final reader shouldn't see. Items:
   ConfigMap, injecting secrets via Python not sed). Plus
   `scripts/ingest-openmetadata.sh` (creates the ConfigMap, runs the three Jobs in
   order with delete-then-apply for re-runnability, waits on each) and
-  `demos/smoke-om-lineage.sh` (asserts both services, the three spine entities,
+  `demos/demo-om-lineage.sh` (asserts both services, the three spine entities,
   and an upstream+downstream edge on the `order-placed` topic, over the API).
   The spine: `capstone-postgres.capstone.orders.orders` → `capstone-kafka.order-placed`
   → `capstone-postgres.capstone.notifications.notifications`. Decision **CAP-023**
@@ -2862,7 +2862,7 @@ final reader shouldn't see. Items:
   `{{ }}` so no `{% raw %}` wrap is needed (r10a trap not triggered).
 
   **Verified on Fedora 44** — `scripts/ingest-openmetadata.sh` ran all three
-  Jobs to completion first try, and `demos/smoke-om-lineage.sh` passed every
+  Jobs to completion first try, and `demos/demo-om-lineage.sh` passed every
   assertion: both services present (`capstone-postgres` Database,
   `capstone-kafka` Messaging), the three spine entities cataloged, and the
   `order-placed` topic carrying exactly one upstream edge (orders) and one
@@ -2886,7 +2886,7 @@ final reader shouldn't see. Items:
   weight placeholders + DestinationRule subsets by `version`), and
   `render-split.py` (stdlib SVG of the observed split). Plus
   `scripts/setup-istio.sh` (installs Istio `default` profile into the capstone
-  cluster, labels the namespace for injection) and `demos/smoke-canary.sh`
+  cluster, labels the namespace for injection) and `demos/demo-canary-verify.sh`
   (deploys v2, asserts both subsets are meshed, applies a 90/10 split, drives 100
   requests through the istio-ingressgateway and asserts the band, shifts to 50/50
   and re-asserts, renders the SVG). §17 gained the "Evolving a contract in the
@@ -2907,12 +2907,12 @@ final reader shouldn't see. Items:
   chart — the umbrella declares no `dependencies:`):
   `helm upgrade --install order-service charts/capstone/charts/order-service -n capstone`
   (an already-running v1 needs a one-time `kubectl delete deployment order-service`
-  first, for selector immutability; a fresh install does not) → `demos/smoke-canary.sh`.
+  first, for selector immutability; a fresh install does not) → `demos/demo-canary-verify.sh`.
   The order-service image must carry `/version`
   (`scripts/build-image.sh services/order-service order-service v1`).
   **Convention correction (r26.1):** the r26 deliverable initially mis-stated the
   install as `helm upgrade --install capstone ./charts/capstone`; corrected to the
-  per-service release in setup-istio.sh + smoke-canary.sh messages.
+  per-service release in setup-istio.sh + demo-canary-verify.sh messages.
   **Smoke fix (r26.2):** the sidecar assertion checked only `.spec.containers`,
   but Istio 1.29 on k8s >=1.29 injects istio-proxy as a NATIVE sidecar
   (initContainer, restartPolicy:Always) — so the check now inspects
@@ -2948,7 +2948,7 @@ final reader shouldn't see. Items:
 
   **Validated statically** (Claude env — no helm/kubectl/keda, no network): both
   KEDA manifests parse with the expected targets/triggers; `setup-keda.sh` +
-  `smoke-keda-kafka.sh` + `smoke-keda-http.sh` pass `bash -n`; both chart
+  `demo-keda-kafka.sh` + `demo-keda-http.sh` pass `bash -n`; both chart
   deployments carry the inject:false annotation; §17 prose carries no Go-template
   `{{ }}`; liquid + cross-ref linters clean on `_docs/`. CI confirms the site build.
 
@@ -3026,8 +3026,8 @@ final reader shouldn't see. Items:
   **Cluster verification pending** (Fedora 44, user-run): `scripts/setup-keda.sh`
   → ensure notification-service + graphql-gateway are deployed (their own releases)
   → `kubectl apply -f keda/notification-scaledobject.yaml -f keda/gateway-httpscaledobject.yaml`
-  → `./demos/smoke-keda-kafka.sh` (expects 0 → up(≤3) → 0 on a 500-msg lag burst)
-  and `./demos/smoke-keda-http.sh` (expects 0 → woke-from-zero under /health load
+  → `./demos/demo-keda-kafka.sh` (expects 0 → up(≤3) → 0 on a 500-msg lag burst)
+  and `./demos/demo-keda-http.sh` (expects 0 → woke-from-zero under /health load
   → 0). **Expected cluster-only risk**: KEDA core + HTTP-add-on API/install
   specifics (the `keda.sh/v1alpha1` + `http.keda.sh/v1alpha1` kinds, interceptor
   proxy service name/port, scale-to-zero timing), flagged `VERIFY-POINT` in the
@@ -3057,7 +3057,7 @@ final reader shouldn't see. Items:
   **Cluster verification pending** (Fedora 44, user-run): re-deploy the six
   services as their own releases (`helm upgrade --install <svc>
   charts/capstone/charts/<svc> -n capstone`) — a rolling restart, NOT a rebuild —
-  then re-run `./demos/smoke-keda-http.sh`, which should now pass cleanly (the
+  then re-run `./demos/demo-keda-http.sh`, which should now pass cleanly (the
   gateway no longer OOMs and the startupProbe prevents the premature liveness
   kill). On a green HTTP smoke, promote **both r26b and r28** to ✅ and bump the
   count to **130** (the two KEDA rows; r28 is the enabling fix, not a separate
@@ -3096,7 +3096,7 @@ final reader shouldn't see. Items:
   DECISION (Deployment `.spec.replicas` → 0) instead of waiting for the last pod to
   finish terminating — robust to termination/oscillation lag. Fixed the stale "420s"
   message (the wait was already 600s). **Apply note:** re-run ONLY
-  `./demos/smoke-keda-http.sh` — do NOT re-run setup-keda.sh first (it restarts the
+  `./demos/demo-keda-http.sh` — do NOT re-run setup-keda.sh first (it restarts the
   interceptors mid-test, which is what churned this run); the add-on already carries
   waitTimeout=180s from the prior setup-keda run.
 
@@ -3149,7 +3149,7 @@ final reader shouldn't see. Items:
   oscillation) into something visible. Sizing per CAP-026 (Prom 512Mi/1Gi,
   Grafana 128Mi/256Mi, +kube-state-metrics ~64Mi) — fits existing headroom, no
   profile bump. Files: observability/{prometheus,grafana}-values.yaml,
-  scripts/setup-observability.sh, demos/smoke-observability.sh, §17 new section.
+  scripts/setup-observability.sh, demos/demo-observability.sh, §17 new section.
 
   **Validated statically** (Claude env): both values YAMLs parse; the inline
   Grafana dashboard JSON is valid and its panel datasource refs match the
@@ -3159,18 +3159,18 @@ final reader shouldn't see. Items:
 
   **Cluster verification pending** (Fedora 44, user-run):
   `./scripts/setup-observability.sh` (installs into `observability`), then
-  `./demos/smoke-observability.sh` — asserts Prometheus has capstone replica
+  `./demos/demo-observability.sh` — asserts Prometheus has capstone replica
   metrics (kube-state-metrics scraping), notes the Istio series, and confirms
   Grafana is healthy with the dashboard provisioned. Then port-forward Grafana
   (`kubectl port-forward -n observability svc/grafana 3000:80`, admin/capstone)
-  and run `smoke-keda-http.sh` with the dashboard open to watch the gateway
+  and run `demo-keda-http.sh` with the dashboard open to watch the gateway
   replicas step 0→1→0 live. On green, promote to ✅ and bump the count → 131.
   Next: **r29b** — traces (Tempo monolithic + OpenTelemetry Collector), which
   needs instrumenting the gateway (or meshing services); the larger move
   deliberately deferred from r29.
 
 - ✅ **r26b — FULLY VERIFIED (clean smoke)** + **r29.1 corrections** (2026-05-22) —
-  smoke-keda-http.sh now passes end to end on Fedora 44: woke from zero (200 in
+  demo-keda-http.sh now passes end to end on Fedora 44: woke from zero (200 in
   9s), stayed warm, and **scaled back to ZERO in ~29s**. That ~29s is the
   important finding: it's the HTTPScaledObject's `scaledownPeriod: 30`, which
   means scale-to-zero is FAST — and our earlier "~300s default cooldownPeriod /
@@ -3182,19 +3182,19 @@ final reader shouldn't see. Items:
   - **r29.1 fixes the now-inaccurate material:** §17's scale-down paragraph
     rewritten (both scalers return to zero in ~30s; the real gotcha is that an
     open connection — browser tab or lingering port-forward — keeps concurrency
-    >0 and stalls scale-down); smoke-keda-http.sh step/comment text corrected to
+    >0 and stalls scale-down); demo-keda-http.sh step/comment text corrected to
     ~30s + the connection cause.
   - **Grafana login hardening (also r29.1):** the grafana chart preserves an
     existing admin password on upgrade, so it isn't reliably the values default.
     setup-observability.sh now prints the authoritative
-    `kubectl get secret grafana ... | base64 -d` read; smoke-observability.sh
+    `kubectl get secret grafana ... | base64 -d` read; demo-observability.sh
     reads the real password from the secret (was hardcoding admin:capstone); §17
     flags the trap. (Surfaced by a real "can't login to grafana" report.)
   - Validated offline: all three scripts `bash -n`; §17 clears both linters; no
     stale 300s/5-min claims remain.
   - r26b stands ✅ (count 130, unchanged — this upgrades it from
     verified-by-evidence to verified-by-clean-smoke). r29 (observability) still
-    pending its own smoke-observability run + Grafana login confirmation.
+    pending its own demo-observability run + Grafana login confirmation.
 
 - 🔲 **r29b** (2026-05-22) — Observability, traces backend (CAP-028): Grafana
   Tempo in monolithic mode (OTLP receivers on, local storage, 256Mi/512Mi)
@@ -3205,7 +3205,7 @@ final reader shouldn't see. Items:
   from Prometheus scraping (not OTLP), so a collector would only forward traces
   Tempo already receives directly; instrumented services will send OTLP straight
   to tempo:4317. Files: observability/tempo-values.yaml, grafana-values.yaml
-  (+Tempo datasource), setup-observability.sh (+Tempo), demos/smoke-tracing.sh,
+  (+Tempo datasource), setup-observability.sh (+Tempo), demos/demo-tracing.sh,
   §17 traces-backend paragraph.
 
   **Validated statically** (Claude env): tempo + grafana values parse; the Tempo
@@ -3216,7 +3216,7 @@ final reader shouldn't see. Items:
 
   **Cluster verification pending** (Fedora 44, user-run): re-run
   `./scripts/setup-observability.sh` (now also installs Tempo and re-applies
-  Grafana with the Tempo datasource), then `./demos/smoke-tracing.sh` — asserts
+  Grafana with the Tempo datasource), then `./demos/demo-tracing.sh` — asserts
   Tempo is Ready and answers /ready, and that Grafana has the Tempo datasource
   provisioned and reachable. On green, promote to ✅ (count → 132, pending r29's
   own metrics verification first). Next: **r29c** — instrument the gateway (REST
@@ -3252,9 +3252,9 @@ final reader shouldn't see. Items:
   purpose: no poetry.lock regeneration. Scoped to the gateway; backends emit no
   spans yet (their hops show as the gateway's client spans). Files:
   services/graphql-gateway/Containerfile, graphql-gateway values.yaml + deployment
-  (OTEL env), demos/smoke-trace-flow.sh, §17.
+  (OTEL env), demos/demo-trace-flow.sh, §17.
 
-  **Validated statically** (Claude env): smoke-trace-flow `bash -n` clean; gateway
+  **Validated statically** (Claude env): demo-trace-flow `bash -n` clean; gateway
   values parse with the tracing block; deployment template braces balanced (25/25)
   and if/end matched with 9 OTEL env lines; Containerfile has the OTEL install,
   bootstrap, and wrapped CMD. OTEL package versions unpinned (bootstrap aligns
@@ -3264,8 +3264,8 @@ final reader shouldn't see. Items:
   image so it carries the instrumentation, then redeploy and drive a query:
     ./scripts/build-image.sh services/graphql-gateway graphql-gateway v1
     helm upgrade --install graphql-gateway charts/capstone/charts/graphql-gateway -n capstone
-    ./demos/smoke-trace-flow.sh
-  smoke-trace-flow drives a GraphQL query through the interceptor (hard assert:
+    ./demos/demo-trace-flow.sh
+  demo-trace-flow drives a GraphQL query through the interceptor (hard assert:
   HTTP 200 = gateway ran + exported) and searches Tempo for a graphql-gateway
   trace (retried; reported, not failed, if indexing lags). Confirm visually in
   Grafana → Explore → Tempo. On green, promote to ✅ (count → 133). The gateway is
@@ -3296,17 +3296,17 @@ final reader shouldn't see. Items:
   dropped, request still 200, Tempo `q={}` empty). Switched the gateway to OTLP
   HTTP/protobuf :4318 (values otlpProtocol=http/protobuf; Containerfile installs
   the opentelemetry-exporter-otlp meta-package). Confirmed against a user-supplied
-  working otel-lgtm reference using http/protobuf:4318. Hardened smoke-trace-flow.sh:
+  working otel-lgtm reference using http/protobuf:4318. Hardened demo-trace-flow.sh:
   TraceQL `q=` search + post-query gateway-log capture. Validated offline: smoke
   `bash -n`; values parse with http/protobuf:4318; deployment braces 26/26.
   **Apply** (gateway image rebuild — Containerfile changed):
     ./scripts/build-image.sh services/graphql-gateway graphql-gateway v1
     helm upgrade --install graphql-gateway charts/capstone/charts/graphql-gateway -n capstone
-    ./demos/smoke-trace-flow.sh
+    ./demos/demo-trace-flow.sh
   On a found trace, r29c → ✅ (count 133) and the observability arc closes.
 
 - ✅ **r29c / r29c.1 / r29c.2 VERIFIED** (2026-05-22) — Distributed tracing is live.
-  `smoke-trace-flow.sh` green: GraphQL query → HTTP 200 → `✓ Tempo has a
+  `demo-trace-flow.sh` green: GraphQL query → HTTP 200 → `✓ Tempo has a
   graphql-gateway trace`. Running deployment confirmed on the http/protobuf fix
   (`OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf`,
   `OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo.observability.svc.cluster.local:4318`).
@@ -3332,7 +3332,7 @@ final reader shouldn't see. Items:
      error). Recently-pushed images are the first casualties, so rebuild ALL
      locally-built images after a node cycle, not just the ones that error first.
 
-  Optional follow-ons (offered, not built): r29b.1 (harden smoke-tracing.sh to POST
+  Optional follow-ons (offered, not built): r29b.1 (harden demo-tracing.sh to POST
   a synthetic span to Tempo :4318 and read it back — would have caught the export
   gap at the backend stage); instrument the remaining services for full
   multi-service traces (mechanical extension of the r29c gateway pattern).
@@ -3348,11 +3348,11 @@ final reader shouldn't see. Items:
   liquid + cross-ref linters clean. **Cluster-verify:** from a stopped or wedged
   state, `./scripts/cluster-up.sh` reaches green and `cluster-status.sh` agrees.
 
-- 🔲 **r29b.1** (2026-05-22) — `smoke-tracing.sh` upgraded from backend-standing
+- 🔲 **r29b.1** (2026-05-22) — `demo-tracing.sh` upgraded from backend-standing
   to end-to-end ingest proof: POST a synthetic OTLP/HTTP span to Tempo :4318 and
   read it back via TraceQL on :3200 (CAP-028 addendum). Closes the gap that let
   the r29c export bug slip past the backend smoke. Offline-validated: `bash -n`;
-  OTLP/JSON payload parses. **Cluster-verify:** `./demos/smoke-tracing.sh` ends
+  OTLP/JSON payload parses. **Cluster-verify:** `./demos/demo-tracing.sh` ends
   with the synthetic-trace readback ✓.
 
 - 🔲 **r31** (2026-05-22) — Presentation groundwork (CAP-031). Added repo-root
@@ -3369,13 +3369,13 @@ final reader shouldn't see. Items:
   (CAP-032). New REST-only service (reviews/ratings keyed by product sku) with its
   own `reviews` Postgres schema, scaffolded from the template + given a domain
   surface (model/schemas/routes/seed), chart aligned to the r28 calibration
-  (192Mi/512Mi + startupProbe), and `demos/smoke-reviews.sh`. Intentionally a
+  (192Mi/512Mi + startupProbe), and `demos/demo-reviews.sh`. Intentionally a
   *temporary* demo product (backed out in part 2). Offline-validated: py_compile,
   values parse, deployment braces 24/24, smoke bash -n. **Build prereq:** run
   `poetry lock` in services/review-service/ before the first build.
   **Apply / verify:**
     cd services/review-service && poetry lock && cd ../..
-    ./demos/smoke-reviews.sh
+    ./demos/demo-reviews.sh
   Expected: probes + version OK, seeded rows, create/fetch/filter all ✓.
   On green, r32 → verified and part 2 (r33: Apicurio + OpenMetadata + up/down
   harness) follows.
@@ -3423,7 +3423,7 @@ final reader shouldn't see. Items:
   untested offline — first real run is the rebuild. **Rebuild + verify:**
     minikube delete -p capstone
     cd examples/17-capstone && ./scripts/bootstrap-capstone.sh
-    # then: ./demos/smoke-discovery.sh ; ./scripts/ingest-openmetadata.sh ;
+    # then: ./demos/demo-discovery.sh ; ./scripts/ingest-openmetadata.sh ;
     #       ./demos/demo-add-data-product.sh up   (resumes Phase A on a clean node)
   Deferred to r36: cluster-up settle-check fix, cluster-status scaled-to-zero
   flag, demo-harness OM pre-flight.
@@ -3447,7 +3447,7 @@ final reader shouldn't see. Items:
     kubectl rollout restart deploy/order-service -n capstone
     kubectl rollout status  deploy/order-service -n capstone --timeout=180s
   → order-service 2/2 Ready completes the r35 bring-up; resume Phase A
-  (smoke-discovery → ingest-openmetadata → demo-add-data-product.sh up).
+  (demo-discovery → ingest-openmetadata → demo-add-data-product.sh up).
   Flagged for Phase C: namespace-wide istio injection (drift from selective) is a
   major contributor to the PID pressure and should be revisited there.
 
@@ -3462,7 +3462,7 @@ final reader shouldn't see. Items:
     helm upgrade --install order-service charts/capstone/charts/order-service -n capstone
     kubectl rollout status deploy/order-service -n capstone --timeout=180s
   → 2/2 Ready through cold start; then resume Phase A
-  (smoke-discovery → ingest-openmetadata → demo-add-data-product.sh up).
+  (demo-discovery → ingest-openmetadata → demo-add-data-product.sh up).
 
 - 🔲 **r38** (2026-05-23) — Fix: Postgres mesh-exclusion + sizing (CAP-038). order-
   service's ConnectionResetError traced to Postgres crash-looping: (1) meshed under
@@ -3482,10 +3482,10 @@ final reader shouldn't see. Items:
   `istio/order-service-v2.yaml` with the r37/r38 order-service hardening
   (holdApplicationUntilProxyStarts, 120s startupProbe, 192Mi/512Mi resources — it
   had drifted, predating CAP-037/038) and added `demos/demo-canary.sh up|shift|down`
-  (repeatable, backable-out; presenter counterpart to smoke-canary.sh). v2 env
+  (repeatable, backable-out; presenter counterpart to demo-canary-verify.sh). v2 env
   already matched v1. Offline-validated (yaml parse, bash -n, object-name match,
   /version emits v2+currency). **Cluster-verify (cluster is freshly green):**
-    ./demos/smoke-canary.sh                 # asserts 90/10 + 50/50 splits in-band
+    ./demos/demo-canary-verify.sh                 # asserts 90/10 + 50/50 splits in-band
     ./demos/demo-canary.sh up               # 90/10, observe, then:
     ./demos/demo-canary.sh shift 50 50
     ./demos/demo-canary.sh down             # back to v1-only baseline
@@ -3516,7 +3516,7 @@ final reader shouldn't see. Items:
     printf '[containers]\npids_limit = 0\n' >> ~/.config/containers/containers.conf
     minikube delete -p capstone
     cd examples/17-capstone && ./scripts/bootstrap-capstone.sh   # true 8/8 — order-service forks
-  Then Phase B: ./demos/smoke-canary.sh. §1 prerequisites should add the
+  Then Phase B: ./demos/demo-canary-verify.sh. §1 prerequisites should add the
   pids_limit note alongside the inotify tweak.
 
 - 🔲 **r40.1** (2026-05-24) — Fix the r40 guard bug. The CAP-041 pids_limit guard
@@ -3552,12 +3552,12 @@ final reader shouldn't see. Items:
 
 - ✅ **Phase B VERIFIED** (2026-05-24) — order-service v1→v2 canary confirmed
   end-to-end on a clean 8/8 bootstrap (uncapped node, pids_limit=65536 via CAP-041).
-  smoke-canary.sh: v2 rolled out clean (r39 alignment — proxy-hold + retry +
+  demo-canary-verify.sh: v2 rolled out clean (r39 alignment — proxy-hold + retry +
   512Mi), both subsets meshed (2/2), 90/10 split observed v1=95/v2=5, 50/50 split
   observed v1=46/v2=54 — both in band. demo-canary.sh up/shift/down available for
   the repeatable/backable-out flow. Closes r39 / CAP-039. Also confirms the full
   bootstrap (r35) reaches a true 8/8 with all of r34/r37/r38/r40.3 in effect:
   order-service forks and becomes Ready for the first time through a clean bring-up.
   Phase A (review-service add/back-out) remains available to verify via
-  smoke-discovery → ingest-openmetadata → demo-add-data-product.sh up. Next: Phase C
+  demo-discovery → ingest-openmetadata → demo-add-data-product.sh up. Next: Phase C
   (§17 page restructure + narrative + diagrams + the selective-injection decision).

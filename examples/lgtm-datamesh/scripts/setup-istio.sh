@@ -33,7 +33,7 @@
 # Then enable the canary (selector immutability means v1 must be recreated once):
 #   kubectl delete deployment order-service -n capstone --ignore-not-found
 #   helm upgrade --install capstone ./charts/capstone -n capstone
-#   ./demos/smoke-canary.sh
+#   ./demos/demo-canary-verify.sh
 
 set -euo pipefail
 
@@ -82,6 +82,6 @@ printf 'must be recreated):\n'
 printf '  kubectl delete deployment order-service -n %s --ignore-not-found\n' "$NS"
 printf '  helm upgrade --install capstone ./charts/capstone -n %s\n' "$NS"
 printf '\nThen run the canary demo + verification:\n'
-printf '  ./demos/smoke-canary.sh\n'
+printf '  ./demos/demo-canary-verify.sh\n'
 printf '\nReminder (CAP-024 scope): do not restart the operator-managed infra pods\n'
 printf '(Postgres, Kafka, Apicurio, OpenMetadata) while injection is enabled.\n'

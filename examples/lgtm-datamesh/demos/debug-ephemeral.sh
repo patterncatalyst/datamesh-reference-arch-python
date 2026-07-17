@@ -19,7 +19,7 @@
 # uses a unique container name. Re-running is safe; it just adds another.
 #
 # Prereqs: a running capstone cluster with notification-service deployed
-# (e.g. after ./demos/smoke-notifications.sh, or deploy it first).
+# (e.g. after ./demos/demo-notifications.sh, or deploy it first).
 #
 # Usage:  ./demos/debug-ephemeral.sh
 
@@ -38,7 +38,7 @@ command -v kubectl >/dev/null || die "kubectl not found"
 
 POD="$(kubectl get pods -n "$NS" -l "app.kubernetes.io/name=${APP}" \
     -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)"
-[[ -n "$POD" ]] || die "no running ${APP} pod in namespace ${NS} — deploy it first (e.g. ./demos/smoke-notifications.sh)"
+[[ -n "$POD" ]] || die "no running ${APP} pod in namespace ${NS} — deploy it first (e.g. ./demos/demo-notifications.sh)"
 printf 'Target pod: %s\n' "$POD"
 
 # Run an ephemeral container non-interactively and print its logs once it ends.

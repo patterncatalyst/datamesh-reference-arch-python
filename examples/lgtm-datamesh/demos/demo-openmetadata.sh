@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# smoke-openmetadata.sh — verify the OpenMetadata catalog is deployed and
+# demo-openmetadata.sh — verify the OpenMetadata catalog is deployed and
 # healthy (r27).
 #
 # Unlike the per-service smokes, this does NOT install OpenMetadata — that's a
@@ -16,7 +16,7 @@
 #
 # On failure it leaves resources in place and dumps diagnostics (the §11/§12
 # pattern). Idempotent. Run from examples/lgtm-datamesh/:
-#   ./demos/smoke-openmetadata.sh
+#   ./demos/demo-openmetadata.sh
 #
 # Prerequisites:
 #   - capstone profile running, kubectl context = capstone

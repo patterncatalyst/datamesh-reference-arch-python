@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
-# smoke-om-lineage.sh — verify the OpenMetadata catalog was populated and the
+# demo-om-lineage.sh — verify the OpenMetadata catalog was populated and the
 # cross-product lineage declared (r27b).
 #
 # Does NOT run ingestion — that's scripts/ingest-openmetadata.sh. This proves
-# the result, over the server API (via a port-forward, the smoke-openmetadata.sh
+# the result, over the server API (via a port-forward, the demo-openmetadata.sh
 # pattern):
 #   * the Database Service  capstone-postgres  exists
 #   * the Messaging Service capstone-kafka      exists
@@ -17,7 +17,7 @@
 #
 # On failure it leaves resources in place and dumps diagnostics. Idempotent.
 # Run from examples/lgtm-datamesh/:
-#   ./demos/smoke-om-lineage.sh
+#   ./demos/demo-om-lineage.sh
 #
 # Prerequisites:
 #   - capstone profile running, kubectl context = capstone

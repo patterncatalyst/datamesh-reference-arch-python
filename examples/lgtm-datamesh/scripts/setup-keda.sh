@@ -14,14 +14,14 @@
 # Then apply the scalers:
 #   kubectl apply -f keda/notification-scaledobject.yaml
 #   kubectl apply -f keda/gateway-httpscaledobject.yaml
-#   ./demos/smoke-keda-kafka.sh
-#   ./demos/smoke-keda-http.sh
+#   ./demos/demo-keda-kafka.sh
+#   ./demos/demo-keda-http.sh
 
 set -euo pipefail
 
 NAMESPACE="keda"
 KEDA_VERSION="${KEDA_VERSION:-2.19.0}"
-KEDA_HTTP_VERSION="${KEDA_HTTP_VERSION:-0.12.2}"
+KEDA_HTTP_VERSION="${KEDA_HTTP_VERSION:-0.15.0}"
 
 command -v kubectl >/dev/null 2>&1 || { printf 'ERROR: kubectl not in PATH.\n' >&2; exit 1; }
 command -v helm    >/dev/null 2>&1 || { printf 'ERROR: helm not in PATH — see §2.\n' >&2; exit 1; }
@@ -72,5 +72,5 @@ printf '\n==> KEDA core + HTTP add-on installed in the %s namespace.\n\n' "$NAME
 printf 'Apply the two scalers, then run the demos:\n'
 printf '  kubectl apply -f keda/notification-scaledobject.yaml\n'
 printf '  kubectl apply -f keda/gateway-httpscaledobject.yaml\n'
-printf '  ./demos/smoke-keda-kafka.sh    # consumer-lag scaling, notification-service\n'
-printf '  ./demos/smoke-keda-http.sh     # HTTP request scaling, graphql-gateway\n'
+printf '  ./demos/demo-keda-kafka.sh    # consumer-lag scaling, notification-service\n'
+printf '  ./demos/demo-keda-http.sh     # HTTP request scaling, graphql-gateway\n'

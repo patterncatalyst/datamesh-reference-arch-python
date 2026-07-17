@@ -167,7 +167,7 @@ printf '  kubectl port-forward -n %s svc/openmetadata 8585:8585\n' "$NS"
 printf '  open http://127.0.0.1:8585   (login: admin@open-metadata.org / admin)\n'
 printf '\n'
 printf 'Verify end-to-end:\n'
-printf '  ./demos/smoke-openmetadata.sh\n'
+printf '  ./demos/demo-openmetadata.sh\n'
 printf '\n'
 printf 'Next (r27b): register Postgres + Kafka as services, run ingestion Jobs,\n'
 printf 'and declare the cross-product lineage (orders -> order-placed -> notifications).\n'

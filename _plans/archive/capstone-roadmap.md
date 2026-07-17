@@ -26,7 +26,7 @@ data-mesh value proposition *from the API/consumer perspective*.
 
 ## Phase B — v1→v2 canary as a repeatable walkthrough
 
-Finish the v1→v2 story already started (`order-service-v2`, `smoke-canary.sh`):
+Finish the v1→v2 story already started (`order-service-v2`, `demo-canary-verify.sh`):
 a genuinely different v2 (the new field from Phase A is a natural differentiator),
 the weighted Istio VirtualService, and verification that traffic splits. Framed
 as a **repeatable, backable-out walkthrough** so it can be demoed live and reset.

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# smoke-grpc.sh — verify the first cross-service call in the mesh:
+# demo-grpc.sh — verify the first cross-service call in the mesh:
 # order-service → inventory-service (InventoryService.CheckStock over gRPC).
 #
 # Flow:
@@ -15,7 +15,7 @@
 #        - POST /orders for more than on-hand quantity → 409 (quantity check)
 #   6. clean up on success (CAP-008); on failure, leave running + dump diagnostics
 #
-# Usage:  ./demos/smoke-grpc.sh [--purge-db]
+# Usage:  ./demos/demo-grpc.sh [--purge-db]
 
 set -uo pipefail
 export MINIKUBE_ROOTLESS=true   # CAP-010

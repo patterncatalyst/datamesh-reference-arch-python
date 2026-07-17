@@ -93,5 +93,5 @@ Commit these alongside the proto. Next:
       (cd services/inventory-service && poetry lock)
       (cd services/order-service && poetry lock)
   - run the demo:
-      ./demos/smoke-grpc.sh
+      ./demos/demo-grpc.sh
 EOF

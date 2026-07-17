@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# smoke-avro.sh — verify the runtime contract: order-service registers the
+# demo-avro.sh — verify the runtime contract: order-service registers the
 # order.placed Avro schema with Apicurio and publishes Avro-encoded events;
 # notification-service fetches the schema by id and decodes them.
 #
@@ -14,7 +14,7 @@
 #       inventory/order/notification → Postgres → deploy → place order →
 #       assert schema registered + event consumed → cleanup on success.
 #
-# Usage:  ./demos/smoke-avro.sh [--purge-db]
+# Usage:  ./demos/demo-avro.sh [--purge-db]
 
 set -uo pipefail
 export MINIKUBE_ROOTLESS=true   # CAP-010

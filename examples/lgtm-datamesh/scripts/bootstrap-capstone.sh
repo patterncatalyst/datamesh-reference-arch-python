@@ -137,7 +137,7 @@ SEED_PF=$!; sleep 3
 curl -fs -o /dev/null --max-time 8 -X POST "http://127.0.0.1:18080/orders" \
     -H 'Content-Type: application/json' \
     --data '{"customer_id":"cust-1001","item_sku":"WIDGET-001","quantity":1,"amount":19.99}' \
-    && ok "seed order placed" || printf '    (seed skipped — place one later via smoke-order.sh)\n'
+    && ok "seed order placed" || printf '    (seed skipped — place one later via demo-order.sh)\n'
 kill "$SEED_PF" 2>/dev/null || true
 
 # ── Tier 9: Kiali (mesh topology console for the walkthrough's act 5) ───────
@@ -165,7 +165,7 @@ cat <<EOF
     ./demos/walkthrough.sh
 
     # Other things you can do from here:
-    ./demos/smoke-discovery.sh             # publish OpenAPI/proto/SDL to Apicurio
+    ./demos/demo-discovery.sh             # publish OpenAPI/proto/SDL to Apicurio
     ./demos/demo-canary.sh up 90 10        # the v1->v2 contract canary (Phase B)
     ./demos/demo-add-data-product.sh up    # Phase A — add/back-out a data product
 EOF

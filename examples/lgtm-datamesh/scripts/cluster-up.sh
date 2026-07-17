@@ -141,4 +141,4 @@ fi
 step "Status report"
 bash "${SCRIPT_DIR}/cluster-status.sh" || true
 
-printf '\n==> Done. If status is green, demo/smoke away (e.g. ./demos/smoke-trace-flow.sh).\n'
+printf '\n==> Done. If status is green, demo/smoke away (e.g. ./demos/demo-trace-flow.sh).\n'

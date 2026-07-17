@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# smoke-canary.sh — demonstrate AND verify the order-service v1→v2 canary
+# demo-canary-verify.sh — demonstrate AND verify the order-service v1→v2 canary
 # (r26, CAP-024).
 #
 # The data-mesh point: a data product evolves its contract (v2 adds a
@@ -16,7 +16,7 @@
 #
 # On failure it leaves resources in place and dumps diagnostics. Idempotent.
 # Run from examples/lgtm-datamesh/:
-#   ./demos/smoke-canary.sh
+#   ./demos/demo-canary-verify.sh
 #
 # Prerequisites:
 #   - capstone profile running, kubectl context = capstone

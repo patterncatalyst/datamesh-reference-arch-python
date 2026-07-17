@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# smoke-tracing.sh — verify the trace BACKEND (r29b, CAP-028): Tempo is up and
+# demo-tracing.sh — verify the trace BACKEND (r29b, CAP-028): Tempo is up and
 # ready, Grafana has the Tempo datasource provisioned, AND (r29b.1) the pipeline
 # actually ingests and serves a span end-to-end.
 #
@@ -13,7 +13,7 @@
 #      rather than the backend (the gap that let the r29c export bug slip through).
 #
 # Leaves resources in place on failure + dumps diagnostics. Idempotent.
-# Run from examples/lgtm-datamesh/:  ./demos/smoke-tracing.sh
+# Run from examples/lgtm-datamesh/:  ./demos/demo-tracing.sh
 
 set -uo pipefail
 
@@ -119,7 +119,7 @@ START_NS="$(date +%s%N)"
 END_NS="$((START_NS + 1000000))"   # +1ms
 payload="$(cat <<JSON
 {"resourceSpans":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"${SVC_NAME}"}}]},
-"scopeSpans":[{"scope":{"name":"smoke-tracing"},"spans":[{"traceId":"${TRACE_ID}","spanId":"${SPAN_ID}",
+"scopeSpans":[{"scope":{"name":"demo-tracing"},"spans":[{"traceId":"${TRACE_ID}","spanId":"${SPAN_ID}",
 "name":"synthetic-readback","kind":1,"startTimeUnixNano":"${START_NS}","endTimeUnixNano":"${END_NS}"}]}]}]}
 JSON
 )"
@@ -151,4 +151,4 @@ printf 'Trace backend fully verified: Tempo INGESTS OTLP/HTTP on :%s and SERVES 
 printf 'via search on :%s, and Grafana is wired to query it. The pipeline is proven\n' "$TEMPO_PORT"
 printf 'independent of any emitter — so once a service is instrumented, a missing trace\n'
 printf 'is the emitter''s problem, not the backend''s. Real spans appear in\n'
-printf 'Grafana \xe2\x86\x92 Explore \xe2\x86\x92 Tempo; drive one with ./demos/smoke-trace-flow.sh.\n'
+printf 'Grafana \xe2\x86\x92 Explore \xe2\x86\x92 Tempo; drive one with ./demos/demo-trace-flow.sh.\n'

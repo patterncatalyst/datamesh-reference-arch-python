@@ -71,7 +71,7 @@ mesh** (deploy review-service → publish its contract → catalog it with
 lineage → back it all out), and the **contract canary** as a
 presenter-driven up/shift/down cycle.
 
-Every claim is smoke-tested: 19 `smoke-*.sh` scripts cover each capability
+Every claim is demo-tested: 20 `demo-*.sh` scripts cover each capability
 end to end, verified order-independent (see
 `_plans/reconciliation.md` for what's been cluster-verified and when).
 

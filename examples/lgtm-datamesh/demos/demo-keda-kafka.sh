@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# smoke-keda-kafka.sh — demonstrate AND verify Kafka consumer-lag autoscaling of
+# demo-keda-kafka.sh — demonstrate AND verify Kafka consumer-lag autoscaling of
 # notification-service (r26b, CAP-025).
 #
 # The elastic-data-product point: an event consumer should run only as much as
@@ -16,7 +16,7 @@
 # inventory / valid-Avro path required, keeping the demo dependency-light.
 #
 # Leaves resources in place on failure + dumps diagnostics. Idempotent.
-# Run from examples/lgtm-datamesh/:  ./demos/smoke-keda-kafka.sh
+# Run from examples/lgtm-datamesh/:  ./demos/demo-keda-kafka.sh
 
 set -uo pipefail
 export MINIKUBE_ROOTLESS=true

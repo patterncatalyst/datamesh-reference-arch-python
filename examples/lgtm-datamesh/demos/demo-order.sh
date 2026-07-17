@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# smoke-order.sh — the r21 walking-skeleton verification (r21a-corrected).
+# demo-order.sh — the r21 walking-skeleton verification (r21a-corrected).
 #
 # Proves the entire spine end-to-end:
 #   image build (host podman) → load into profile → helm deploy →
@@ -17,7 +17,7 @@
 #     directly (the §11/§12 demo pattern). Successful runs still clean up.
 #
 # Idempotent. Run from examples/lgtm-datamesh/:
-#   ./demos/smoke-order.sh
+#   ./demos/demo-order.sh
 #
 # Prerequisites:
 #   - capstone minikube profile running (scripts/setup-capstone-profile.sh)

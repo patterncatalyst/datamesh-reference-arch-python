@@ -22,4 +22,4 @@ kubectl rollout status deployment/notification-service -n capstone --timeout=120
 ```
 
 Or run the health smoke test, which does all of the above and asserts the
-probes: `./demos/smoke-service.sh notification`
+probes: `./demos/demo-service.sh notification`
