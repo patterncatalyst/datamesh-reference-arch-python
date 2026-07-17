@@ -26,7 +26,7 @@ const save = (name, svg) => {
    1.  DATA PIPELINE ARCHITECTURE — linear ETL with pipeline-sprawl callout
    ======================================================================== */
 (() => {
-  const s = new SVG(1180, 480);
+  const s = new SVG(1180, 560);
   s.title("Data pipelines — bespoke point-to-point movement",
           "Extract-Transform-Load: move data from A to B, one pairing at a time");
 
@@ -68,17 +68,17 @@ const save = (name, svg) => {
   s.arrow(etlX + etlW + 4, etlY + 70, destX - 4, 228, { color: "#5a5a5a", w: 1.4 });
 
   // ---- bottom callout: pipeline sprawl (tan) ----
-  s.rect(60, 310, 1060, 120, "tan");
-  s.text(80, 340, "Pipeline sprawl — the n × m problem", { size: 13, weight: 700, fill: FAM.tan.head });
-  s.lines(80, 365, [
+  s.rect(60, 380, 1060, 120, "tan");
+  s.text(80, 410, "Pipeline sprawl — the n × m problem", { size: 13, weight: 700, fill: FAM.tan.head });
+  s.lines(80, 435, [
     "Each source × destination pairing needs its own bespoke pipeline.",
     "4 sources × 3 destinations = 12 pipelines; add one source and you add 3 more.",
     "Ownership fragments; no single team can see the whole picture.",
   ], { size: 11, fill: "#3a3a3a", lh: 18 });
 
   // dashed lines illustrating sprawl (n x m fan-out)
-  const dSrcY = [325, 345, 365, 385];
-  const dDestY = [325, 355, 385];
+  const dSrcY = [395, 415, 435, 455];
+  const dDestY = [395, 425, 455];
   dSrcY.forEach(sy => {
     dDestY.forEach(dy => {
       s.arrow(760, sy, 1080, dy, { color: "#c19a6b", w: 0.8, dash: "4 3" });
