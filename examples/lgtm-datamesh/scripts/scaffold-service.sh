@@ -157,7 +157,7 @@ kubectl rollout status deployment/__SERVICE__ -n capstone --timeout=120s
 ```
 
 Or run the health smoke test, which does all of the above and asserts the
-probes: `./demos/smoke-service.sh __BASE__`
+probes: `./demos/demo-service.sh __BASE__`
 EOF
 
 # ─── services/<service>/app/__init__.py ───────────────────────────────────────
@@ -548,7 +548,7 @@ cat <<EOF
 
 Next:
   1. Build + deploy + assert the probes:
-       ./demos/smoke-service.sh ${BASE}
+       ./demos/demo-service.sh ${BASE}
   2. When green, commit, then scaffold the next service.
 
 EOF

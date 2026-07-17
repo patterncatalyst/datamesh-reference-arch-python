@@ -282,7 +282,7 @@ Status values: **accepted**, **superseded by CAP-NNN**,
   `/health` (liveness), `/healthz` (readiness, checks Postgres), and
   startup schema creation — **no domain surface yet**. Domain endpoints
   arrive per-protocol in later iterations (REST/gRPC r23, GraphQL r24,
-  Kafka r25). A generic **`demos/smoke-service.sh <name>`** builds, deploys,
+  Kafka r25). A generic **`demos/demo-service.sh <name>`** builds, deploys,
   and asserts the probes for any scaffolded service. **notification-service
   gets the same `/health` surface** even though it will ultimately be
   Kafka-consumer-only, because a probe-able surface is useful for testing
@@ -977,7 +977,7 @@ first install.
 ### Outcome (verified on Fedora 44, r27b)
 
 Green first try. `ingest-openmetadata.sh` ran all three Jobs to completion and
-`smoke-om-lineage.sh` passed every assertion — both services, the three spine
+`demo-om-lineage.sh` passed every assertion — both services, the three spine
 entities, and the topic's one-upstream/one-downstream lineage. The flagged
 verification risk did **not** materialize: the OM 1.12.8 Postgres connector
 (`authType.password`, `sslMode: require` against CNPG), the bare Kafka connector
@@ -1017,7 +1017,7 @@ appropriate caution, not a deferred bug.
     on a capstone service. The smoke hits the gateway (port-forwarded under
     rootless podman, the §11 Option A), so no client needs meshing.
   - **Weights as `__W_V1__`/`__W_V2__` placeholders** in `istio/routing.yaml`;
-    `smoke-canary.sh` substitutes them, so the same file drives 90/10, 50/50,
+    `demo-canary-verify.sh` substitutes them, so the same file drives 90/10, 50/50,
     0/100 — the progressive-canary operation is just re-applying the
     VirtualService.
   - **Selector immutability handled explicitly.** The v1 Deployment's selector
@@ -1122,9 +1122,9 @@ graphql-gateway service:80, concurrency target 5, min 0 / max 3). Install via
 "false"` so the injection-labeled namespace doesn't mesh them — keeping the
 mesh scoped to order-service (CAP-024) and the autoscaling paths clear of Envoy.
 The §17 stack-table line was corrected to "Scale graphql-gateway on HTTP load."
-Two smokes prove the full 0→up→0 lifecycle: `demos/smoke-keda-kafka.sh` (produces
+Two smokes prove the full 0→up→0 lifecycle: `demos/demo-keda-kafka.sh` (produces
 a 500-message raw burst to create lag — the consumer auto-commits and skips
-undecodable messages, so no Avro path is needed) and `demos/smoke-keda-http.sh`
+undecodable messages, so no Avro path is needed) and `demos/demo-keda-http.sh`
 (drives /health load through the interceptor to wake the gateway from zero).
 Validated statically (bash -n, pyyaml parse, disjoint targets). Cluster-only
 risk: KEDA + HTTP-add-on API/install specifics, flagged `VERIFY-POINT` in the
@@ -1230,7 +1230,7 @@ none visible offline.
     request rate by response code from the mesh.
 - **Files:** `observability/prometheus-values.yaml`,
   `observability/grafana-values.yaml` (inline dashboard JSON),
-  `scripts/setup-observability.sh`, `demos/smoke-observability.sh`, §17 new
+  `scripts/setup-observability.sh`, `demos/demo-observability.sh`, §17 new
   section "Seeing it: metrics with Prometheus and Grafana".
 - **Consequences:**
   - (+) The capstone is now observable for its scaling and mesh traffic without
@@ -1269,11 +1269,11 @@ none visible offline.
   - **Grafana Tempo datasource** provisioned alongside Prometheus (uid=`tempo`,
     url `http://tempo.observability:3200`).
 - **Files:** `observability/tempo-values.yaml`, grafana-values.yaml (+Tempo
-  datasource), setup-observability.sh (+Tempo install), `demos/smoke-tracing.sh`,
+  datasource), setup-observability.sh (+Tempo install), `demos/demo-tracing.sh`,
   §17 traces-backend paragraph.
 - **Consequences:**
   - (+) Leaner than the original sketch (one fewer component to run/debug).
-  - (+) Backend verifiable independently (smoke-tracing: Tempo ready + Grafana
+  - (+) Backend verifiable independently (demo-tracing: Tempo ready + Grafana
     datasource provisioned/reachable).
   - (−) No traces visible until r29c instruments a service — by design.
   - (−) Chart-schema correctness (tempo values keys, OTLP receiver wiring) is
@@ -1320,7 +1320,7 @@ none visible offline.
     extension, deliberately deferred.
 - **Files:** services/graphql-gateway/Containerfile (OTEL install + wrapped CMD),
   graphql-gateway values.yaml (`tracing:` block) + deployment.yaml (OTEL env),
-  demos/smoke-trace-flow.sh, §17 traces paragraph.
+  demos/demo-trace-flow.sh, §17 traces paragraph.
 - **Consequences:**
   - (+) A real distributed trace of the federated query, visible in Grafana's
     Tempo explorer — the federation section made concrete.
@@ -1332,7 +1332,7 @@ none visible offline.
     are instrumented too.
   - (−) Unpinned OTEL package versions (bootstrap aligns instrumentation versions
     to the installed SDK); pin for a fully reproducible image. Instrumentation
-    correctness and the Tempo search format are cluster-only — smoke-trace-flow's
+    correctness and the Tempo search format are cluster-only — demo-trace-flow's
     trace-found check is therefore best-effort (the HTTP 200 is the hard part).
   - **Export-protocol addendum (r29c.2):** the first cluster run proved the
     instrumentation (all instrumentations installed, gateway 200) but Tempo had
@@ -1344,7 +1344,7 @@ none visible offline.
     `opentelemetry-exporter-otlp` meta-package). Validated against a working
     user-provided otel-lgtm reference (Java/Podman Compose) using exactly
     `OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318` + `PROTOCOL=http/protobuf`.
-    Also hardened smoke-trace-flow.sh: TraceQL (`q=`) search, not legacy `tags=`,
+    Also hardened demo-trace-flow.sh: TraceQL (`q=`) search, not legacy `tags=`,
     plus a gateway-log capture right after the query (before KEDA scale-to-zero).
     Lesson: http/protobuf is the robust OTLP default; gRPC needs the insecure flag.
 
@@ -1459,7 +1459,7 @@ get back to green instead of debugging a wall of red. Validated offline: `bash -
 on both scripts; registry diff uses the same catalog API as build-image.sh.
 Cluster-verify: run `cluster-up.sh` from a stopped/wedged state and confirm green.
 
-  - **r29b.1 addendum (CAP-028).** Hardened `smoke-tracing.sh` from a "backend is
+  - **r29b.1 addendum (CAP-028).** Hardened `demo-tracing.sh` from a "backend is
     standing" check into an end-to-end ingest proof: it POSTs a synthetic OTLP/HTTP
     JSON span to Tempo :4318 (random 16-byte trace id / 8-byte span id, ns
     timestamps) and reads it back via TraceQL on :3200. This is the check whose
@@ -1531,7 +1531,7 @@ new OpenMetadata lineage node; cleanly reversible as a whole product) with its
 - Chart aligned with the **r28 calibration** (requests 192Mi / limit 512Mi +
   startupProbe 30x2s) — the scaffolder predates r28, so the generated chart was
   bumped to avoid repeating the cold-start/OOM class.
-- `demos/smoke-reviews.sh` asserts the full REST surface (probes, version, seeded
+- `demos/demo-reviews.sh` asserts the full REST surface (probes, version, seeded
   rows, create, fetch-by-id, sku filter).
 
 **Explicitly temporary.** review-service is a *demonstration* data product, not a
@@ -1546,7 +1546,7 @@ image build (the Containerfile's `poetry export` step needs it).
 
 **Consequences.** Offline-validated: `py_compile` all modules; values.yaml
 parses; deployment braces 24/24 with startupProbe; smoke `bash -n`. Cluster-verify:
-`./demos/smoke-reviews.sh` green against the running capstone.
+`./demos/demo-reviews.sh` green against the running capstone.
 ## CAP-033 — Phase A (part 2): discovery, catalog, and the replayable demo
 
 **Status:** decided, shipped r33 (offline-validated; cluster-verify pending).
@@ -1837,7 +1837,7 @@ order-service connects on its next retry and goes `2/2` — closing the bring-up
 
 **Context.** The canary was scaffolded at r26 (CAP-024): `istio/routing.yaml`
 (Gateway + weighted VirtualService with `__W_V1__/__W_V2__` + DestinationRule
-v1/v2 subsets), `smoke-canary.sh` (deploys v2, drives 90/10→50/50, asserts the
+v1/v2 subsets), `demo-canary-verify.sh` (deploys v2, drives 90/10→50/50, asserts the
 split), `istio/order-service-v2.yaml` (v2 = same image, `API_VERSION=v2`), and
 the `/version` canary signal (v2 reports `api_version=v2` + an additive
 `currency` field). Phase B's job was to make it actually run on the current
@@ -1857,7 +1857,7 @@ annotations and resources are overlay-local and had to be brought into line.)
     rendered chart env exactly).
   * **Add `demos/demo-canary.sh up|shift|down`** — the presenter-facing,
     repeatable, backable-out counterpart to the verification-facing
-    smoke-canary.sh. `up [w1 w2]` deploys v2 + opens the split (default 90/10);
+    demo-canary-verify.sh. `up [w1 w2]` deploys v2 + opens the split (default 90/10);
     `shift w1 w2` moves it (50/50, 0/100, …); `down` drains to v1, removes the
     Gateway/VirtualService/DestinationRule and the v2 Deployment, restoring a
     v1-only baseline. This is the "repeatable / backable-out" the roadmap asked
@@ -1867,13 +1867,13 @@ annotations and resources are overlay-local and had to be brought into line.)
 keep drifting from the v1 chart (this is the second time: it missed CAP-037/038).
 Noted option for later: parametrize the order-service chart so v2 is a second
 helm release (`--set version=v2,apiVersion=v2`) with the shared Service rendered
-once — eliminating the overlay. Deferred (it changes smoke-canary and revisits
+once — eliminating the overlay. Deferred (it changes demo-canary-verify and revisits
 CAP-024's overlay choice); the alignment above is the right scope for tonight.
 
 **Consequences.** Offline-validated: v2 manifest parses with all three alignments;
 demo-canary.sh `bash -n` clean and its `down` targets exactly the objects
 routing.yaml creates; `/version` confirmed to emit v2 + currency. Cluster-verify:
-`./demos/smoke-canary.sh` lands the 90/10 and 50/50 splits in-band, and
+`./demos/demo-canary-verify.sh` lands the 90/10 and 50/50 splits in-band, and
 `demo-canary.sh up → shift → down` cycles cleanly. A+B together demonstrate the
 data-mesh value from the API/contract perspective (add a product, then evolve its
 contract under canary).
@@ -1991,7 +1991,7 @@ the capstone's EXISTING `observability`-namespace Prometheus
 (`prometheus-server.observability`), Grafana (`grafana.observability`), and Tempo
 (`tempo.observability:3100`). Single observability stack, no second TSDB. Kiali
 is additive and isolated: it runs after `setup-istio.sh` + `setup-observability.sh`
-and touches nothing they own. Verification is `demos/smoke-kiali.sh` (Ready +
+and touches nothing they own. Verification is `demos/demo-kiali.sh` (Ready +
 config wired to capstone Prometheus + `/healthz` + `/api/namespaces` lists
 `capstone` + a best-effort graph-API probe).
 
@@ -2010,11 +2010,11 @@ without touching the Istio install.
 ConfigMap patch is a JSON merge on `data."config.yaml"` only (preserves the
 addon's labels/metadata; idempotent). Cluster-verify (pending): run
 `setup-istio.sh` → `setup-observability.sh` → `setup-kiali.sh`, then
-`smoke-kiali.sh` should PASS and, after a traffic-generating demo, the Kiali
+`demo-kiali.sh` should PASS and, after a traffic-generating demo, the Kiali
 graph (namespace `capstone`) should show the products and their edges with the
 canary split. VERIFY-POINT: the addon ConfigMap is assumed to be named `kiali`
 with key `config.yaml`; if the installed Kiali/Istio version differs, adjust the
-patch in `setup-kiali.sh` and the config check in `smoke-kiali.sh`.
+patch in `setup-kiali.sh` and the config check in `demo-kiali.sh`.
 
 ## CAP-043 — Phase E presenter walkthrough: orchestrator over the existing demos
 
@@ -2057,8 +2057,8 @@ up automatically.
 
 **Context.** With Phase E shipped (CAP-043, the `walkthrough.sh` orchestrator),
 two acts hit a class of failure that was unfair to the operator: lineage
-(`smoke-om-lineage.sh`) failed because ingestion hadn't been run, and topology
-(`smoke-kiali.sh`) failed because Kiali wasn't installed. Both were
+(`demo-om-lineage.sh`) failed because ingestion hadn't been run, and topology
+(`demo-kiali.sh`) failed because Kiali wasn't installed. Both were
 documented-but-manual steps from earlier iterations (Kiali only existed as
 CAP-042; `ingest-openmetadata.sh` was always a footer recommendation in
 bootstrap rather than a step bootstrap ran). The walkthrough's preflight could
@@ -2122,7 +2122,7 @@ ready, returns 502, KEDA then scales the gateway back down within its
   the env-var name is `KEDA_HTTP_*` *without* the `INTERCEPTOR_` infix).
 - The `autoscaling.keda.sh/paused-replicas` annotation (works on KEDA's core
   `ScaledObject`, not on the HTTP add-on's `HTTPScaledObject`).
-- A pre-warm GET in `smoke-trace-flow.sh` (the warmup succeeded in waking the
+- A pre-warm GET in `demo-trace-flow.sh` (the warmup succeeded in waking the
   gateway, but KEDA HTTP scaled it back down between the warmup and the real
   POST faster than the script could send the second request).
 
@@ -2148,7 +2148,7 @@ story than "everything scales to zero", which papers over the cold-start cost
 of synchronous interfaces.
 
 **Consequences.** Offline-validated: YAML loads, smoke script lints. The
-pre-warm code added to `smoke-trace-flow.sh` during the failed cold-start
+pre-warm code added to `demo-trace-flow.sh` during the failed cold-start
 debugging is reverted (no longer needed; with `min: 1` the gateway is warm).
 Cluster-verify pending: with the updated HTTPScaledObject applied, the
 walkthrough's trace act runs to completion on the first attempt. Follow-up
@@ -2213,8 +2213,8 @@ commits on `main`) so any inadvertent breakage of the four working acts
     `external-push` pointing at `interceptorRoute: "graphql-gateway"`.
   * `scripts/bootstrap-capstone.sh` — applies the two new manifests instead
     of the one old.
-  * `demos/smoke-keda-http.sh` and `demos/smoke-trace-flow.sh` — comment and
-    fail-message updates; `smoke-trace-flow.sh` curl timeout bumped from 30s
+  * `demos/demo-keda-http.sh` and `demos/demo-trace-flow.sh` — comment and
+    fail-message updates; `demo-trace-flow.sh` curl timeout bumped from 30s
     to 90s to give the 60s readiness budget room.
 
 **Narrative implications** (deck/tutorial copy that benefits from this).

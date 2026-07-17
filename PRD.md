@@ -238,7 +238,7 @@ The reference ships ONE runnable example tree at
   printed; the script stops on first failure with a fix hint.
 - **`demos/walkthrough.sh`** — the five-act presenter walkthrough that
   exercises every cross-product behaviour the reference describes.
-- Per-component **`demos/smoke-*.sh`** scripts for verifying individual
+- Per-component **`demos/demo-*.sh`** scripts for verifying individual
   pieces without running the full walkthrough.
 
 The verification model: each smoke script is its own gate (it returns

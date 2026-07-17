@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# smoke-reviews.sh — verify the review-service data product (Phase A).
+# demo-reviews.sh — verify the review-service data product (Phase A).
 #
 # Builds + deploys review-service against the capstone Postgres and asserts its
 # REST surface end-to-end: probes, the seeded rows, create, fetch-by-id, and the
@@ -11,7 +11,7 @@
 # deploy). Leaves resources in place + dumps diagnostics on failure; cleans up
 # review-service on success (Postgres is shared and left alone).
 #
-# Run from examples/lgtm-datamesh/:  ./demos/smoke-reviews.sh
+# Run from examples/lgtm-datamesh/:  ./demos/demo-reviews.sh
 
 set -uo pipefail
 export MINIKUBE_ROOTLESS=true

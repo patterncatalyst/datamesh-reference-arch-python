@@ -6,8 +6,8 @@
 # Why this exists: the smokes clean up the service releases they deployed when
 # they PASS (CAP-008), so after any passing smoke the cluster can be missing
 # shared services — and the next smoke that assumes them fails for reasons that
-# have nothing to do with what it tests (e.g. smoke-order 503s when
-# smoke-discovery's cleanup removed inventory-service). Run this between smokes
+# have nothing to do with what it tests (e.g. demo-order 503s when
+# demo-discovery's cleanup removed inventory-service). Run this between smokes
 # (or between groups of a suite) to make the run order not matter.
 #
 # Scope: bootstrap tier 8 only (services + scalers). The platform tiers
@@ -48,7 +48,7 @@ kubectl get pods -n "$NS" -l "cnpg.io/cluster=capstone-postgres,role=primary" --
 kubectl get kafka capstone-kafka -n "$NS" >/dev/null 2>&1 \
     && ok "Kafka CR present" || warn "Kafka CR missing — re-run bootstrap-capstone.sh"
 kubectl get deploy apicurio -n "$NS" >/dev/null 2>&1 \
-    && ok "Apicurio present" || warn "Apicurio missing — re-run bootstrap-capstone.sh (or smoke-discovery.sh deploys it)"
+    && ok "Apicurio present" || warn "Apicurio missing — re-run bootstrap-capstone.sh (or demo-discovery.sh deploys it)"
 
 # ── the six service releases ──────────────────────────────────────────────────
 step "Installing/refreshing the six service releases"

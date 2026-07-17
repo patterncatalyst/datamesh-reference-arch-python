@@ -30,7 +30,7 @@
 #   ./scripts/ingest-openmetadata.sh
 #
 # Then verify end-to-end:
-#   ./demos/smoke-om-lineage.sh
+#   ./demos/demo-om-lineage.sh
 
 set -euo pipefail
 
@@ -115,4 +115,4 @@ printf '  open http://127.0.0.1:8585  (admin@open-metadata.org / admin)\n'
 printf '  → Services shows capstone-postgres (Database) and capstone-kafka (Messaging)\n'
 printf '  → the order-placed topic'\''s Lineage tab shows orders upstream, notifications downstream\n\n'
 printf 'Verify end-to-end:\n'
-printf '  ./demos/smoke-om-lineage.sh\n'
+printf '  ./demos/demo-om-lineage.sh\n'

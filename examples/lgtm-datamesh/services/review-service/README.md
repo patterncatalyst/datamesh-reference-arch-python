@@ -22,4 +22,4 @@ kubectl rollout status deployment/review-service -n capstone --timeout=120s
 ```
 
 Or run the health smoke test, which does all of the above and asserts the
-probes: `./demos/smoke-service.sh review`
+probes: `./demos/demo-service.sh review`

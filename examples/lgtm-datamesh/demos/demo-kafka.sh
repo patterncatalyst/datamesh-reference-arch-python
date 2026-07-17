@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# smoke-kafka.sh — verify the async spine: order-service publishes an
+# demo-kafka.sh — verify the async spine: order-service publishes an
 # order.placed event to Kafka, notification-service consumes it.
 #
 # Flow:
@@ -13,7 +13,7 @@
 #   7. poll notification-service GET /received until the order_id appears
 #   8. clean up on success (CAP-008); on failure, leave running + dump logs
 #
-# Usage:  ./demos/smoke-kafka.sh [--purge-db]
+# Usage:  ./demos/demo-kafka.sh [--purge-db]
 
 set -uo pipefail
 export MINIKUBE_ROOTLESS=true   # CAP-010

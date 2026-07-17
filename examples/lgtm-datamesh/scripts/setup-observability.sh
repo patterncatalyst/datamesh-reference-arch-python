@@ -19,8 +19,8 @@
 # Usage (from examples/lgtm-datamesh/):
 #   ./scripts/setup-observability.sh
 #   kubectl port-forward -n observability svc/grafana 3000:80
-#   ./demos/smoke-observability.sh   # metrics plumbing
-#   ./demos/smoke-tracing.sh         # trace backend plumbing
+#   ./demos/demo-observability.sh   # metrics plumbing
+#   ./demos/demo-tracing.sh         # trace backend plumbing
 
 set -euo pipefail
 
@@ -83,6 +83,6 @@ printf 'password on upgrade, so do not assume it is the values default):\n'
 printf '  user: $(kubectl get secret grafana -n %s -o jsonpath="{.data.admin-user}" | base64 -d)\n' "$NAMESPACE"
 printf '  pass: $(kubectl get secret grafana -n %s -o jsonpath="{.data.admin-password}" | base64 -d)\n\n' "$NAMESPACE"
 printf 'Then make the graphs move:\n'
-printf '  ./demos/smoke-keda-http.sh    # watch graphql-gateway replicas go 0→1→0\n'
-printf '  ./demos/smoke-canary.sh       # watch order-service request rate by code\n'
-printf '  ./demos/smoke-observability.sh  # verify the stack is scraping\n'
+printf '  ./demos/demo-keda-http.sh    # watch graphql-gateway replicas go 0→1→0\n'
+printf '  ./demos/demo-canary-verify.sh       # watch order-service request rate by code\n'
+printf '  ./demos/demo-observability.sh  # verify the stack is scraping\n'

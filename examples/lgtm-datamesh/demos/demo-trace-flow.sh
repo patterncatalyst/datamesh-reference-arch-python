@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# smoke-trace-flow.sh — the end-to-end traces proof (r29c). Drive one GraphQL
+# demo-trace-flow.sh — the end-to-end traces proof (r29c). Drive one GraphQL
 # query through the gateway and confirm the resulting fan-out trace
 # (graphql-gateway → order-service REST → inventory gRPC) lands in Tempo.
 #
@@ -14,7 +14,7 @@
 # yet, that's a note plus a Grafana pointer, not a failure — the span export is
 # fire-and-forget by design.
 #
-# Run from examples/lgtm-datamesh/:  ./demos/smoke-trace-flow.sh
+# Run from examples/lgtm-datamesh/:  ./demos/demo-trace-flow.sh
 
 set -uo pipefail
 
@@ -82,7 +82,7 @@ else
 fi
 # A dummy id is fine: the gateway still calls order-service (REST) to resolve it,
 # which is the downstream hop we want in the trace. With a real order the
-# inventory gRPC hop appears too (see smoke-graphql.sh).
+# inventory gRPC hop appears too (see demo-graphql.sh).
 GQL_BODY='{"query":"{ order(id: \"trace-probe\") { id itemSku quantity stock { sku quantityOnHand available } } }"}'
 # Retry transient non-200s: the 0.12.2 interceptor has a cold-start race
 # (CAP-046) where the first POSTs after a scale-from-zero can 502 while its
@@ -129,7 +129,7 @@ if [[ -n "$found" ]]; then
     printf '    ✓ Tempo has a graphql-gateway trace — distributed tracing is live.\n'
     printf 'Open it in Grafana → Explore → Tempo (search service.name=graphql-gateway) to\n'
     printf 'see the gateway span with its order-service (REST) child. Query a real order\n'
-    printf 'via ./demos/smoke-graphql.sh to get the inventory (gRPC) hop in the trace too.\n'
+    printf 'via ./demos/demo-graphql.sh to get the inventory (gRPC) hop in the trace too.\n'
 else
     step "DONE (trace not yet found in Tempo search — NOT a failure)"
     printf '    ⚠ The gateway returned 200 but no graphql-gateway trace surfaced in ~60s.\n'

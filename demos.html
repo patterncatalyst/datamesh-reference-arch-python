@@ -1,0 +1,380 @@
+---
+layout: default
+title: Demos & examples
+description: Every demo in the reference, mapped to the data-mesh principles they exercise.
+permalink: /demos/
+---
+
+<section class="hero hero--compact">
+    <div class="container">
+        <span class="hero__eyebrow">Demos &amp; examples</span>
+        <h1>See every principle, live.</h1>
+        <p class="hero__lead">
+            23 scripts under <code>examples/lgtm-datamesh/demos/</code>
+            exercise the data-mesh reference end to end. Each one is mapped
+            to the principle it demonstrates — domain ownership, data as a
+            product, self-serve platform, or federated governance.
+        </p>
+    </div>
+</section>
+
+<!-- ── The five-act walkthrough ────────────────────────────── -->
+<section class="section">
+    <div class="container" style="max-width: 42rem">
+        <h2 class="section-heading">The five-act walkthrough</h2>
+        <p>
+            <code>walkthrough.sh</code> orchestrates five acts — trace,
+            scale, canary, lineage, topology — each shelling out to an
+            existing demo script with narration between them. Press Enter
+            to advance between acts.
+        </p>
+        <pre><code>cd examples/lgtm-datamesh && ./demos/walkthrough.sh</code></pre>
+    </div>
+</section>
+
+<!-- ── Demos by principle ─────────────────────────────────── -->
+
+<!-- ── 3a  Domain ownership ──────────────────────────────── -->
+<section class="section">
+    <div class="container">
+        <h2 class="section-heading">Demos by principle</h2>
+
+        <h3>Domain ownership</h3>
+        <p>
+            These demos verify that each domain service owns its data, its
+            API surface, and its operational lifecycle — independent build,
+            deploy, and verification.
+        </p>
+
+        <div class="cards">
+            <a class="card"
+               href="https://github.com/{{ site.github_username }}/{{ site.github_repo }}/blob/main/examples/lgtm-datamesh/demos/demo-order.sh">
+                <div class="card__eyebrow">Domain ownership &middot; <strong>REST</strong></div>
+                <h3 class="card__title">Order-service walking skeleton</h3>
+                <p class="card__desc">
+                    Full spine: image build, helm deploy, operator-managed
+                    Postgres, REST round-trip. Creates an order and confirms
+                    it in the database.
+                </p>
+                <div class="card__meta">&sect;4 Services &amp; data products &middot; Source &#x2197;</div>
+            </a>
+
+            <a class="card"
+               href="https://github.com/{{ site.github_username }}/{{ site.github_repo }}/blob/main/examples/lgtm-datamesh/demos/demo-grpc.sh">
+                <div class="card__eyebrow">Domain ownership &middot; <strong>gRPC</strong></div>
+                <h3 class="card__title">Cross-service gRPC</h3>
+                <p class="card__desc">
+                    order-service calls inventory-service CheckStock over
+                    gRPC. Proves domain isolation with clear API boundaries
+                    between data products.
+                </p>
+                <div class="card__meta">&sect;4, &sect;6 &middot; Source &#x2197;</div>
+            </a>
+
+            <a class="card"
+               href="https://github.com/{{ site.github_username }}/{{ site.github_repo }}/blob/main/examples/lgtm-datamesh/demos/demo-service.sh">
+                <div class="card__eyebrow">Domain ownership &middot; <strong>scaffold</strong></div>
+                <h3 class="card__title">Generic service health</h3>
+                <p class="card__desc">
+                    Build, deploy, and verify health for any scaffolded
+                    service. Proves the common domain template works end to
+                    end.
+                </p>
+                <div class="card__meta">&sect;4 &middot; Source &#x2197;</div>
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- ── 3b  Data as a product ─────────────────────────────── -->
+<section class="section">
+    <div class="container">
+        <h3>Data as a product</h3>
+        <p>
+            These demos exercise the contract, catalog, and discovery
+            surfaces that make each domain's data discoverable, addressable,
+            and trustworthy.
+        </p>
+
+        <div class="cards">
+            <a class="card"
+               href="https://github.com/{{ site.github_username }}/{{ site.github_repo }}/blob/main/examples/lgtm-datamesh/demos/demo-avro.sh">
+                <div class="card__eyebrow">Data as a product &middot; <strong>Avro</strong></div>
+                <h3 class="card__title">Avro contracts (schema registry)</h3>
+                <p class="card__desc">
+                    order-service registers an Avro schema in Apicurio;
+                    notification-service decodes by schema ID. The contract
+                    is the schema, not a handshake.
+                </p>
+                <div class="card__meta">&sect;5 Contracts &amp; catalog &middot; Source &#x2197;</div>
+            </a>
+
+            <a class="card"
+               href="https://github.com/{{ site.github_username }}/{{ site.github_repo }}/blob/main/examples/lgtm-datamesh/demos/demo-discovery.sh">
+                <div class="card__eyebrow">Data as a product &middot; <strong>registry</strong></div>
+                <h3 class="card__title">Discovery contracts published</h3>
+                <p class="card__desc">
+                    Publishes OpenAPI, Protobuf, GraphQL SDL, and Avro to
+                    Apicurio — the feedstock for the catalog.
+                </p>
+                <div class="card__meta">&sect;5 &middot; Source &#x2197;</div>
+            </a>
+
+            <a class="card"
+               href="https://github.com/{{ site.github_username }}/{{ site.github_repo }}/blob/main/examples/lgtm-datamesh/demos/demo-graphql.sh">
+                <div class="card__eyebrow">Data as a product &middot; <strong>GraphQL</strong></div>
+                <h3 class="card__title">Federated read layer (GraphQL)</h3>
+                <p class="card__desc">
+                    One query to the gateway stitches order (REST) and stock
+                    (gRPC) into a single response. The composed read surface
+                    of the mesh.
+                </p>
+                <div class="card__meta">&sect;6 Data planes &middot; Source &#x2197;</div>
+            </a>
+
+            <a class="card"
+               href="https://github.com/{{ site.github_username }}/{{ site.github_repo }}/blob/main/examples/lgtm-datamesh/demos/demo-reviews.sh">
+                <div class="card__eyebrow">Data as a product &middot; <strong>REST</strong></div>
+                <h3 class="card__title">Review-service data product</h3>
+                <p class="card__desc">
+                    Builds and verifies the review-service REST surface end
+                    to end — a standalone data product with its own schema.
+                </p>
+                <div class="card__meta">&sect;4 &middot; Source &#x2197;</div>
+            </a>
+
+            <a class="card"
+               href="https://github.com/{{ site.github_username }}/{{ site.github_repo }}/blob/main/examples/lgtm-datamesh/demos/demo-add-data-product.sh">
+                <div class="card__eyebrow">Data as a product &middot; <strong>lifecycle</strong></div>
+                <h3 class="card__title">Add/remove a data product</h3>
+                <p class="card__desc">
+                    Full add-to-mesh workflow: deploy, publish contract,
+                    ingest catalog, then clean rollback. The mesh grows by
+                    one product.
+                </p>
+                <div class="card__meta">&sect;5 &middot; Source &#x2197;</div>
+            </a>
+
+            <a class="card"
+               href="https://github.com/{{ site.github_username }}/{{ site.github_repo }}/blob/main/examples/lgtm-datamesh/demos/demo-openmetadata.sh">
+                <div class="card__eyebrow">Data as a product &middot; <strong>catalog</strong></div>
+                <h3 class="card__title">OpenMetadata catalog health</h3>
+                <p class="card__desc">
+                    Verifies the catalog server is deployed, healthy, and
+                    backed by Postgres — the discovery surface the mesh
+                    depends on.
+                </p>
+                <div class="card__meta">&sect;5 &middot; Source &#x2197;</div>
+            </a>
+
+            <a class="card"
+               href="https://github.com/{{ site.github_username }}/{{ site.github_repo }}/blob/main/examples/lgtm-datamesh/demos/demo-om-lineage.sh">
+                <div class="card__eyebrow">Data as a product &middot; <strong>lineage</strong></div>
+                <h3 class="card__title">Cross-product lineage</h3>
+                <p class="card__desc">
+                    Proves the lineage graph: orders table, order-placed
+                    topic, notifications table. Data flows are visible, not
+                    guesswork.
+                </p>
+                <div class="card__meta">&sect;5 &middot; Source &#x2197;</div>
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- ── 3c  Self-serve data platform ──────────────────────── -->
+<section class="section">
+    <div class="container">
+        <h3>Self-serve data platform</h3>
+        <p>
+            These demos show the platform delivering capabilities by
+            declaration — operators provision databases, message buses, and
+            autoscalers; the observability stack surfaces metrics, traces,
+            and topology.
+        </p>
+
+        <div class="cards">
+            <a class="card"
+               href="https://github.com/{{ site.github_username }}/{{ site.github_repo }}/blob/main/examples/lgtm-datamesh/demos/demo-kafka.sh">
+                <div class="card__eyebrow">Self-serve platform &middot; <strong>Kafka</strong></div>
+                <h3 class="card__title">Async spine (Kafka events)</h3>
+                <p class="card__desc">
+                    order-service publishes order.placed;
+                    notification-service consumes it. The Strimzi operator
+                    delivers the Kafka cluster by declaration.
+                </p>
+                <div class="card__meta">&sect;6 Data planes &middot; Source &#x2197;</div>
+            </a>
+
+            <a class="card"
+               href="https://github.com/{{ site.github_username }}/{{ site.github_repo }}/blob/main/examples/lgtm-datamesh/demos/demo-notifications.sh">
+                <div class="card__eyebrow">Self-serve platform &middot; <strong>Postgres</strong></div>
+                <h3 class="card__title">Durable notifications (Postgres)</h3>
+                <p class="card__desc">
+                    Alembic migration, persisted events, survives restart.
+                    The CloudNativePG operator delivers the database by
+                    declaration.
+                </p>
+                <div class="card__meta">&sect;4, &sect;6 &middot; Source &#x2197;</div>
+            </a>
+
+            <a class="card"
+               href="https://github.com/{{ site.github_username }}/{{ site.github_repo }}/blob/main/examples/lgtm-datamesh/demos/demo-keda-kafka.sh">
+                <div class="card__eyebrow">Self-serve platform &middot; <strong>KEDA</strong></div>
+                <h3 class="card__title">Kafka consumer-lag scaling</h3>
+                <p class="card__desc">
+                    notification-service scales from zero on Kafka lag, then
+                    back to zero when caught up. Elastic data products by
+                    declaration.
+                </p>
+                <div class="card__meta">&sect;8 Elastic &amp; resilient &middot; Source &#x2197;</div>
+            </a>
+
+            <a class="card"
+               href="https://github.com/{{ site.github_username }}/{{ site.github_repo }}/blob/main/examples/lgtm-datamesh/demos/demo-keda-http.sh">
+                <div class="card__eyebrow">Self-serve platform &middot; <strong>KEDA HTTP</strong></div>
+                <h3 class="card__title">HTTP request scaling (KEDA)</h3>
+                <p class="card__desc">
+                    graphql-gateway scales from zero on HTTP request
+                    concurrency via the KEDA HTTP add-on. Zero cost when
+                    idle, instant wake on demand.
+                </p>
+                <div class="card__meta">&sect;8 &middot; Source &#x2197;</div>
+            </a>
+
+            <a class="card"
+               href="https://github.com/{{ site.github_username }}/{{ site.github_repo }}/blob/main/examples/lgtm-datamesh/demos/demo-observability.sh">
+                <div class="card__eyebrow">Self-serve platform &middot; <strong>Prometheus</strong></div>
+                <h3 class="card__title">Metrics stack health</h3>
+                <p class="card__desc">
+                    Prometheus scraping capstone targets, Grafana dashboard
+                    provisioned with mesh and request-rate panels. The
+                    platform delivers observability.
+                </p>
+                <div class="card__meta">&sect;9 Observability &middot; Source &#x2197;</div>
+            </a>
+
+            <a class="card"
+               href="https://github.com/{{ site.github_username }}/{{ site.github_repo }}/blob/main/examples/lgtm-datamesh/demos/demo-tracing.sh">
+                <div class="card__eyebrow">Self-serve platform &middot; <strong>Tempo</strong></div>
+                <h3 class="card__title">Trace backend health (Tempo)</h3>
+                <p class="card__desc">
+                    Tempo up, Grafana datasource wired, synthetic span
+                    ingested and queried back. The trace pipeline works
+                    before you send real traffic.
+                </p>
+                <div class="card__meta">&sect;9 &middot; Source &#x2197;</div>
+            </a>
+
+            <a class="card"
+               href="https://github.com/{{ site.github_username }}/{{ site.github_repo }}/blob/main/examples/lgtm-datamesh/demos/demo-trace-flow.sh">
+                <div class="card__eyebrow">Self-serve platform &middot; <strong>traces</strong></div>
+                <h3 class="card__title">End-to-end trace across products</h3>
+                <p class="card__desc">
+                    A GraphQL query fans out to three services; the trace
+                    lands in Tempo with cross-product spans. Distributed
+                    tracing as a platform feature.
+                </p>
+                <div class="card__meta">&sect;9 &middot; Source &#x2197;</div>
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- ── 3d  Federated computational governance ────────────── -->
+<section class="section">
+    <div class="container">
+        <h3>Federated computational governance</h3>
+        <p>
+            These demos exercise the governance mechanisms — mTLS,
+            progressive delivery, and mesh topology — that keep
+            independently-owned products interoperable.
+        </p>
+
+        <div class="cards">
+            <a class="card"
+               href="https://github.com/{{ site.github_username }}/{{ site.github_repo }}/blob/main/examples/lgtm-datamesh/demos/demo-canary-verify.sh">
+                <div class="card__eyebrow">Federated governance &middot; <strong>Istio</strong></div>
+                <h3 class="card__title">Canary contract evolution (verified)</h3>
+                <p class="card__desc">
+                    v1 and v2 both meshed; traffic splits by VirtualService
+                    weight. Asserts the 90/10 and 50/50 splits land in
+                    expected bands.
+                </p>
+                <div class="card__meta">&sect;7 Progressive delivery &middot; Source &#x2197;</div>
+            </a>
+
+            <a class="card"
+               href="https://github.com/{{ site.github_username }}/{{ site.github_repo }}/blob/main/examples/lgtm-datamesh/demos/demo-canary.sh">
+                <div class="card__eyebrow">Federated governance &middot; <strong>canary</strong></div>
+                <h3 class="card__title">Canary demo (repeatable)</h3>
+                <p class="card__desc">
+                    Presenter-facing: bring the canary up at a chosen
+                    weight, shift it, tear it cleanly back to v1-only
+                    baseline. Fully replayable.
+                </p>
+                <div class="card__meta">&sect;7 &middot; Source &#x2197;</div>
+            </a>
+
+            <a class="card"
+               href="https://github.com/{{ site.github_username }}/{{ site.github_repo }}/blob/main/examples/lgtm-datamesh/demos/demo-kiali.sh">
+                <div class="card__eyebrow">Federated governance &middot; <strong>topology</strong></div>
+                <h3 class="card__title">Kiali mesh topology</h3>
+                <p class="card__desc">
+                    Kiali API answers, Prometheus reachable, capstone
+                    namespace visible in the graph. The mesh is observable
+                    as a first-class surface.
+                </p>
+                <div class="card__meta">&sect;7, &sect;9 &middot; Source &#x2197;</div>
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- ── Running a demo ─────────────────────────────────────── -->
+<section class="section-tight">
+    <div class="container" style="max-width: 42rem">
+        <h2 class="section-heading">Running a demo</h2>
+        <p>
+            All demos assume you are in the
+            <code>examples/lgtm-datamesh/</code> directory with kubectl
+            context set to <code>capstone</code>. See the
+            <a href="{{ '/setup/' | relative_url }}">setup &amp; prerequisites</a>
+            page for installation and bootstrap.
+        </p>
+        <pre><code>cd examples/lgtm-datamesh
+./demos/demo-order.sh</code></pre>
+
+        <h3>What to look at after running a demo</h3>
+        <ul>
+            <li>
+                <strong>Grafana</strong> — dashboards for request rate,
+                canary weight, KEDA replicas:<br>
+                <code>kubectl port-forward -n capstone svc/grafana 3000:80</code>
+                &rarr; <code>http://localhost:3000</code>
+            </li>
+            <li>
+                <strong>Kiali</strong> — live mesh topology graph:<br>
+                <code>kubectl port-forward -n istio-system svc/kiali 20001:20001</code>
+                &rarr; <code>http://localhost:20001/kiali</code>
+            </li>
+            <li>
+                <strong>Tempo</strong> — distributed traces: open Grafana
+                &rarr; Explore &rarr; select the Tempo datasource
+            </li>
+            <li>
+                <strong>OpenMetadata</strong> — catalog and lineage:<br>
+                <code>kubectl port-forward -n capstone svc/openmetadata 8585:8585</code>
+                &rarr; <code>http://localhost:8585</code>
+            </li>
+        </ul>
+
+        <h3>Restoring baseline</h3>
+        <p>
+            The demo scripts clean up their own releases on success. After
+            running several, shared services may be missing. To put the
+            workloads back in bootstrap state:
+        </p>
+        <pre><code>./scripts/restore-baseline.sh</code></pre>
+    </div>
+</section>

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# smoke-graphql.sh — verify the federated read layer: a single GraphQL query
+# demo-graphql.sh — verify the federated read layer: a single GraphQL query
 # to graphql-gateway that stitches an order (order-service, REST) with its
 # live stock (inventory-service, gRPC) into one response.
 #
@@ -14,7 +14,7 @@
 #      and assert the response carries BOTH the order fields and nested stock
 #   7. clean up on success (CAP-008); on failure, leave running + dump logs
 #
-# Usage:  ./demos/smoke-graphql.sh [--purge-db]
+# Usage:  ./demos/demo-graphql.sh [--purge-db]
 
 set -uo pipefail
 export MINIKUBE_ROOTLESS=true   # CAP-010

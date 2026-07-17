@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# smoke-discovery.sh — publish the mesh's discovery contracts to Apicurio and
+# demo-discovery.sh — publish the mesh's discovery contracts to Apicurio and
 # verify all of them (plus the Avro runtime contract) are registered.
 #
 # Completes the registry half of CAP-018: after this, Apicurio holds all four
@@ -13,7 +13,7 @@
 #       retrievable from Apicurio's v3 API (and the Avro subject from ccompat)
 #       → cleanup on success.
 #
-# Usage:  ./demos/smoke-discovery.sh [--purge-db]
+# Usage:  ./demos/demo-discovery.sh [--purge-db]
 
 set -uo pipefail
 export MINIKUBE_ROOTLESS=true   # CAP-010
@@ -144,7 +144,7 @@ done
 AVRO_V="$(curl -fsS "${APIC}/apis/ccompat/v7/subjects/order-placed-value/versions" 2>/dev/null || echo '')"
 printf '%s' "$AVRO_V" | python3 -c "import sys,json; d=json.load(sys.stdin); sys.exit(0 if isinstance(d,list) and d else 1)" 2>/dev/null \
     && printf '    ✓ order-placed-value (AVRO, runtime — via ccompat)\n' \
-    || printf '    • order-placed-value (AVRO) not present yet — run smoke-avro.sh to register it\n'
+    || printf '    • order-placed-value (AVRO) not present yet — run demo-avro.sh to register it\n'
 
 printf '\n✓ SUCCESS — discovery contracts published; Apicurio now holds all protocol contracts (OpenAPI, Protobuf, GraphQL SDL, + Avro runtime)\n'
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # demo-canary.sh — the order-service v1→v2 canary as a REPEATABLE, BACKABLE-OUT
-# demo (Phase B). The verification-facing counterpart is smoke-canary.sh (which
+# demo (Phase B). The verification-facing counterpart is demo-canary-verify.sh (which
 # asserts the split lands in expected bands); this script is the presenter-facing
 # one: bring the canary up at a chosen weight, shift it, and tear it cleanly back
 # to a v1-only baseline so it can be replayed.

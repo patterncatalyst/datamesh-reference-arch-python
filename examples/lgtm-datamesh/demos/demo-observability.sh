@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# smoke-observability.sh — verify the metrics stack (r29, CAP-027) is actually
+# demo-observability.sh — verify the metrics stack (r29, CAP-027) is actually
 # working: Prometheus is up and scraping (kube-state-metrics gives us capstone
 # workload metrics; the Istio series exists), and Grafana is up with the
 # capstone dashboard provisioned.
@@ -10,7 +10,7 @@
 # the graphs actually move.
 #
 # Leaves resources in place on failure + dumps diagnostics. Idempotent.
-# Run from examples/lgtm-datamesh/:  ./demos/smoke-observability.sh
+# Run from examples/lgtm-datamesh/:  ./demos/demo-observability.sh
 
 set -uo pipefail
 
@@ -18,7 +18,7 @@ NS="observability"
 # Local port-forward ports. NOT 9090/3000: Fedora ships Cockpit on host 9090
 # (the port-forward silently fails to bind and the queries hit Cockpit — a
 # false FAIL on the reference platform), and 3000 is a common dev-server port.
-# Override per run: PROM_PORT=9091 ./demos/smoke-observability.sh
+# Override per run: PROM_PORT=9091 ./demos/demo-observability.sh
 PROM_PORT="${PROM_PORT:-19090}"
 GRAF_PORT="${GRAF_PORT:-13000}"
 PROM_PF=""
@@ -89,7 +89,7 @@ istio="$(curl -sG "$PROM_Q" --data-urlencode 'query=istio_requests_total{destina
 if printf '%s' "$istio" | grep -q '"result":\[{'; then
     printf '    ✓ istio_requests_total present for order-service\n'
 else
-    printf '    ⚠ no istio_requests_total yet — drive traffic (./demos/smoke-canary.sh)\n'
+    printf '    ⚠ no istio_requests_total yet — drive traffic (./demos/demo-canary-verify.sh)\n'
     printf '      then re-check. (Metrics plumbing is already proven above.)\n'
 fi
 
@@ -119,4 +119,4 @@ printf '    ✓ Grafana healthy and the "Capstone — Scaling & Traffic" dashboa
 step "SUCCESS"
 printf 'Metrics stack verified. Open the dashboard and drive a demo to watch it move:\n'
 printf '  kubectl port-forward -n %s svc/grafana 3000:80\n' "$NS"
-printf '  ./demos/smoke-keda-http.sh   # graphql-gateway replicas 0→1→0\n'
+printf '  ./demos/demo-keda-http.sh   # graphql-gateway replicas 0→1→0\n'

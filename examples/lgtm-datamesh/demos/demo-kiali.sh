@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 #
-# smoke-kiali.sh — verify Kiali (CAP-0NN) is up and wired to the capstone
+# demo-kiali.sh — verify Kiali (CAP-0NN) is up and wired to the capstone
 # observability stack: the deployment is Ready, the API answers, Prometheus is
 # reachable from Kiali's point of view, and the `capstone` namespace is visible
 # to the graph.
 #
 # This checks the PLUMBING, not a pretty graph — it confirms Kiali can render
-# the mesh topology once traffic flows. Run a demo (smoke-trace-flow.sh,
-# demo-canary.sh, smoke-keda-kafka.sh) to make edges actually appear in the graph.
+# the mesh topology once traffic flows. Run a demo (demo-trace-flow.sh,
+# demo-canary.sh, demo-keda-kafka.sh) to make edges actually appear in the graph.
 #
 # Leaves resources in place on failure + dumps diagnostics. Idempotent.
-# Run from examples/lgtm-datamesh/:  ./demos/smoke-kiali.sh
+# Run from examples/lgtm-datamesh/:  ./demos/demo-kiali.sh
 #
 # VERIFY-POINTS (confirm against the installed Kiali/Istio version):
 #   - the Kiali addon ConfigMap is named `kiali` with key `config.yaml`

@@ -372,7 +372,7 @@ The smokes clean up the service releases they deployed when they pass
 (CAP-008). Individually that's good hygiene; as a *suite* it means every
 passing smoke can remove a shared service the next smoke assumes, and a
 failure then indicts the run order rather than anything the failing
-smoke actually tests (smoke-order 503'd twice because an earlier smoke's
+smoke actually tests (demo-order 503'd twice because an earlier smoke's
 cleanup had removed inventory-service). The remedy is an explicit,
 idempotent baseline-restore step (`scripts/restore-baseline.sh`) run
 between groups, which makes the order not matter.
@@ -380,7 +380,7 @@ between groups, which makes the order not matter.
 The second half of the lesson: a suite that has only ever passed in one
 order hasn't demonstrated order independence. The same 24 scripts were
 run in a deliberately shuffled order and one more latent race fell out —
-a smoke that had passed two full runs on lucky timing (smoke-kafka's
+a smoke that had passed two full runs on lucky timing (demo-kafka's
 dead-tunnel poll, `e22b318`). Shuffling the order is the cheapest chaos
 test a suite can get.
 

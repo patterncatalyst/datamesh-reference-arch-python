@@ -34,7 +34,7 @@
 #   ./scripts/setup-kiali.sh
 #
 # Then verify + view:
-#   ./demos/smoke-kiali.sh
+#   ./demos/demo-kiali.sh
 #   kubectl port-forward -n istio-system svc/kiali 20001:20001
 #   open http://localhost:20001   (Graph → namespace: capstone)
 
@@ -153,7 +153,7 @@ printf '\nView the mesh topology:\n'
 printf '  kubectl port-forward -n %s svc/kiali 20001:20001\n' "$ISTIO_SYSTEM"
 printf '  open http://localhost:20001/kiali   (Graph → namespace: capstone)\n'
 printf '\nVerify:\n'
-printf '  ./demos/smoke-kiali.sh\n'
+printf '  ./demos/demo-kiali.sh\n'
 printf '\nNote: the live traffic graph only shows edges while traffic is flowing —\n'
-printf 'run a demo (e.g. ./demos/smoke-trace-flow.sh or ./demos/demo-canary.sh)\n'
+printf 'run a demo (e.g. ./demos/demo-trace-flow.sh or ./demos/demo-canary.sh)\n'
 printf 'to make the products and their calls appear.\n'

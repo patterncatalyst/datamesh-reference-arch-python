@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# smoke-keda-http.sh — demonstrate AND verify HTTP request autoscaling of the
+# demo-keda-http.sh — demonstrate AND verify HTTP request autoscaling of the
 # graphql-gateway via the KEDA HTTP add-on (r26b, CAP-025).
 #
 # The other half of "elastic data products": a synchronous service should run
@@ -15,7 +15,7 @@
 # header matching the HTTPScaledObject.
 #
 # Leaves resources in place on failure + dumps diagnostics. Idempotent.
-# Run from examples/lgtm-datamesh/:  ./demos/smoke-keda-http.sh
+# Run from examples/lgtm-datamesh/:  ./demos/demo-keda-http.sh
 
 set -uo pipefail
 export MINIKUBE_ROOTLESS=true

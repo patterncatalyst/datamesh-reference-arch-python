@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# smoke-notifications.sh — verify notification-service's real `notifications`
+# demo-notifications.sh — verify notification-service's real `notifications`
 # table: the Alembic migration runs (init container), consumed events are
 # persisted, and they SURVIVE A RESTART (the durability the in-memory list
 # never had).
@@ -16,7 +16,7 @@
 #       notification → deploy → place order → assert persisted → restart
 #       notification → assert still present → cleanup on success.
 #
-# Usage:  ./demos/smoke-notifications.sh [--purge-db]
+# Usage:  ./demos/demo-notifications.sh [--purge-db]
 
 set -uo pipefail
 export MINIKUBE_ROOTLESS=true   # CAP-010

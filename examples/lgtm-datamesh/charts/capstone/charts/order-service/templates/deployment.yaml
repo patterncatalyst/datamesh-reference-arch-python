@@ -16,7 +16,7 @@ spec:
       # v1 pods, leaving the v2 overlay Deployment to own version=v2. NOTE:
       # selector is an immutable field — enabling the canary on an already-
       # deployed v1 requires deleting the old Deployment once before
-      # `helm upgrade` recreates it (smoke-canary.sh detects + instructs).
+      # `helm upgrade` recreates it (demo-canary-verify.sh detects + instructs).
       version: v1
   template:
     metadata:

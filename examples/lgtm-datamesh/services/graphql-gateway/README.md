@@ -21,4 +21,4 @@ helm upgrade --install graphql-gateway charts/capstone/charts/graphql-gateway -n
 ```
 
 Then open `/graphql` in a browser for the GraphiQL UI, or run
-`./demos/smoke-graphql.sh`.
+`./demos/demo-graphql.sh`.

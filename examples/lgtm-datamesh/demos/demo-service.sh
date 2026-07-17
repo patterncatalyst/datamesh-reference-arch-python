@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# smoke-service.sh — build, deploy, and verify the health surface of a
-# scaffolded capstone service (r22). Generic counterpart to smoke-order.sh
+# demo-service.sh — build, deploy, and verify the health surface of a
+# scaffolded capstone service (r22). Generic counterpart to demo-order.sh
 # (which also asserts order-service's domain endpoints).
 #
 # What it does:
@@ -13,13 +13,13 @@
 #      leave it running and dump diagnostics
 #
 # Usage:
-#   ./demos/smoke-service.sh <name>            e.g. ./demos/smoke-service.sh inventory
-#   ./demos/smoke-service.sh <name> --purge-db   also tears down Postgres at the end
+#   ./demos/demo-service.sh <name>            e.g. ./demos/demo-service.sh inventory
+#   ./demos/demo-service.sh <name> --purge-db   also tears down Postgres at the end
 
 set -uo pipefail   # NOT -e: we manage failures explicitly so we can diagnose
 export MINIKUBE_ROOTLESS=true   # CAP-010: mandatory for rootless-podman host ops
 
-BASE="${1:?usage: smoke-service.sh <name> [--purge-db]}"
+BASE="${1:?usage: demo-service.sh <name> [--purge-db]}"
 SERVICE="${BASE}-service"
 PURGE_DB=0
 [[ "${2:-}" == "--purge-db" ]] && PURGE_DB=1

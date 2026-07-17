@@ -1,0 +1,233 @@
+---
+layout: default
+title: Setup & prerequisites
+description: Everything you need to run the data-mesh reference — hardware, OS tuning, tooling, bootstrap, and verification.
+permalink: /setup/
+---
+
+<section class="hero hero--compact">
+    <div class="container">
+        <span class="hero__eyebrow">Setup &amp; prerequisites</span>
+        <h1>Running the reference, start to finish.</h1>
+        <p class="hero__lead">
+            From a bare Fedora workstation to a fully running data mesh —
+            kernel tuning, tooling, and a single bootstrap command that
+            brings up the entire stack: Istio, Kafka, Postgres,
+            OpenMetadata, observability, and every domain service.
+        </p>
+    </div>
+</section>
+
+<!-- ───────── Hardware & OS ───────── -->
+
+<section class="section">
+    <div class="container" style="max-width: 42rem;">
+        <h2 class="section-heading">Verified configuration</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Requirement</th>
+                    <th>Minimum</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>OS</td>
+                    <td>Fedora 44</td>
+                    <td>Rootless podman as container runtime</td>
+                </tr>
+                <tr>
+                    <td>RAM</td>
+                    <td>64 GB total</td>
+                    <td>24 GB allocated to minikube profile; rest is host headroom</td>
+                </tr>
+                <tr>
+                    <td>Disk</td>
+                    <td>1 TB</td>
+                    <td>30 GB free minimum for image cache + PVs</td>
+                </tr>
+                <tr>
+                    <td>CPU</td>
+                    <td>16 vCPU recommended</td>
+                    <td>Not strictly required but the stack is heavy</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ───────── Kernel & container tuning ───────── -->
+
+<section class="section-tight">
+    <div class="container" style="max-width: 42rem;">
+        <h2 class="section-heading">Kernel &amp; container tuning</h2>
+
+        <h3>Legacy iptables modules</h3>
+        <p>
+            Fedora is nftables-only; the rootless minikube node can't
+            modprobe itself. Without these modules CNI portmap fails.
+        </p>
+<pre><code>sudo sh -c 'printf "ip_tables\niptable_nat\nip6_tables\n" \
+    &gt; /etc/modules-load.d/99-kubernetes-iptables.conf'
+sudo systemctl restart systemd-modules-load</code></pre>
+
+        <h3>inotify limits</h3>
+        <p>
+            The capstone runs many controllers; Fedora's default 128
+            instances is not enough.
+        </p>
+<pre><code>sudo sh -c 'printf "fs.inotify.max_user_instances = 512\nfs.inotify.max_user_watches = 524288\n" \
+    &gt; /etc/sysctl.d/99-kubernetes.conf'
+sudo sysctl -p /etc/sysctl.d/99-kubernetes.conf</code></pre>
+
+        <h3>Podman pids_limit</h3>
+        <p>
+            The fully-meshed stack runs ~2000+ tasks; Fedora's default 2048
+            saturates. Set this before creating the minikube profile.
+        </p>
+<pre><code>mkdir -p ~/.config/containers
+printf '[containers]\npids_limit = 0\n' &gt;&gt; ~/.config/containers/containers.conf</code></pre>
+    </div>
+</section>
+
+<!-- ───────── Required tooling ───────── -->
+
+<section class="section">
+    <div class="container" style="max-width: 42rem;">
+        <h2 class="section-heading">Required tooling</h2>
+
+        <ul>
+            <li>
+                <strong>minikube</strong> &gt;= 1.36 &mdash; 1.35's registry
+                addon pins a <code>kube-registry-proxy</code> image digest
+                that no longer exists on gcr.io
+            </li>
+            <li><strong>kubectl</strong></li>
+            <li><strong>helm</strong></li>
+            <li>
+                <strong>istioctl</strong> &mdash; with the full Istio
+                distribution (not just the binary;
+                <code>setup-kiali.sh</code> applies
+                <code>samples/addons/kiali.yaml</code> from it)
+            </li>
+        </ul>
+
+        <h3>Installing the Istio distribution</h3>
+<pre><code>curl -fsSL https://github.com/istio/istio/releases/download/1.26.2/istio-1.26.2-linux-amd64.tar.gz \
+    | tar xz -C ~/.local/share
+ln -sfn ~/.local/share/istio-1.26.2 ~/.local/share/istio-current
+cp ~/.local/share/istio-current/bin/istioctl ~/.local/bin/</code></pre>
+    </div>
+</section>
+
+<!-- ───────── Bootstrap ───────── -->
+
+<section class="section-tight">
+    <div class="container" style="max-width: 42rem;">
+        <h2 class="section-heading">Bootstrap</h2>
+
+        <h3>Bring the whole system up</h3>
+<pre><code>cd examples/lgtm-datamesh
+./scripts/bootstrap-capstone.sh</code></pre>
+        <p>
+            Bootstrap runs 10 tiers: minikube profile + registry, Istio,
+            CloudNativePG operator, Postgres cluster, Kafka (Strimzi),
+            KEDA + HTTP add-on, OpenMetadata + observability, all services +
+            scalers + seed data, Kiali, and catalog ingestion + lineage.
+        </p>
+
+        <h3>Restore baseline after running demos</h3>
+<pre><code>./scripts/restore-baseline.sh</code></pre>
+        <p>
+            The demo scripts clean up their own releases on success. After
+            running several, shared services may be missing.
+            <code>restore-baseline.sh</code> puts the workloads back in
+            their bootstrap state.
+        </p>
+    </div>
+</section>
+
+<!-- ───────── Verifying the stack ───────── -->
+
+<section class="section">
+    <div class="container" style="max-width: 42rem;">
+        <h2 class="section-heading">Verifying the stack</h2>
+
+        <h3>Cluster status</h3>
+<pre><code>./scripts/cluster-status.sh</code></pre>
+
+        <h3>Quick verification demos</h3>
+        <ol>
+            <li>
+                <code>./demos/demo-order.sh</code> &mdash; creates an order
+                via REST, confirms it in Postgres
+            </li>
+            <li>
+                <code>./demos/demo-service.sh inventory</code> &mdash;
+                builds, deploys, and health-checks a service
+            </li>
+            <li>
+                <code>./demos/demo-observability.sh</code> &mdash; verifies
+                Prometheus is scraping and Grafana is provisioned
+            </li>
+        </ol>
+    </div>
+</section>
+
+<!-- ───────── Observability URLs ───────── -->
+
+<section class="section-tight">
+    <div class="container" style="max-width: 42rem;">
+        <h2 class="section-heading">Accessing the observability tools</h2>
+        <p>
+            The tools run inside the cluster. Port-forward to reach them
+            from the host &mdash; Fedora ships Cockpit on port 9090, so
+            Prometheus uses an alternate local port.
+        </p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Tool</th>
+                    <th>Port-forward command</th>
+                    <th>Local URL</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Grafana</td>
+                    <td><code>kubectl port-forward -n capstone svc/grafana 3000:80</code></td>
+                    <td><code>http://localhost:3000</code></td>
+                </tr>
+                <tr>
+                    <td>Prometheus</td>
+                    <td><code>kubectl port-forward -n capstone svc/prometheus-server 9091:80</code></td>
+                    <td><code>http://localhost:9091</code></td>
+                </tr>
+                <tr>
+                    <td>Kiali</td>
+                    <td><code>kubectl port-forward -n istio-system svc/kiali 20001:20001</code></td>
+                    <td><code>http://localhost:20001/kiali</code></td>
+                </tr>
+                <tr>
+                    <td>Tempo (via Grafana)</td>
+                    <td>&mdash; (use Grafana &rarr; Explore &rarr; Tempo datasource)</td>
+                    <td>&mdash;</td>
+                </tr>
+                <tr>
+                    <td>OpenMetadata</td>
+                    <td><code>kubectl port-forward -n capstone svc/openmetadata 8585:8585</code></td>
+                    <td><code>http://localhost:8585</code></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p>
+            Grafana default credentials are <code>admin</code> / the value
+            from
+            <code>kubectl get secret grafana -n capstone -o jsonpath='{.data.admin-password}' | base64 -d</code>.
+        </p>
+    </div>
+</section>

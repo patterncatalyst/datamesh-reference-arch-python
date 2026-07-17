@@ -2,7 +2,7 @@
 #
 # walkthrough.sh — the capstone's replayable presenter walkthrough (Phase E).
 #
-# Five acts, each shelling out to an existing demo/smoke script with narration
+# Five acts, each shelling out to an existing demo script with narration
 # between them. Presenter-driven: Enter to advance between acts so you control
 # the tempo and can answer questions in the gaps. Maps one-for-one to the deck's
 # "What you can see it do" slide:
@@ -18,13 +18,12 @@
 # act's own diagnostics — the walkthrough stops there so you can investigate
 # (resources left in place; the underlying demos are designed for that).
 #
-# Note on Act 1 (CAP-046, June 2026): KEDA HTTP v0.14.0's interceptor has an
-# upstream Go panic on POST forwarding (filed at kedacore/http-add-on#1668),
-# and v0.12.2's interceptor has cold-start race issues with the gateway. While
-# that's pending upstream resolution, the trace act here port-forwards directly
-# to the graphql-gateway Service — the trace itself (HTTP server → REST client
-# → gRPC client across three products) is unchanged; only the entry path is.
-# The HTTP-add-on demo path returns once the upstream fix releases.
+# Note on Act 1 (CAP-046, updated July 2026): the Go panic on POST forwarding
+# (kedacore/http-add-on#1668) that blocked the interceptor path in v0.12.2 and
+# v0.14.0 was fixed upstream. The KEDA HTTP add-on is now at v0.15.0
+# (setup-keda.sh). The trace act still port-forwards directly to the
+# graphql-gateway Service for simplicity — the interceptor path is available
+# via demo-keda-http.sh and can be substituted here once verified on-cluster.
 #
 # Usage:
 #   ./demos/walkthrough.sh                     # run all five acts
@@ -311,7 +310,7 @@ trace_act() {
 
     # wait for the port-forward to bind (probe with a cheap connect; up to ~10s).
     # any response — including 404 — means the port-forward is alive; we use the
-    # same pattern as smoke-trace-flow.sh (no -f, just check that curl connects).
+    # same pattern as demo-trace-flow.sh (no -f, just check that curl connects).
     local ready=0
     for _ in 1 2 3 4 5 6 7 8 9 10; do
         if curl -s -o /dev/null --max-time 2 http://127.0.0.1:8080/ 2>/dev/null; then
@@ -395,9 +394,9 @@ if want_act scale; then
     narrate "at rest, notification-service is at zero replicas — it costs nothing"
     narrate "we publish a burst on order-placed; lag rises; KEDA wakes replicas"
     narrate "as the backlog drains, KEDA scales it back down to zero"
-    info "underlying script: demos/smoke-keda-kafka.sh"
+    info "underlying script: demos/demo-keda-kafka.sh"
     prompt_enter "press Enter to run"
-    run_act "scale" ./demos/smoke-keda-kafka.sh || exit 1
+    run_act "scale" ./demos/demo-keda-kafka.sh || exit 1
     narrate "the lesson: scale on the work WAITING, not the work being done"
     narrate "a consumer pegged at 0% CPU with a 10k backlog needs to scale UP — lag sees that, CPU can't"
 fi
@@ -433,9 +432,9 @@ if want_act lineage; then
       "A mesh's whole premise is consumers finding products without a broker. The catalog answers which products exist, who owns them, who consumes whom, and where data came from."
     narrate "we don't run ingestion here — we verify the lineage that was declared"
     narrate "the spine: orders (Postgres) → order-placed topic (Kafka) → notification consumer"
-    info "underlying script: demos/smoke-om-lineage.sh"
+    info "underlying script: demos/demo-om-lineage.sh"
     prompt_enter "press Enter to verify the lineage"
-    run_act "lineage" ./demos/smoke-om-lineage.sh || exit 1
+    run_act "lineage" ./demos/demo-om-lineage.sh || exit 1
     narrate "what to show in the UI: OpenMetadata → orders table → Lineage tab"
     narrate "the graph runs operational → event → consumer — across three products"
 fi
@@ -446,9 +445,9 @@ if want_act topology; then
     act_header "topology" "Live mesh topology in Kiali" \
       "Kiali's traffic graph is the live view of the mesh: products, the edges between them, and — if the canary is up — the split rendered as parallel paths."
     narrate "first, confirm Kiali itself is healthy and sees the capstone namespace"
-    info "underlying script: demos/smoke-kiali.sh"
+    info "underlying script: demos/demo-kiali.sh"
     prompt_enter "press Enter to verify Kiali"
-    run_act "topology (smoke)" ./demos/smoke-kiali.sh || exit 1
+    run_act "topology (smoke)" ./demos/demo-kiali.sh || exit 1
 
     narrate "now opening a port-forward to Kiali for you to show in the browser"
     info "  http://localhost:20001/kiali   (Graph → namespace: capstone)"
@@ -466,7 +465,7 @@ if want_act topology; then
     done
 
     narrate "to make EDGES appear in the graph, generate some traffic:"
-    info "  in another shell:  for i in {1..40}; do ./demos/smoke-trace-flow.sh >/dev/null; done"
+    info "  in another shell:  for i in {1..40}; do ./demos/demo-trace-flow.sh >/dev/null; done"
     info "  or re-run a canary act (./demos/demo-canary.sh up 90 10) and watch the split appear"
     narrate "Kiali draws the picture; the mesh and Prometheus did the measuring"
 fi
