@@ -141,20 +141,14 @@ run_act() {
 }
 
 # ─── Cleanup ─────────────────────────────────────────────────────────────────
-# Two acts start background port-forwards: trace (to graphql-gateway, while the
-# query is in flight) and topology (to Kiali, kept open through the discussion).
-# Tear them down on exit no matter how we got there (Ctrl-C, normal exit,
-# failure).
-KIALI_PF=""
+# The trace act starts a temporary port-forward to graphql-gateway; tear it
+# down on exit. Persistent UI forwards (Grafana, Kiali, etc.) are managed
+# by port-forward-ui.sh and survive this script.
 TRACE_PF=""
 cleanup() {
     if [[ -n "$TRACE_PF" ]] && kill -0 "$TRACE_PF" 2>/dev/null; then
         printf '\n%s  cleaning up trace port-forward (pid %s)%s\n' "$DIM" "$TRACE_PF" "$RST"
         kill "$TRACE_PF" 2>/dev/null || true
-    fi
-    if [[ -n "$KIALI_PF" ]] && kill -0 "$KIALI_PF" 2>/dev/null; then
-        printf '\n%s  cleaning up Kiali port-forward (pid %s)%s\n' "$DIM" "$KIALI_PF" "$RST"
-        kill "$KIALI_PF" 2>/dev/null || true
     fi
 }
 trap cleanup EXIT
@@ -275,6 +269,11 @@ ${BOLD}${BLU}╔═════════════════════�
 INTRO
 
 (( PREFLIGHT == 1 )) && preflight
+
+# Start persistent UI port-forwards (Grafana, Prometheus, Kiali, OpenMetadata)
+# so the dashboards are available throughout the walkthrough.
+./scripts/port-forward-ui.sh
+
 prompt_enter "press Enter to start"
 
 # ─── ACT 1 · TRACE ───────────────────────────────────────────────────────────
@@ -402,6 +401,16 @@ if want_act scale; then
 fi
 
 # ─── ACT 3 · CANARY ──────────────────────────────────────────────────────────
+# Guard: ensure order-service v1 is deployed — earlier demos (demo-order.sh,
+# demo-discovery.sh) uninstall it on success (CAP-008), and the canary act
+# needs it as the v1 baseline.
+if want_act canary; then
+    if ! kubectl get deployment order-service -n "$NS" >/dev/null 2>&1; then
+        info "order-service not deployed — restoring for canary act"
+        helm upgrade --install order-service charts/capstone/charts/order-service -n "$NS" >/dev/null
+        kubectl rollout status deploy/order-service -n "$NS" --timeout=120s >/dev/null
+    fi
+fi
 
 if want_act canary; then
     act_header "canary" "Canary a contract — v1 → v2, by weight" \
@@ -449,20 +458,8 @@ if want_act topology; then
     prompt_enter "press Enter to verify Kiali"
     run_act "topology (smoke)" ./demos/demo-kiali.sh || exit 1
 
-    narrate "now opening a port-forward to Kiali for you to show in the browser"
+    narrate "Kiali is already port-forwarded (port-forward-ui.sh)"
     info "  http://localhost:20001/kiali   (Graph → namespace: capstone)"
-    info "  the port-forward stays open until this script exits (Ctrl-C or end of walkthrough)"
-    # background port-forward; cleanup trap kills it on any exit
-    kubectl port-forward -n "$ISTIO_SYSTEM" svc/kiali 20001:20001 >/dev/null 2>&1 &
-    KIALI_PF=$!
-    # give it a couple seconds to bind, then probe
-    for _ in 1 2 3 4 5 6 7 8 9 10; do
-        if curl -fsS http://127.0.0.1:20001/kiali/healthz >/dev/null 2>&1; then
-            printf '%s    ✓ Kiali port-forward live at http://localhost:20001/kiali%s\n' "$GRN" "$RST"
-            break
-        fi
-        sleep 1
-    done
 
     narrate "to make EDGES appear in the graph, generate some traffic:"
     info "  in another shell:  for i in {1..40}; do ./demos/demo-trace-flow.sh >/dev/null; done"
@@ -476,8 +473,5 @@ printf '\n%s%s══════════════════════
 printf '%s%s  walkthrough complete  ·  %d / %d acts run%s\n' "$BOLD" "$GRN" "$ACT_NUM" "$ACT_TOTAL" "$RST"
 printf '%s%s═══════════════════════════════════════════════════════════════════════%s\n\n' "$BOLD" "$GRN" "$RST"
 
-if want_act topology && [[ -n "$KIALI_PF" ]] && kill -0 "$KIALI_PF" 2>/dev/null; then
-    printf '%s  Kiali port-forward is still up (pid %s) — http://localhost:20001/kiali%s\n' "$DIM" "$KIALI_PF" "$RST"
-    printf '%s  press Enter to tear it down and exit, or Ctrl-C to keep the script alive until you do%s\n\n' "$DIM" "$RST"
-    prompt_enter "press Enter to exit"
-fi
+printf '%s  UI port-forwards remain active (Grafana :3000, Prometheus :9091, Kiali :20001, OpenMetadata :8585)%s\n' "$DIM" "$RST"
+printf '%s  stop them with: ./scripts/port-forward-ui.sh --stop%s\n' "$DIM" "$RST"
