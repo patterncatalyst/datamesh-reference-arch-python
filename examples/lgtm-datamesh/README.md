@@ -203,20 +203,30 @@ kubectl context set to `capstone`.
 
 ### Observing the results
 
-The observability tools run inside the cluster. Port-forward to reach
-them from the host. Fedora ships Cockpit on port 9090, so Prometheus
-uses an alternate local port.
+Bootstrap and the walkthrough automatically start port-forwards for the
+four UI services via `scripts/port-forward-ui.sh`. They survive script
+exit and stay up until you stop them.
 
-| Tool | Port-forward command | Local URL |
-|------|---------------------|-----------|
-| Grafana | `kubectl port-forward -n capstone svc/grafana 3000:80` | `http://localhost:3000` |
-| Prometheus | `kubectl port-forward -n capstone svc/prometheus-server 9091:80` | `http://localhost:9091` |
-| Kiali | `kubectl port-forward -n istio-system svc/kiali 20001:20001` | `http://localhost:20001/kiali` |
-| Tempo | (via Grafana → Explore → Tempo datasource) | — |
-| OpenMetadata | `kubectl port-forward -n capstone svc/openmetadata 8585:8585` | `http://localhost:8585` |
+| Tool | Local URL | Notes |
+|------|-----------|-------|
+| Grafana | `http://localhost:3000` | |
+| Prometheus | `http://localhost:9091` | Port 9091 avoids Fedora Cockpit on 9090 |
+| Kiali | `http://localhost:20001/kiali` | |
+| Tempo | (via Grafana → Explore → Tempo datasource) | No direct forward needed |
+| OpenMetadata | `http://localhost:8585` | |
 
-Grafana default credentials: `admin` / the value from
-`kubectl get secret grafana -n capstone -o jsonpath='{.data.admin-password}' | base64 -d`.
+```bash
+./scripts/port-forward-ui.sh --status   # check which forwards are alive
+./scripts/port-forward-ui.sh --stop     # tear them all down
+./scripts/port-forward-ui.sh            # restart them
+```
+
+Default credentials:
+
+| Tool | User | Password |
+|------|------|----------|
+| Grafana | `admin` | `capstone` |
+| OpenMetadata | `admin@open-metadata.org` | `admin` |
 
 ## Restoring baseline
 
