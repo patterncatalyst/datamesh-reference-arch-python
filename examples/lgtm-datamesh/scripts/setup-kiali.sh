@@ -143,15 +143,20 @@ kubectl rollout restart deployment/kiali -n "$ISTIO_SYSTEM"
 
 # ─── 3. Wait for Kiali to be Ready ───────────────────────────────────────────
 
+step "Patching Kiali Service to NodePort (stable access via SSH tunnel)"
+kubectl patch svc kiali -n "$ISTIO_SYSTEM" \
+    --type merge -p '{"spec":{"type":"NodePort","ports":[{"name":"http","port":20001,"targetPort":20001,"nodePort":30201,"protocol":"TCP"}]}}' \
+    2>/dev/null || true
+
 step "Waiting for the Kiali deployment to be Ready"
 kubectl rollout status deployment/kiali -n "$ISTIO_SYSTEM" --timeout=5m
 
 # ─── Done ────────────────────────────────────────────────────────────────────
 
 step "Kiali is installed and wired to the capstone observability stack."
-printf '\nView the mesh topology:\n'
-printf '  kubectl port-forward -n %s svc/kiali 20001:20001\n' "$ISTIO_SYSTEM"
-printf '  open http://localhost:20001/kiali   (Graph → namespace: capstone)\n'
+printf '\nView the mesh topology (SSH tunnels provide stable access):\n'
+printf '  ./scripts/tunnel-services.sh          # start tunnels if not already running\n'
+printf '  open http://localhost:20001/kiali      (Graph → namespace: capstone)\n'
 printf '\nVerify:\n'
 printf '  ./demos/demo-kiali.sh\n'
 printf '\nNote: the live traffic graph only shows edges while traffic is flowing —\n'

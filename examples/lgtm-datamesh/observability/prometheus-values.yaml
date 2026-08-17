@@ -11,6 +11,9 @@
 server:
   # 24h is plenty to watch a scaling demo; we are not keeping history.
   retention: 24h
+  service:
+    type: NodePort
+    nodePort: 30091
   global:
     scrape_interval: 30s
     scrape_timeout: 10s

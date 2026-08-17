@@ -5,8 +5,8 @@
 # near-zero oscillation the HTTP add-on shows on a single node).
 #
 # Reach it after install with:
-#   kubectl port-forward -n observability svc/grafana 3000:80
-#   open http://localhost:3000  (admin / capstone)
+#   ./scripts/tunnel-services.sh   # starts SSH tunnel to NodePort 30300
+#   open http://localhost:3000     (admin / capstone)
 #
 # A Tempo datasource for traces is added in r29b.
 
@@ -27,7 +27,8 @@ resources:
     memory: 512Mi
 
 service:
-  type: ClusterIP                 # access via port-forward (no ingress dependency)
+  type: NodePort
+  nodePort: 30300
 
 # Pin the datasource UID so the provisioned dashboard can reference it
 # deterministically (auto-assigned UIDs would break the panel datasource refs).

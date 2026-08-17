@@ -119,14 +119,14 @@ The profile setup script checks both of these and prints the same fixes.
 | minikube | **1.36** | 1.35's registry addon pins a `kube-registry-proxy` image digest that no longer exists on gcr.io |
 | kubectl | (any recent) | |
 | helm | 3.x | |
-| istioctl | 1.26.x | needs the full Istio distribution, not just the binary — `setup-kiali.sh` applies `samples/addons/kiali.yaml` from it |
+| istioctl | 1.29.x | needs the full Istio distribution, not just the binary — `setup-kiali.sh` applies `samples/addons/kiali.yaml` from it |
 
 **Installing the Istio distribution:**
 
 ```bash
-curl -fsSL https://github.com/istio/istio/releases/download/1.26.2/istio-1.26.2-linux-amd64.tar.gz \
+curl -fsSL https://github.com/istio/istio/releases/download/1.29.2/istio-1.29.2-linux-amd64.tar.gz \
     | tar xz -C ~/.local/share
-ln -sfn ~/.local/share/istio-1.26.2 ~/.local/share/istio-current
+ln -sfn ~/.local/share/istio-1.29.2 ~/.local/share/istio-current
 cp ~/.local/share/istio-current/bin/istioctl ~/.local/bin/
 ```
 
@@ -203,22 +203,23 @@ kubectl context set to `capstone`.
 
 ### Observing the results
 
-Bootstrap and the walkthrough automatically start port-forwards for the
-four UI services via `scripts/port-forward-ui.sh`. They survive script
-exit and stay up until you stop them.
+Bootstrap and the walkthrough automatically start SSH tunnels to
+NodePort services via `scripts/tunnel-services.sh`. They survive script
+exit and stay up until you stop them — no more port-forward drops under
+load or idle timeouts.
 
 | Tool | Local URL | Notes |
 |------|-----------|-------|
 | Grafana | `http://localhost:3000` | |
 | Prometheus | `http://localhost:9091` | Port 9091 avoids Fedora Cockpit on 9090 |
+| Tempo | `http://localhost:3200` | Trace query API; also accessible via Grafana Explore |
 | Kiali | `http://localhost:20001/kiali` | |
-| Tempo | (via Grafana → Explore → Tempo datasource) | No direct forward needed |
 | OpenMetadata | `http://localhost:8585` | |
 
 ```bash
-./scripts/port-forward-ui.sh --status   # check which forwards are alive
-./scripts/port-forward-ui.sh --stop     # tear them all down
-./scripts/port-forward-ui.sh            # restart them
+./scripts/tunnel-services.sh --status   # check which tunnels are alive
+./scripts/tunnel-services.sh --stop     # tear them all down
+./scripts/tunnel-services.sh            # restart them
 ```
 
 Default credentials:

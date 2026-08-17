@@ -64,6 +64,12 @@ helm upgrade --install tempo grafana-community/tempo \
     -f "$OBS_DIR/tempo-values.yaml" \
     --wait
 
+# Pin Tempo's query port (3200) to a fixed NodePort for stable SSH tunnels.
+printf '==> Pinning Tempo query port nodePort to 30320\n'
+kubectl patch svc tempo -n "$NAMESPACE" --type='json' \
+    -p '[{"op":"replace","path":"/spec/ports/2/nodePort","value":30320}]' \
+    2>/dev/null || true
+
 # ─── 4. Grafana ──────────────────────────────────────────────────────────────
 printf '==> Installing Grafana into namespace %s\n' "$NAMESPACE"
 helm upgrade --install grafana grafana-community/grafana \
@@ -73,11 +79,10 @@ helm upgrade --install grafana grafana-community/grafana \
 
 # ─── Done ────────────────────────────────────────────────────────────────────
 printf '\n==> Prometheus + Grafana installed in the %s namespace.\n\n' "$NAMESPACE"
-printf 'Open Grafana and find the "Capstone — Scaling & Traffic" dashboard:\n'
-printf '  kubectl port-forward -n %s svc/grafana 3000:80    # http://localhost:3000\n\n' "$NAMESPACE"
-# The grafana chart preserves an existing admin password on upgrade (it looks up
-# the secret), so the password is NOT reliably "capstone" if a grafana secret
-# already existed. Read the truth from the secret rather than assuming.
+printf 'Services exposed as NodePort — start SSH tunnels with:\n'
+printf '  ./scripts/tunnel-services.sh\n\n'
+printf 'Then open Grafana and find the "Capstone — Scaling & Traffic" dashboard:\n'
+printf '  http://localhost:3000\n\n'
 printf 'Login (read the real credentials from the secret — the chart keeps an existing\n'
 printf 'password on upgrade, so do not assume it is the values default):\n'
 printf '  user: $(kubectl get secret grafana -n %s -o jsonpath="{.data.admin-user}" | base64 -d)\n' "$NAMESPACE"
