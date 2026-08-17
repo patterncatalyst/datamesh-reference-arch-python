@@ -34,6 +34,13 @@ kafka:
 apicurio:
   url: http://apicurio:8080
 
+tracing:
+  enabled: true
+  otlpEndpoint: http://tempo.observability.svc.cluster.local:4318
+  otlpProtocol: http/protobuf
+  serviceName: notification-service
+  sampleRatio: "1.0"
+
 resources:
   requests:
     cpu: 100m

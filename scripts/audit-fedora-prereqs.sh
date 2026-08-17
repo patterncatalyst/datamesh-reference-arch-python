@@ -138,8 +138,8 @@ else
     echo "  STATUS: ⚠ ${ISTIO_CURRENT}/samples/addons/kiali.yaml not found —"
     echo "          bootstrap tier 9 (Kiali) will fail. Fix:"
     echo ""
-    echo "          curl -fsSL https://github.com/istio/istio/releases/download/1.26.2/istio-1.26.2-linux-amd64.tar.gz | tar xz -C ~/.local/share"
-    echo "          ln -sfn ~/.local/share/istio-1.26.2 ~/.local/share/istio-current"
+    echo "          curl -fsSL https://github.com/istio/istio/releases/download/1.29.2/istio-1.29.2-linux-amd64.tar.gz | tar xz -C ~/.local/share"
+    echo "          ln -sfn ~/.local/share/istio-1.29.2 ~/.local/share/istio-current"
 fi
 
 section "minikube minimum version (1.35's registry addon pins a dead image digest)"

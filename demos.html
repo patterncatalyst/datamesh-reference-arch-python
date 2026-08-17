@@ -346,26 +346,29 @@ permalink: /demos/
 ./demos/demo-order.sh</code></pre>
 
         <h3>What to look at after running a demo</h3>
+        <p>
+            Bootstrap starts SSH tunnels to all UI services automatically
+            via <code>tunnel-services.sh</code>. The URLs below are
+            available as soon as the stack is up:
+        </p>
         <ul>
             <li>
                 <strong>Grafana</strong> — dashboards for request rate,
-                canary weight, KEDA replicas:<br>
-                <code>kubectl port-forward -n capstone svc/grafana 3000:80</code>
-                &rarr; <code>http://localhost:3000</code>
+                canary weight, KEDA replicas:
+                <code>http://localhost:3000</code>
             </li>
             <li>
-                <strong>Kiali</strong> — live mesh topology graph:<br>
-                <code>kubectl port-forward -n istio-system svc/kiali 20001:20001</code>
-                &rarr; <code>http://localhost:20001/kiali</code>
+                <strong>Kiali</strong> — live mesh topology graph:
+                <code>http://localhost:20001/kiali</code>
             </li>
             <li>
                 <strong>Tempo</strong> — distributed traces: open Grafana
                 &rarr; Explore &rarr; select the Tempo datasource
+                (or direct: <code>http://localhost:3200</code>)
             </li>
             <li>
-                <strong>OpenMetadata</strong> — catalog and lineage:<br>
-                <code>kubectl port-forward -n capstone svc/openmetadata 8585:8585</code>
-                &rarr; <code>http://localhost:8585</code>
+                <strong>OpenMetadata</strong> — catalog and lineage:
+                <code>http://localhost:8585</code>
             </li>
         </ul>
 

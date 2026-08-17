@@ -159,8 +159,8 @@ ok "catalog populated and lineage declared"
 step "Cluster status"
 bash ./scripts/cluster-status.sh || true
 
-step "UI port-forwards (Grafana, Prometheus, Kiali, OpenMetadata)"
-./scripts/port-forward-ui.sh
+step "UI SSH tunnels (Grafana, Prometheus, Tempo, Kiali, OpenMetadata)"
+./scripts/tunnel-services.sh
 
 step "Bring-up complete — the cluster is walkthrough-ready."
 cat <<EOF
@@ -172,7 +172,7 @@ cat <<EOF
     #   Prometheus     http://localhost:9091
     #   Kiali          http://localhost:20001/kiali
     #   OpenMetadata   http://localhost:8585
-    #   Stop them:     ./scripts/port-forward-ui.sh --stop
+    #   Stop them:     ./scripts/tunnel-services.sh --stop
 
     # Other things you can do from here:
     ./demos/demo-discovery.sh             # publish OpenAPI/proto/SDL to Apicurio

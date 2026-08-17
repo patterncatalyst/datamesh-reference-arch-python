@@ -154,17 +154,22 @@ helm upgrade --install openmetadata open-metadata/openmetadata \
     --values "$APP_VALUES" \
     --wait --timeout 10m
 
+printf '==> Pinning OpenMetadata Service nodePort to 30585\n'
+kubectl patch svc openmetadata -n "$NS" \
+    --type merge -p '{"spec":{"ports":[{"name":"http","port":8585,"targetPort":8585,"nodePort":30585,"protocol":"TCP"}]}}' \
+    2>/dev/null || true
+
 printf '==> Waiting for the OpenMetadata server rollout\n'
 kubectl rollout status deployment/openmetadata -n "$NS" --timeout=10m
 
 # ─── Done ────────────────────────────────────────────────────────────────────
 
 printf '\n'
-printf '==> OpenMetadata is up.\n'
+printf '==> OpenMetadata is up (NodePort 30585).\n'
 printf '\n'
-printf 'Reach the UI:\n'
-printf '  kubectl port-forward -n %s svc/openmetadata 8585:8585\n' "$NS"
-printf '  open http://127.0.0.1:8585   (login: admin@open-metadata.org / admin)\n'
+printf 'Reach the UI (SSH tunnels provide stable access):\n'
+printf '  ./scripts/tunnel-services.sh          # start tunnels if not already running\n'
+printf '  open http://localhost:8585             (login: admin@open-metadata.org / admin)\n'
 printf '\n'
 printf 'Verify end-to-end:\n'
 printf '  ./demos/demo-openmetadata.sh\n'

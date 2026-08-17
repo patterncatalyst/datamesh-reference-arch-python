@@ -67,6 +67,10 @@ openmetadata:
       # switch this to "sslmode=prefer" (negotiate TLS, fall back to plaintext).
       dbParams: "sslmode=require"
 
+service:
+  type: NodePort
+  port: 8585
+
 # Modest resources for a single-node demo (chart default is `resources: {}`,
 # i.e. unbounded — give the JVM a sane envelope instead).
 resources:

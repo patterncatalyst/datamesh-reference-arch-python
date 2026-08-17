@@ -35,5 +35,8 @@ tempo:
 
 # emptyDir — no StorageClass/PVC dependency. Traces vanish on restart, fine for
 # a teaching cluster.
+service:
+  type: NodePort
+
 persistence:
   enabled: false

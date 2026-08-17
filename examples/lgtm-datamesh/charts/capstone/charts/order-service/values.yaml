@@ -35,6 +35,13 @@ postgres:
   appSecret: capstone-postgres-app
   schema: orders
 
+tracing:
+  enabled: true
+  otlpEndpoint: http://tempo.observability.svc.cluster.local:4318
+  otlpProtocol: http/protobuf
+  serviceName: order-service
+  sampleRatio: "1.0"
+
 resources:
   requests:
     cpu: 100m

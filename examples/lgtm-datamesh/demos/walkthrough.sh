@@ -142,8 +142,8 @@ run_act() {
 
 # ─── Cleanup ─────────────────────────────────────────────────────────────────
 # The trace act starts a temporary port-forward to graphql-gateway; tear it
-# down on exit. Persistent UI forwards (Grafana, Kiali, etc.) are managed
-# by port-forward-ui.sh and survive this script.
+# down on exit. Persistent UI tunnels (Grafana, Kiali, etc.) are managed
+# by tunnel-services.sh and survive this script.
 TRACE_PF=""
 cleanup() {
     if [[ -n "$TRACE_PF" ]] && kill -0 "$TRACE_PF" 2>/dev/null; then
@@ -270,9 +270,9 @@ INTRO
 
 (( PREFLIGHT == 1 )) && preflight
 
-# Start persistent UI port-forwards (Grafana, Prometheus, Kiali, OpenMetadata)
-# so the dashboards are available throughout the walkthrough.
-./scripts/port-forward-ui.sh
+# Start persistent SSH tunnels to NodePort services (Grafana, Prometheus, Kiali,
+# OpenMetadata) so the dashboards are available throughout the walkthrough.
+./scripts/tunnel-services.sh
 
 prompt_enter "press Enter to start"
 
@@ -458,7 +458,7 @@ if want_act topology; then
     prompt_enter "press Enter to verify Kiali"
     run_act "topology (smoke)" ./demos/demo-kiali.sh || exit 1
 
-    narrate "Kiali is already port-forwarded (port-forward-ui.sh)"
+    narrate "Kiali is already tunneled (tunnel-services.sh)"
     info "  http://localhost:20001/kiali   (Graph → namespace: capstone)"
 
     narrate "to make EDGES appear in the graph, generate some traffic:"
@@ -473,5 +473,5 @@ printf '\n%s%s══════════════════════
 printf '%s%s  walkthrough complete  ·  %d / %d acts run%s\n' "$BOLD" "$GRN" "$ACT_NUM" "$ACT_TOTAL" "$RST"
 printf '%s%s═══════════════════════════════════════════════════════════════════════%s\n\n' "$BOLD" "$GRN" "$RST"
 
-printf '%s  UI port-forwards remain active (Grafana :3000, Prometheus :9091, Kiali :20001, OpenMetadata :8585)%s\n' "$DIM" "$RST"
-printf '%s  stop them with: ./scripts/port-forward-ui.sh --stop%s\n' "$DIM" "$RST"
+printf '%s  SSH tunnels remain active (Grafana :3000, Prometheus :9091, Tempo :3200, Kiali :20001, OpenMetadata :8585)%s\n' "$DIM" "$RST"
+printf '%s  stop them with: ./scripts/tunnel-services.sh --stop%s\n' "$DIM" "$RST"
