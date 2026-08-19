@@ -14,23 +14,17 @@
 
 set -uo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/tunnels.sh"
+
 NS="observability"
-# Local port-forward ports. NOT 9090/3000: Fedora ships Cockpit on host 9090
-# (the port-forward silently fails to bind and the queries hit Cockpit — a
-# false FAIL on the reference platform), and 3000 is a common dev-server port.
-# Override per run: PROM_PORT=9091 ./demos/demo-observability.sh
-PROM_PORT="${PROM_PORT:-19090}"
-GRAF_PORT="${GRAF_PORT:-13000}"
-PROM_PF=""
-GRAF_PF=""
+# Canonical local tunnel ports (see demos/lib/tunnels.sh). NOT 9090/3000 for the
+# node-side collision reasons documented there: Prometheus is served locally on
+# 9091, Grafana on 3000, via the stable SSH tunnels.
+PROM_PORT="$TP_PROM"
+GRAF_PORT="$TP_GRAFANA"
 
 step() { printf '\n==> %s\n' "$1"; }
-cleanup() {
-    [[ -n "$PROM_PF" ]] && kill "$PROM_PF" 2>/dev/null
-    [[ -n "$GRAF_PF" ]] && kill "$GRAF_PF" 2>/dev/null
-    true
-}
-trap cleanup EXIT
 dump() {
     step "DIAGNOSTIC DUMP (failure — resources left in place)"
     kubectl get deployment,pods -n "$NS" 2>&1
@@ -63,13 +57,9 @@ wait_ready grafana 180          || fail "grafana did not become Ready"
 printf '    ✓ prometheus-server and grafana are Ready\n'
 
 # ─── Prometheus is scraping ──────────────────────────────────────────────────
-step "Port-forwarding Prometheus ($PROM_PORT → prometheus-server:80)"
-kubectl port-forward -n "$NS" svc/prometheus-server "${PROM_PORT}:80" >/dev/null 2>&1 &
-PROM_PF=$!
-for _ in $(seq 1 15); do
-    curl -sf -o /dev/null --max-time 2 "http://127.0.0.1:${PROM_PORT}/-/ready" && break
-    sleep 1
-done
+step "Opening a tunnel to Prometheus ($PROM_PORT → prometheus-server)"
+ensure_tunnel prometheus
+wait_http "http://127.0.0.1:${PROM_PORT}/-/ready" 15 || true
 
 step "Confirming kube-state-metrics gives us capstone workload replicas"
 # kube_deployment_spec_replicas for capstone deployments proves both that
@@ -94,13 +84,9 @@ else
 fi
 
 # ─── Grafana is up with the dashboard provisioned ────────────────────────────
-step "Port-forwarding Grafana ($GRAF_PORT → grafana:80)"
-kubectl port-forward -n "$NS" svc/grafana "${GRAF_PORT}:80" >/dev/null 2>&1 &
-GRAF_PF=$!
-for _ in $(seq 1 15); do
-    curl -sf -o /dev/null --max-time 2 "http://127.0.0.1:${GRAF_PORT}/api/health" && break
-    sleep 1
-done
+step "Opening a tunnel to Grafana ($GRAF_PORT → grafana)"
+ensure_tunnel grafana
+wait_http "http://127.0.0.1:${GRAF_PORT}/api/health" 15 || true
 
 step "Checking Grafana health and the provisioned dashboard"
 health="$(curl -s --max-time 5 "http://127.0.0.1:${GRAF_PORT}/api/health" 2>/dev/null)"
@@ -118,5 +104,5 @@ printf '    ✓ Grafana healthy and the "Capstone — Scaling & Traffic" dashboa
 
 step "SUCCESS"
 printf 'Metrics stack verified. Open the dashboard and drive a demo to watch it move:\n'
-printf '  kubectl port-forward -n %s svc/grafana 3000:80\n' "$NS"
+printf '  ./scripts/tunnel-services.sh   # then open http://localhost:3000\n'
 printf '  ./demos/demo-keda-http.sh   # graphql-gateway replicas 0→1→0\n'

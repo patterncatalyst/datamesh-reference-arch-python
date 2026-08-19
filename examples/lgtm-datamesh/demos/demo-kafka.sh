@@ -20,10 +20,11 @@ export MINIKUBE_ROOTLESS=true   # CAP-010
 
 PROFILE="capstone"; NS="capstone"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
+source "${ROOT}/demos/lib/tunnels.sh"
 PG_RELEASE="capstone-postgres"; PG_CHART="charts/capstone/charts/postgres"
 KAFKA_RELEASE="capstone-kafka"; KAFKA_CHART="charts/capstone/charts/kafka"
 KAFKA_CR="capstone-kafka"
-LOCAL_ORDER=18080; LOCAL_NOTIF=18097
+LOCAL_ORDER=$TP_ORDER; LOCAL_NOTIF=$TP_NOTIF   # 8080 order-service, 8083 notification-service
 PURGE_DB=0; [[ "${1:-}" == "--purge-db" ]] && PURGE_DB=1
 
 APP_SERVICES=(inventory-service order-service notification-service)
@@ -98,13 +99,11 @@ for svc in "${APP_SERVICES[@]}"; do
 done
 
 # ── 6. place an order (emits order.placed) ────────────────────────────────────
-step "Port-forwarding order-service (${LOCAL_ORDER}) and notification-service (${LOCAL_NOTIF})"
-kubectl port-forward -n "$NS" service/order-service "${LOCAL_ORDER}:80" >/dev/null 2>&1 &
-PF_O=$!
-kubectl port-forward -n "$NS" service/notification-service "${LOCAL_NOTIF}:80" >/dev/null 2>&1 &
-PF_N=$!
-trap '[[ -n "${PF_O:-}" ]] && kill "$PF_O" 2>/dev/null; [[ -n "${PF_N:-}" ]] && kill "$PF_N" 2>/dev/null' EXIT
-sleep 3
+step "Bringing up tunnels: order-service (${LOCAL_ORDER}) and notification-service (${LOCAL_NOTIF})"
+ensure_tunnel order notification
+wait_http "http://127.0.0.1:${LOCAL_ORDER}/" 20 || true
+# notification-service is KEDA-scaled-to-zero; its tunnel has no endpoint until
+# the order.placed event below wakes it — the poll loop tolerates that.
 
 step "Placing an in-stock order (WIDGET-001 x2) via order-service REST"
 ORDER_JSON="$(curl -fsS -X POST "http://127.0.0.1:${LOCAL_ORDER}/orders" \
@@ -122,14 +121,10 @@ step "Polling notification-service /received for the order.placed event"
 # KEDA's kafka lag poll + pod start + consumer-group join must fit here.
 seen=0
 for i in $(seq 1 90); do
+    # The SSH tunnel is stable, but notification-service is KEDA-scaled-to-zero:
+    # until the order.placed event wakes it the NodePort has no endpoint and the
+    # curl fails — treat that as "not yet" and keep polling.
     if ! RECV="$(curl -fsS "http://127.0.0.1:${LOCAL_NOTIF}/received" 2>/dev/null)"; then
-        # A port-forward pins the pod it attached to at start. With the KEDA
-        # ScaledObject applied, that pod can be replaced or scaled away at any
-        # moment (helm sets replicas=1, KEDA reconciles to 0, the tested event
-        # wakes a NEW pod) — leaving us polling a dead tunnel forever. Re-attach
-        # to the Service and treat this attempt as "not yet".
-        kill "$PF_N" 2>/dev/null
-        kubectl port-forward -n "$NS" service/notification-service "${LOCAL_NOTIF}:80" >/dev/null 2>&1 & PF_N=$!
         RECV='[]'
     fi
     if printf '%s' "$RECV" | python3 -c "import sys,json; d=json.load(sys.stdin); sys.exit(0 if any(e.get('order_id')=='$ORDER_ID' and e.get('event_type')=='order.placed' for e in d) else 1)" 2>/dev/null; then
@@ -144,7 +139,6 @@ printf '\n✓ SUCCESS — async spine verified (order.placed: order-service → 
 
 # ── 8. cleanup on success ─────────────────────────────────────────────────────
 step "Cleanup (success)"
-kill "$PF_O" "$PF_N" 2>/dev/null; PF_O=""; PF_N=""
 helm uninstall "${APP_SERVICES[@]}" -n "$NS" >/dev/null 2>&1 && echo "service releases uninstalled"
 # Kafka cluster left running for fast re-runs (like Postgres). --purge-db tears down both.
 if (( PURGE_DB )); then

@@ -35,10 +35,10 @@ export MINIKUBE_ROOTLESS=true   # CAP-010
 NS="capstone"
 PROFILE="capstone"
 ISTIO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../istio" && pwd)"
-LOCAL_PORT="8080"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/tunnels.sh"
+LOCAL_PORT="$TP_INGRESS"
 GW="http://127.0.0.1:${LOCAL_PORT}"
 REQUESTS=100
-PORT_FORWARD_PID=""
 
 step() { printf '\n==> %s\n' "$1"; }
 
@@ -55,11 +55,9 @@ dump_diagnostics() {
 
 fail() {
     printf '\n✗ FAILED: %s\n' "$1" >&2
-    [[ -n "$PORT_FORWARD_PID" ]] && kill "$PORT_FORWARD_PID" 2>/dev/null
     dump_diagnostics
     exit 1
 }
-trap '[[ -n "$PORT_FORWARD_PID" ]] && kill "$PORT_FORWARD_PID" 2>/dev/null || true' EXIT
 
 # apply_weights V1 V2 — render the VirtualService at the given split and apply
 apply_weights() {
@@ -142,12 +140,10 @@ printf '    ✓ both subsets are in the mesh\n'
 step "Applying the DestinationRule, Gateway, and a 90/10 canary"
 apply_weights 90 10
 
-step "Port-forwarding the istio-ingressgateway"
-kubectl port-forward -n istio-system svc/istio-ingressgateway "${LOCAL_PORT}:80" >/dev/null 2>&1 &
-PORT_FORWARD_PID=$!
-sleep 4
-curl -fsS "${GW}/version" >/dev/null 2>&1 \
-    || fail "ingress gateway not reachable on ${GW} (is the port-forward up?)"
+step "Opening the tunnel to the istio-ingressgateway (local ${LOCAL_PORT})"
+ensure_tunnel ingress
+wait_http "${GW}/version" 30 \
+    || fail "ingress gateway not reachable on ${GW} (is the tunnel up? try ./scripts/tunnel-services.sh)"
 
 step "Driving ${REQUESTS} requests at the 90/10 split"
 measure_split "90/10" 1 30      # ~10 expected; generous band for 100 samples

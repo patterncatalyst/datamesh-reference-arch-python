@@ -215,6 +215,8 @@ load or idle timeouts.
 | Tempo | `http://localhost:3200` | Trace query API; also accessible via Grafana Explore |
 | Kiali | `http://localhost:20001/kiali` | |
 | OpenMetadata | `http://localhost:8585` | |
+| Apicurio | `http://localhost:8084` | Schema registry UI + API (`/apis/registry/v3`) |
+| Kafka UI | `http://localhost:8089` | Browse Kafka topics, messages, consumer groups, schemas |
 
 ```bash
 ./scripts/tunnel-services.sh --status   # check which tunnels are alive

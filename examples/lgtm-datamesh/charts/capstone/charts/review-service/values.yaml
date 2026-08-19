@@ -13,9 +13,13 @@ image:
   # runs what was just pushed (CAP-015).
   pullPolicy: Always
 
+# NodePort so demos reach it over the stable SSH tunnel (local 8086) instead of
+# kubectl port-forward. See demos/lib/tunnels.sh for the allocation map.
 service:
+  type: NodePort
   port: 80
   targetPort: 8080
+  nodePort: 30086
 
 # Postgres connection. The CloudNativePG operator generates a Secret named
 # "<cluster>-app" holding the app user's credentials; we reference it by key.

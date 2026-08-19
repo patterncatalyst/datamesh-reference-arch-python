@@ -21,16 +21,16 @@
 
 set -uo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/tunnels.sh"
+
 ISTIO_SYSTEM="istio-system"
 OBS_NS="observability"
 APP_NS="capstone"
-KIALI_PORT="20001"
+KIALI_PORT="$TP_KIALI"
 KIALI_WEBROOT="/kiali"   # must match server.web_root in setup-kiali.sh (addon probe path)
-KIALI_PF=""
 
 step() { printf '\n==> %s\n' "$1"; }
-cleanup() { [[ -n "$KIALI_PF" ]] && kill "$KIALI_PF" 2>/dev/null; true; }
-trap cleanup EXIT
 dump() {
     step "DIAGNOSTIC DUMP (failure — resources left in place)"
     printf '\n--- kiali deployment / pod ---\n'
@@ -39,8 +39,8 @@ dump() {
     kubectl get configmap kiali -n "$ISTIO_SYSTEM" -o jsonpath='{.data.config\.yaml}' 2>&1 | sed -n '1,40p'
     printf '\n--- recent kiali logs ---\n'
     kubectl logs -n "$ISTIO_SYSTEM" -l app.kubernetes.io/name=kiali --tail=30 2>&1
-    printf '\nInspect: kubectl port-forward -n %s svc/kiali %s:%s ; open http://localhost:%s%s\n' \
-        "$ISTIO_SYSTEM" "$KIALI_PORT" "$KIALI_PORT" "$KIALI_PORT" "$KIALI_WEBROOT"
+    printf '\nInspect: ./scripts/tunnel-services.sh ; open http://localhost:%s%s\n' \
+        "$KIALI_PORT" "$KIALI_WEBROOT"
 }
 fail() { printf '\n✗ FAILED: %s\n' "$1"; dump; exit 1; }
 
@@ -78,14 +78,9 @@ else
 fi
 
 # ─── 3. Port-forward and hit the API ─────────────────────────────────────────
-step "Port-forwarding Kiali and probing its API"
-kubectl port-forward -n "$ISTIO_SYSTEM" svc/kiali "${KIALI_PORT}:${KIALI_PORT}" >/dev/null 2>&1 &
-KIALI_PF=$!
-# wait for the forward to come up
-for _ in $(seq 1 20); do
-    curl -fsS "http://127.0.0.1:${KIALI_PORT}${KIALI_WEBROOT}/healthz" >/dev/null 2>&1 && break
-    sleep 1
-done
+step "Opening a tunnel to Kiali and probing its API"
+ensure_tunnel kiali
+wait_http "http://127.0.0.1:${KIALI_PORT}${KIALI_WEBROOT}/healthz" 20 || true
 curl -fsS "http://127.0.0.1:${KIALI_PORT}${KIALI_WEBROOT}/healthz" >/dev/null 2>&1 \
     || fail "Kiali /healthz did not respond over the port-forward"
 printf '    ✓ Kiali /healthz responds\n'
@@ -118,5 +113,5 @@ fi
 # ─── Done ────────────────────────────────────────────────────────────────────
 step "PASS — Kiali is up, wired to the capstone stack, and sees the $APP_NS namespace."
 printf '\nView the live topology (run a demo first to create traffic):\n'
-printf '  kubectl port-forward -n %s svc/kiali %s:%s\n' "$ISTIO_SYSTEM" "$KIALI_PORT" "$KIALI_PORT"
+printf '  ./scripts/tunnel-services.sh   # then open http://localhost:%s%s\n' "$KIALI_PORT" "$KIALI_WEBROOT"
 printf '  open http://localhost:%s%s/   (Graph → namespace: %s)\n' "$KIALI_PORT" "$KIALI_WEBROOT" "$APP_NS"

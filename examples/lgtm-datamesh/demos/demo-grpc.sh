@@ -18,6 +18,8 @@
 # Usage:  ./demos/demo-grpc.sh [--purge-db]
 
 set -uo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/tunnels.sh"
 export MINIKUBE_ROOTLESS=true   # CAP-010
 
 PROFILE="capstone"; NS="capstone"
@@ -25,7 +27,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
 PG_RELEASE="capstone-postgres"; PG_CHART="charts/capstone/charts/postgres"
 INV_CHART="charts/capstone/charts/inventory-service"
 ORD_CHART="charts/capstone/charts/order-service"
-LOCAL_PORT=18080
+LOCAL_PORT=$TP_ORDER
 PURGE_DB=0; [[ "${1:-}" == "--purge-db" ]] && PURGE_DB=1
 
 step() { printf '\n==> %s\n' "$1"; }
@@ -91,10 +93,9 @@ helm upgrade --install order-service "$ORD_CHART" -n "$NS" || fail "order instal
 kubectl rollout status deployment/order-service -n "$NS" --timeout=120s || fail "order rollout failed"
 
 # ── 5. exercise the cross-service call via order-service REST ─────────────────
-step "Port-forwarding order-service to 127.0.0.1:${LOCAL_PORT}"
-kubectl port-forward -n "$NS" service/order-service "${LOCAL_PORT}:80" >/dev/null 2>&1 &
-PF=$!; trap '[[ -n "${PF:-}" ]] && kill "$PF" 2>/dev/null' EXIT
-sleep 3
+step "Opening a tunnel to order-service (127.0.0.1:${LOCAL_PORT})"
+ensure_tunnel order
+wait_http "http://127.0.0.1:${LOCAL_PORT}/" 20 || true
 
 post_order() {  # sku quantity → prints HTTP status code
     curl -s -o /dev/null -w '%{http_code}' -X POST "http://127.0.0.1:${LOCAL_PORT}/orders" \
@@ -119,6 +120,5 @@ printf '  (in-stock placed; out-of-stock and excess-quantity both rejected via t
 
 # ── 6. cleanup on success ─────────────────────────────────────────────────────
 step "Cleanup (success)"
-kill "$PF" 2>/dev/null; PF=""
 helm uninstall order-service inventory-service -n "$NS" >/dev/null 2>&1 && echo "releases uninstalled"
 if (( PURGE_DB )); then helm uninstall "$PG_RELEASE" -n "$NS" >/dev/null 2>&1 && echo "postgres uninstalled"; fi

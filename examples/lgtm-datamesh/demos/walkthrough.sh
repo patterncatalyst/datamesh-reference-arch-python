@@ -8,7 +8,7 @@
 # "What you can see it do" slide:
 #
 #   1. trace      — one GraphQL query → trace spans across three products in Tempo
-#                   (bypasses the KEDA HTTP-add-on interceptor — see CAP-046)
+#                   (wakes the gateway via the KEDA HTTP-add-on interceptor)
 #   2. scale      — KEDA scales notification-service on Kafka lag (zero → up → zero)
 #   3. canary     — order-service v1→v2 contract evolution, weight-shifted by Istio
 #   4. lineage    — OpenMetadata shows the cross-product lineage of the spine
@@ -18,12 +18,12 @@
 # act's own diagnostics — the walkthrough stops there so you can investigate
 # (resources left in place; the underlying demos are designed for that).
 #
-# Note on Act 1 (CAP-046, updated July 2026): the Go panic on POST forwarding
+# Note on Act 1 (CAP-046): the Go panic on POST forwarding
 # (kedacore/http-add-on#1668) that blocked the interceptor path in v0.12.2 and
-# v0.14.0 was fixed upstream. The KEDA HTTP add-on is now at v0.15.0
-# (setup-keda.sh). The trace act still port-forwards directly to the
-# graphql-gateway Service for simplicity — the interceptor path is available
-# via demo-keda-http.sh and can be substituted here once verified on-cluster.
+# v0.14.0 was fixed upstream; the KEDA HTTP add-on is now at v0.15.0
+# (setup-keda.sh). The trace act therefore wakes the gateway the real way — a
+# request through the interceptor (Host: graphql-gateway.capstone) over the
+# stable SSH tunnel, with no kubectl port-forward. It runs demo-trace-flow.sh.
 #
 # Usage:
 #   ./demos/walkthrough.sh                     # run all five acts
@@ -141,17 +141,8 @@ run_act() {
 }
 
 # ─── Cleanup ─────────────────────────────────────────────────────────────────
-# The trace act starts a temporary port-forward to graphql-gateway; tear it
-# down on exit. Persistent UI tunnels (Grafana, Kiali, etc.) are managed
-# by tunnel-services.sh and survive this script.
-TRACE_PF=""
-cleanup() {
-    if [[ -n "$TRACE_PF" ]] && kill -0 "$TRACE_PF" 2>/dev/null; then
-        printf '\n%s  cleaning up trace port-forward (pid %s)%s\n' "$DIM" "$TRACE_PF" "$RST"
-        kill "$TRACE_PF" 2>/dev/null || true
-    fi
-}
-trap cleanup EXIT
+# All host access is via the persistent SSH tunnels (scripts/tunnel-services.sh),
+# which survive this script — there is nothing act-local to tear down.
 trap 'printf "\n%sinterrupted%s\n" "$RED" "$RST"; exit 130' INT
 
 # ─── Preflight ───────────────────────────────────────────────────────────────
@@ -277,92 +268,11 @@ INTRO
 prompt_enter "press Enter to start"
 
 # ─── ACT 1 · TRACE ───────────────────────────────────────────────────────────
-# This act intentionally bypasses the KEDA HTTP-add-on interceptor — see the
-# header comment and CAP-046. We port-forward directly to the graphql-gateway
-# Service, send the GraphQL query there, and verify the resulting trace lands
-# in Tempo. The trace itself is identical to what runs in production; only the
-# entry path is different. Returns to going through the interceptor once
-# upstream issue kedacore/http-add-on#1668 is fixed and released.
-
-trace_act() {
-    local pf_pid=0 result=0
-    local query='{"query":"{ order(id: \"trace-probe\") { id itemSku quantity stock { sku quantityOnHand available } } }"}'
-
-    # The direct port-forward needs a live pod behind the Service, but the KEDA
-    # HTTPScaledObject (applied by bootstrap) scales the gateway to zero when
-    # idle — and only interceptor traffic wakes it, which is exactly the path
-    # this act bypasses (CAP-046). Wake it by hand; KEDA reconciles afterwards.
-    local avail
-    avail="$(kubectl -n "$NS" get deploy graphql-gateway -o jsonpath='{.status.availableReplicas}' 2>/dev/null)"
-    if ! [[ "$avail" =~ ^[1-9][0-9]*$ ]]; then
-        info "graphql-gateway is scaled to zero — waking it (KEDA re-adopts it after the act)"
-        kubectl -n "$NS" scale deploy graphql-gateway --replicas=1 >/dev/null 2>&1
-        kubectl -n "$NS" rollout status deploy/graphql-gateway --timeout=120s >/dev/null 2>&1 \
-            || { narrate "✗ graphql-gateway did not become Ready after wake"; return 1; }
-    fi
-
-    info "starting port-forward: graphql-gateway Service (capstone) → 127.0.0.1:8080"
-    info "  (bypasses keda-add-ons-http-interceptor-proxy — see CAP-046)"
-    kubectl port-forward -n "$NS" svc/graphql-gateway 8080:80 >/dev/null 2>&1 &
-    pf_pid=$!
-    TRACE_PF=$pf_pid
-
-    # wait for the port-forward to bind (probe with a cheap connect; up to ~10s).
-    # any response — including 404 — means the port-forward is alive; we use the
-    # same pattern as demo-trace-flow.sh (no -f, just check that curl connects).
-    local ready=0
-    for _ in 1 2 3 4 5 6 7 8 9 10; do
-        if curl -s -o /dev/null --max-time 2 http://127.0.0.1:8080/ 2>/dev/null; then
-            ready=1; break
-        fi
-        sleep 1
-    done
-    if (( ready == 0 )); then
-        printf '%s  ✗ port-forward never became reachable — is graphql-gateway up?%s\n' "$RED" "$RST"
-        return 1
-    fi
-    printf '%s    ✓ port-forward live%s\n' "$GRN" "$RST"
-
-    narrate "sending one GraphQL query to the gateway"
-    info "  query: { order(id: \"trace-probe\") { id itemSku quantity stock { ... } } }"
-    info "  (composes a REST call to order-service + a gRPC call to inventory-service)"
-
-    # capture trace id from response headers if the gateway echoes it; otherwise
-    # the user gets the trace by searching Tempo by service name in the next step.
-    local http_status trace_id=""
-    http_status=$(curl -sS --max-time 30 \
-                       -o /tmp/walkthrough-trace-response.json \
-                       -D /tmp/walkthrough-trace-headers.txt \
-                       -w '%{http_code}' \
-                       -H "Host: graphql-gateway.capstone" \
-                       -H "Content-Type: application/json" \
-                       -X POST --data "$query" \
-                       http://127.0.0.1:8080/graphql 2>/dev/null || echo "000")
-
-    if [[ "$http_status" == "200" ]]; then
-        printf '%s    ✓ gateway returned HTTP 200 — a trace should now be exporting%s\n' "$GRN" "$RST"
-        # try to surface the trace id from response headers (traceresponse, x-trace-id, etc.)
-        trace_id="$(grep -iE '^(traceresponse|x-trace-id|x-amzn-trace-id|x-b3-traceid):' \
-                          /tmp/walkthrough-trace-headers.txt 2>/dev/null \
-                    | head -1 | tr -d '\r' || true)"
-        if [[ -n "$trace_id" ]]; then
-            info "  trace header: $trace_id"
-        fi
-        if [[ -s /tmp/walkthrough-trace-response.json ]]; then
-            info "  response preview: $(head -c 200 /tmp/walkthrough-trace-response.json)"
-        fi
-    else
-        printf '%s    ✗ gateway returned HTTP %s%s\n' "$RED" "$http_status" "$RST"
-        result=1
-    fi
-
-    # tear down port-forward early — we don't need it past this point
-    kill "$pf_pid" 2>/dev/null || true
-    wait "$pf_pid" 2>/dev/null || true
-    TRACE_PF=""
-
-    return $result
-}
+# Drive one GraphQL query through the gateway and confirm the fan-out trace
+# (graphql-gateway → order-service REST → inventory gRPC) lands in Tempo. The
+# gateway is KEDA-scaled-to-zero and woken the REAL way — a request routed
+# through the KEDA HTTP interceptor (Host: graphql-gateway.capstone) over the
+# stable SSH tunnel, no kubectl port-forward. This act IS demos/demo-trace-flow.sh.
 
 if want_act trace; then
     act_header "trace" "Trace across products" \
@@ -370,16 +280,10 @@ if want_act trace; then
     narrate "we drive a single query through graphql-gateway"
     narrate "the resolver makes a REST call to order-service and a gRPC call to inventory-service"
     narrate "all three spans land in Tempo, stitched by a shared trace id"
-    info "entry path: kubectl port-forward to graphql-gateway Service (see CAP-046)"
-    info "  the KEDA HTTP-add-on demo path is deferred — kedacore/http-add-on#1668"
+    info "entry path: the KEDA HTTP interceptor wakes the gateway from zero (Host: graphql-gateway.capstone)"
+    info "underlying script: demos/demo-trace-flow.sh"
     prompt_enter "press Enter to run"
-    if trace_act; then
-        printf '\n%s  ✓ act passed: trace%s\n' "$GRN" "$RST"
-    else
-        printf '\n%s  ✗ act FAILED: trace%s\n' "$RED" "$RST"
-        printf '%s    (resources left in place — investigate, then resume with --only or --skip)%s\n' "$DIM" "$RST"
-        exit 1
-    fi
+    run_act "trace" ./demos/demo-trace-flow.sh || exit 1
     narrate "what to point at next: open Grafana → Explore → Tempo"
     narrate "  search by service name graphql-gateway, pick a recent trace"
     narrate "  you'll see the span tree — HTTP server → REST client → gRPC client — across products"
@@ -473,5 +377,5 @@ printf '\n%s%s══════════════════════
 printf '%s%s  walkthrough complete  ·  %d / %d acts run%s\n' "$BOLD" "$GRN" "$ACT_NUM" "$ACT_TOTAL" "$RST"
 printf '%s%s═══════════════════════════════════════════════════════════════════════%s\n\n' "$BOLD" "$GRN" "$RST"
 
-printf '%s  SSH tunnels remain active (Grafana :3000, Prometheus :9091, Tempo :3200, Kiali :20001, OpenMetadata :8585)%s\n' "$DIM" "$RST"
+printf '%s  SSH tunnels remain active (Grafana :3000, Prometheus :9091, Tempo :3200, Kiali :20001, OpenMetadata :8585, Apicurio :8084, Kafka UI :8089)%s\n' "$DIM" "$RST"
 printf '%s  stop them with: ./scripts/tunnel-services.sh --stop%s\n' "$DIM" "$RST"

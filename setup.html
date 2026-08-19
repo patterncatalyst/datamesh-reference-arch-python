@@ -180,47 +180,36 @@ cp ~/.local/share/istio-current/bin/istioctl ~/.local/bin/</code></pre>
 
 <section class="section-tight">
     <div class="container" style="max-width: 42rem;">
-        <h2 class="section-heading">Accessing the observability tools</h2>
+        <h2 class="section-heading">Accessing the tools</h2>
         <p>
-            The tools run inside the cluster. Port-forward to reach them
-            from the host &mdash; Fedora ships Cockpit on port 9090, so
-            Prometheus uses an alternate local port.
+            The tools run inside the cluster and are exposed as NodePort
+            services reached over stable SSH tunnels &mdash; not
+            <code>kubectl port-forward</code>, which drops when the cluster
+            idles or under load. One command starts every tunnel:
+        </p>
+        <pre><code>./scripts/tunnel-services.sh            # start all tunnels
+./scripts/tunnel-services.sh --status   # which are alive
+./scripts/tunnel-services.sh --stop     # tear them down</code></pre>
+        <p>
+            They stay up until you stop them. (Prometheus uses local port 9091
+            because Fedora ships Cockpit on 9090.)
         </p>
 
         <table>
             <thead>
                 <tr>
                     <th>Tool</th>
-                    <th>Port-forward command</th>
                     <th>Local URL</th>
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td>Grafana</td>
-                    <td><code>kubectl port-forward -n capstone svc/grafana 3000:80</code></td>
-                    <td><code>http://localhost:3000</code></td>
-                </tr>
-                <tr>
-                    <td>Prometheus</td>
-                    <td><code>kubectl port-forward -n capstone svc/prometheus-server 9091:80</code></td>
-                    <td><code>http://localhost:9091</code></td>
-                </tr>
-                <tr>
-                    <td>Kiali</td>
-                    <td><code>kubectl port-forward -n istio-system svc/kiali 20001:20001</code></td>
-                    <td><code>http://localhost:20001/kiali</code></td>
-                </tr>
-                <tr>
-                    <td>Tempo (via Grafana)</td>
-                    <td>&mdash; (use Grafana &rarr; Explore &rarr; Tempo datasource)</td>
-                    <td>&mdash;</td>
-                </tr>
-                <tr>
-                    <td>OpenMetadata</td>
-                    <td><code>kubectl port-forward -n capstone svc/openmetadata 8585:8585</code></td>
-                    <td><code>http://localhost:8585</code></td>
-                </tr>
+                <tr><td>Grafana</td><td><code>http://localhost:3000</code></td></tr>
+                <tr><td>Prometheus</td><td><code>http://localhost:9091</code></td></tr>
+                <tr><td>Kiali</td><td><code>http://localhost:20001/kiali</code></td></tr>
+                <tr><td>Tempo (via Grafana)</td><td>&mdash; (Grafana &rarr; Explore &rarr; Tempo datasource)</td></tr>
+                <tr><td>OpenMetadata</td><td><code>http://localhost:8585</code></td></tr>
+                <tr><td>Apicurio</td><td><code>http://localhost:8084</code></td></tr>
+                <tr><td>Kafka UI</td><td><code>http://localhost:8089</code></td></tr>
             </tbody>
         </table>
 

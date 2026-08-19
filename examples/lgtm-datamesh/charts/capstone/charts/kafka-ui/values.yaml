@@ -1,0 +1,30 @@
+# Kafka UI (kafbat) — a data-mesh infrastructure console for browsing Kafka
+# topics, messages, consumer groups, and schemas. Exposed as NodePort so it is
+# reached over the stable SSH tunnel (local 8089) instead of kubectl port-forward.
+# See demos/lib/tunnels.sh for the allocation map (nodePort 30084 apicurio,
+# 30089 kafka-ui, …).
+replicas: 1
+
+image:
+  repository: ghcr.io/kafbat/kafka-ui
+  tag: "latest"          # pin to a released tag (e.g. v1.x) for reproducible builds
+  pullPolicy: IfNotPresent
+
+kafka:
+  clusterName: capstone-kafka
+  bootstrapServers: capstone-kafka-kafka-bootstrap:9092
+  # Apicurio's Confluent-compatible endpoint, so the UI renders Avro schemas too.
+  schemaRegistry: http://apicurio:8080/apis/ccompat/v7
+
+service:
+  type: NodePort
+  port: 8080
+  targetPort: 8080
+  nodePort: 30089
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 512Mi
+  limits:
+    memory: 1Gi

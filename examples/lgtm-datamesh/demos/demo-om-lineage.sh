@@ -31,9 +31,12 @@
 set -uo pipefail   # NOT -e: failures are handled so we can diagnose
 export MINIKUBE_ROOTLESS=true   # CAP-010
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/tunnels.sh"
+
 NS="capstone"
 PROFILE="capstone"
-LOCAL_PORT="8585"
+LOCAL_PORT="$TP_OM"
 OM="http://127.0.0.1:${LOCAL_PORT}"
 ADMIN_EMAIL="admin@open-metadata.org"
 ADMIN_PASSWORD="admin"   # demo default (r27)
@@ -42,7 +45,6 @@ ORDERS_FQN="capstone-postgres.capstone.orders.orders"
 TOPIC_FQN="capstone-kafka.order-placed"
 NOTIFS_FQN="capstone-postgres.capstone.notifications.notifications"
 
-PORT_FORWARD_PID=""
 TOKEN=""
 
 step() { printf '\n==> %s\n' "$1"; }
@@ -61,12 +63,9 @@ dump_diagnostics() {
 
 fail() {
     printf '\n✗ FAILED: %s\n' "$1" >&2
-    [[ -n "$PORT_FORWARD_PID" ]] && kill "$PORT_FORWARD_PID" 2>/dev/null
     dump_diagnostics
     exit 1
 }
-
-trap '[[ -n "$PORT_FORWARD_PID" ]] && kill "$PORT_FORWARD_PID" 2>/dev/null || true' EXIT
 
 # om_get PATH → echoes response body, returns curl's exit code
 om_get() {
@@ -86,10 +85,9 @@ kubectl get deployment openmetadata -n "$NS" >/dev/null 2>&1 \
 
 # ─── Port-forward + admin token ──────────────────────────────────────────────
 
-step "Port-forwarding the server and obtaining an admin token"
-kubectl port-forward -n "$NS" svc/openmetadata "${LOCAL_PORT}:8585" >/dev/null 2>&1 &
-PORT_FORWARD_PID=$!
-sleep 4
+step "Opening a tunnel to the server and obtaining an admin token"
+ensure_tunnel openmetadata
+wait_http "http://127.0.0.1:${LOCAL_PORT}/" 20 || true
 
 PW_B64="$(printf '%s' "$ADMIN_PASSWORD" | base64)"
 LOGIN_JSON="$(curl -fsS -X POST "${OM}/api/v1/users/login" \
@@ -148,5 +146,5 @@ step "SUCCESS"
 printf 'The catalog is populated and the lineage is declared:\n'
 printf '  orders (Postgres) -> order-placed (Kafka) -> notifications (Postgres)\n\n'
 printf 'Browse it:\n'
-printf '  kubectl port-forward -n %s svc/openmetadata 8585:8585\n' "$NS"
+printf '  ./scripts/tunnel-services.sh   # then open http://localhost:8585\n'
 printf '  http://127.0.0.1:8585  (admin@open-metadata.org / admin)\n'

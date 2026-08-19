@@ -68,6 +68,14 @@ printf '==> Waiting for istiod and the ingress gateway to be ready\n'
 kubectl rollout status deployment/istiod -n istio-system --timeout=5m
 kubectl rollout status deployment/istio-ingressgateway -n istio-system --timeout=5m
 
+# Pin the ingress gateway's HTTP port (80, index 1) to a fixed NodePort so the
+# canary demos reach it over the stable SSH tunnel (local 8088) instead of a
+# kubectl port-forward. See demos/lib/tunnels.sh for the allocation map.
+printf '==> Pinning istio-ingressgateway HTTP nodePort to 30088\n'
+kubectl patch svc istio-ingressgateway -n istio-system --type='json' \
+    -p '[{"op":"replace","path":"/spec/ports/1/nodePort","value":30088}]' \
+    2>/dev/null || true
+
 # ─── 2. Enable injection on the capstone namespace ───────────────────────────
 
 printf '==> Labeling namespace %s for sidecar injection\n' "$NS"

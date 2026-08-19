@@ -18,7 +18,7 @@
 #
 # Usage (from examples/lgtm-datamesh/):
 #   ./scripts/setup-observability.sh
-#   kubectl port-forward -n observability svc/grafana 3000:80
+#   ./scripts/tunnel-services.sh    # Grafana on http://localhost:3000
 #   ./demos/demo-observability.sh   # metrics plumbing
 #   ./demos/demo-tracing.sh         # trace backend plumbing
 
@@ -64,10 +64,13 @@ helm upgrade --install tempo grafana-community/tempo \
     -f "$OBS_DIR/tempo-values.yaml" \
     --wait
 
-# Pin Tempo's query port (3200) to a fixed NodePort for stable SSH tunnels.
-printf '==> Pinning Tempo query port nodePort to 30320\n'
+# Pin Tempo's query (3200, index 2) and OTLP/HTTP (4318, index 9) ports to fixed
+# NodePorts for stable SSH tunnels (local 3200 and 4318). Indices follow the
+# chart's fixed port order (see demos/lib/tunnels.sh for the allocation map).
+printf '==> Pinning Tempo query nodePort to 30320 and OTLP/HTTP nodePort to 30418\n'
 kubectl patch svc tempo -n "$NAMESPACE" --type='json' \
-    -p '[{"op":"replace","path":"/spec/ports/2/nodePort","value":30320}]' \
+    -p '[{"op":"replace","path":"/spec/ports/2/nodePort","value":30320},
+         {"op":"replace","path":"/spec/ports/9/nodePort","value":30418}]' \
     2>/dev/null || true
 
 # ─── 4. Grafana ──────────────────────────────────────────────────────────────

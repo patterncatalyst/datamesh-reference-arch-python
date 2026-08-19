@@ -4,12 +4,9 @@
 # services in the capstone minikube profile. Replaces kubectl port-forward with
 # stable, long-lived connections that survive idle timeouts and load spikes.
 #
-# How it works:
-#   1. Services are exposed as NodePort with fixed ports (30xxx range).
-#   2. An SSH tunnel connects localhost:<friendly-port> to the minikube VM's
-#      <nodePort> via the minikube SSH key.
-#   3. ServerAliveInterval=30 keeps the tunnel alive; ExitOnForwardFailure=yes
-#      makes failures explicit.
+# The port map and the tunnel/ssh machinery live in demos/lib/tunnels.sh — the
+# ONE source of truth. This script just brings the whole set up (or tears it
+# down). Individual demos bring up only the tunnels they need via ensure_tunnel.
 #
 # Usage:
 #   ./scripts/tunnel-services.sh            # start all tunnels
@@ -18,8 +15,11 @@
 
 set -uo pipefail
 
-PROFILE="${MINIKUBE_PROFILE:-capstone}"
-PIDFILE="/tmp/capstone-tunnel.pids"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../demos/lib/tunnels.sh
+source "${SCRIPT_DIR}/../demos/lib/tunnels.sh"
+
+PIDFILE="$TP_PIDFILE"
 
 BOLD=""; GRN=""; RED=""; DIM=""; RST=""
 if [[ -t 1 ]]; then
@@ -32,7 +32,6 @@ info() { printf '    %s%s%s\n' "$DIM" "$1" "$RST"; }
 # ── --stop ───────────────────────────────────────────────────────────────────
 
 do_stop() {
-    # Kill SSH tunnels tracked in pidfile
     if [[ -f "$PIDFILE" ]]; then
         local killed=0
         while IFS='|' read -r pid label _ ; do
@@ -76,95 +75,52 @@ case "${1:-start}" in
     *) printf 'unknown flag: %s\n' "$1"; exit 2 ;;
 esac
 
-# ── resolve SSH connection details ───────────────────────────────────────────
-
-SSH_KEY="$(minikube ssh-key -p "$PROFILE" 2>/dev/null)"
-if [[ -z "$SSH_KEY" ]]; then
-    printf '%sERROR:%s could not find SSH key for profile "%s"\n' "$RED" "$RST" "$PROFILE"
-    printf 'Is minikube running? Try: minikube start -p %s\n' "$PROFILE"
+# resolve SSH once, up front, with a clear error if the cluster is down
+if ! _tp_resolve_ssh; then
+    printf '%sERROR:%s could not find SSH key/port for profile "%s"\n' "$RED" "$RST" "$TP_PROFILE"
+    printf 'Is minikube running? Try: minikube start -p %s\n' "$TP_PROFILE"
     exit 1
 fi
 
-SSH_PORT="$(podman port "$PROFILE" 22/tcp 2>/dev/null | head -1 | cut -d: -f2)"
-if [[ -z "$SSH_PORT" ]]; then
-    printf '%sERROR:%s could not detect SSH port for profile "%s"\n' "$RED" "$RST" "$PROFILE"
-    printf 'Is minikube running? Try: minikube start -p %s\n' "$PROFILE"
-    exit 1
-fi
-
-# ── kill stale tunnels from a previous run ───────────────────────────────────
-
+# ── kill stale tunnels from a previous run, then start fresh ──────────────────
 [[ -f "$PIDFILE" ]] && do_stop >/dev/null 2>&1
 : > "$PIDFILE"
 
-# ── start tunnels ────────────────────────────────────────────────────────────
+started=0
 
-tunnel() {
-    local local_port=$1 node_port=$2 label=$3 url=$4
-    ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
-        -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o ExitOnForwardFailure=yes \
-        -i "$SSH_KEY" -p "$SSH_PORT" \
-        -L "${local_port}:localhost:${node_port}" \
-        -N -f docker@127.0.0.1
-    # ssh -f daemonizes itself (no shell $!). Find the PID via pgrep.
-    sleep 0.3
-    local pid
-    pid="$(pgrep -n -f "ssh.*-L ${local_port}:localhost:${node_port}" 2>/dev/null || echo "")"
-    if [[ -n "$pid" ]]; then
-        printf '%s|%s|%s\n' "$pid" "$label" "$url" >> "$PIDFILE"
+# start <name> <friendly-label>  — bring up a named tunnel if its Service exists
+start() {
+    local name="$1" label="$2" row lp np ns svc
+    row="$(_tunnel_row "$name")" || { info "$label: unknown ($name)"; return; }
+    read -r lp np ns svc _ <<<"$row"
+    if kubectl get svc "$svc" -n "$ns" >/dev/null 2>&1; then
+        ensure_tunnel "$name" && { ok "$(printf '%-14s http://localhost:%s' "$label:" "$lp")"; started=$((started + 1)); }
+    else
+        info "$label: svc/$svc not found in $ns (skipped)"
     fi
 }
 
-started=0
+# Persistent UIs
+start grafana      "Grafana"
+start prometheus   "Prometheus"
+start tempo        "Tempo"
+start kiali        "Kiali"
+start openmetadata "OpenMetadata"
+start apicurio     "Apicurio"
+start kafka-ui     "Kafka UI"
 
-# Grafana
-if kubectl get svc grafana -n observability >/dev/null 2>&1; then
-    tunnel 3000 30300 "Grafana" "http://localhost:3000"
-    ok "Grafana:          http://localhost:3000"
-    started=$((started + 1))
-else
-    info "Grafana: svc/grafana not found (skipped)"
-fi
-
-# Prometheus (9091 to avoid Fedora Cockpit on 9090)
-if kubectl get svc prometheus-server -n observability >/dev/null 2>&1; then
-    tunnel 9091 30091 "Prometheus" "http://localhost:9091"
-    ok "Prometheus:       http://localhost:9091"
-    started=$((started + 1))
-else
-    info "Prometheus: svc/prometheus-server not found (skipped)"
-fi
-
-# Tempo
-if kubectl get svc tempo -n observability >/dev/null 2>&1; then
-    tunnel 3200 30320 "Tempo" "http://localhost:3200"
-    ok "Tempo:            http://localhost:3200"
-    started=$((started + 1))
-else
-    info "Tempo: svc/tempo not found (skipped)"
-fi
-
-# Kiali
-if kubectl get svc kiali -n istio-system >/dev/null 2>&1; then
-    tunnel 20001 30201 "Kiali" "http://localhost:20001/kiali"
-    ok "Kiali:            http://localhost:20001/kiali"
-    started=$((started + 1))
-else
-    info "Kiali: svc/kiali not found (skipped)"
-fi
-
-# OpenMetadata
-if kubectl get svc openmetadata -n capstone >/dev/null 2>&1; then
-    tunnel 8585 30585 "OpenMetadata" "http://localhost:8585"
-    ok "OpenMetadata:     http://localhost:8585"
-    started=$((started + 1))
-else
-    info "OpenMetadata: svc/openmetadata not found (skipped)"
-fi
+# App / infra endpoints the demos drive (no more kubectl port-forward)
+start order        "order-svc"
+start gateway      "gateway(interceptor)"
+start notification "notification-svc"
+start review       "review-svc"
+start inventory    "inventory-svc"
+start ingress      "istio-ingress"
 
 printf '\n'
 ok "$started SSH tunnel(s) started — stable, no port-forward drops"
 info "Grafana login:       admin / capstone"
 info "OpenMetadata login:  admin@open-metadata.org / admin"
+info "gateway is reached via the KEDA interceptor on :$TP_GATEWAY (Host: $GATEWAY_HOST)"
 info "stop with: ./scripts/tunnel-services.sh --stop"
 info "status:    ./scripts/tunnel-services.sh --status"

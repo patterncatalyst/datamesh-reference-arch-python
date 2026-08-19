@@ -25,6 +25,8 @@
 #   - kubectl context = capstone
 
 set -uo pipefail   # NOT -e: we manage failures explicitly so we can diagnose
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/tunnels.sh"
 export MINIKUBE_ROOTLESS=true   # CAP-010: mandatory for rootless-podman host ops
 
 NS="capstone"
@@ -36,7 +38,6 @@ ORDER_CHART="charts/capstone/charts/order-service"
 SERVICE_DIR="services/order-service"
 IMAGE_NAME="order-service"
 IMAGE_TAG="v1"
-PORT_FORWARD_PID=""
 SUCCESS=0
 
 step() { printf '\n==> %s\n' "$1"; }
@@ -65,13 +66,11 @@ dump_diagnostics() {
 
 fail() {
     printf '\n✗ FAILED: %s\n' "$1" >&2
-    [[ -n "$PORT_FORWARD_PID" ]] && kill "$PORT_FORWARD_PID" 2>/dev/null
     dump_diagnostics
     exit 1
 }
 
 cleanup_on_success() {
-    [[ -n "$PORT_FORWARD_PID" ]] && kill "$PORT_FORWARD_PID" 2>/dev/null || true
     helm uninstall "$RELEASE_ORDER" -n "$NS" 2>/dev/null || true
     if (( PURGE_DB )); then
         helm uninstall "$RELEASE_PG" -n "$NS" 2>/dev/null || true
@@ -137,12 +136,12 @@ kubectl rollout status deployment/order-service -n "$NS" --timeout=180s \
 
 # ─── Exercise the REST surface ───────────────────────────────────────────────
 
-step "Port-forwarding order-service to 127.0.0.1:18080"
-kubectl port-forward -n "$NS" service/order-service 18080:80 >/dev/null 2>&1 &
-PORT_FORWARD_PID=$!
-sleep 3
+step "Opening a tunnel to order-service"
+LOCAL_ORDER=$TP_ORDER
+ensure_tunnel order
+wait_http "http://127.0.0.1:${LOCAL_ORDER}/" 20 || true
 
-BASE="http://127.0.0.1:18080"
+BASE="http://127.0.0.1:${LOCAL_ORDER}"
 
 step "Assert /health returns ok"
 health=$(curl -fsS "$BASE/health") || fail "/health unreachable"

@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-ui
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: kafka-ui
+    app.kubernetes.io/part-of: capstone
+    app.kubernetes.io/component: kafka-console
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kafka-ui
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kafka-ui
+        app.kubernetes.io/part-of: capstone
+      annotations:
+        # Opt out of the mesh: kafka-ui talks to the (non-meshed) Kafka bootstrap
+        # and Apicurio; a sidecar would only complicate that. Matches the other
+        # operator-managed infra (CAP-024 scope note in setup-istio.sh).
+        sidecar.istio.io/inject: "false"
+    spec:
+      containers:
+        - name: kafka-ui
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+          env:
+            - name: KAFKA_CLUSTERS_0_NAME
+              value: {{ .Values.kafka.clusterName | quote }}
+            - name: KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS
+              value: {{ .Values.kafka.bootstrapServers | quote }}
+            - name: KAFKA_CLUSTERS_0_SCHEMAREGISTRY
+              value: {{ .Values.kafka.schemaRegistry | quote }}
+            - name: DYNAMIC_CONFIG_ENABLED
+              value: "true"
+            - name: SERVER_PORT
+              value: {{ .Values.service.targetPort | quote }}
+          resources:
+            requests:
+              cpu: {{ .Values.resources.requests.cpu }}
+              memory: {{ .Values.resources.requests.memory }}
+            limits:
+              memory: {{ .Values.resources.limits.memory }}
+          # TCP probes avoid guessing the actuator health path across kafka-ui
+          # versions; startup budget is generous for the Spring Boot cold start.
+          startupProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 5
+            failureThreshold: 40
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 5
