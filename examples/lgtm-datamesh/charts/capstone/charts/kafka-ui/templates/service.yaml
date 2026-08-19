@@ -1,15 +1,15 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: apicurio
+  name: kafka-ui
   namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/name: apicurio
+    app.kubernetes.io/name: kafka-ui
     app.kubernetes.io/part-of: capstone
 spec:
   type: {{ .Values.service.type | default "ClusterIP" }}
   selector:
-    app.kubernetes.io/name: apicurio
+    app.kubernetes.io/name: kafka-ui
   ports:
     - name: http
       port: {{ .Values.service.port }}

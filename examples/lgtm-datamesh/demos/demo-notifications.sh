@@ -23,10 +23,11 @@ export MINIKUBE_ROOTLESS=true   # CAP-010
 
 PROFILE="capstone"; NS="capstone"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
+source "${ROOT}/demos/lib/tunnels.sh"
 PG_RELEASE="capstone-postgres"; PG_CHART="charts/capstone/charts/postgres"
 KAFKA_RELEASE="capstone-kafka"; KAFKA_CHART="charts/capstone/charts/kafka"; KAFKA_CR="capstone-kafka"
 APICURIO_RELEASE="apicurio"; APICURIO_CHART="charts/capstone/charts/apicurio"
-LOCAL_ORDER=18080; LOCAL_NOTIF=18097
+LOCAL_ORDER=$TP_ORDER; LOCAL_NOTIF=$TP_NOTIF   # 8080 order-service, 8083 notification-service
 PURGE_DB=0; [[ "${1:-}" == "--purge-db" ]] && PURGE_DB=1
 
 DEPLOY=(inventory-service order-service notification-service)
@@ -50,16 +51,10 @@ fail() {
 check_received() {
     # $1 = order_id to look for in /received
     local recv
-    if ! recv="$(curl -fsS "http://127.0.0.1:${LOCAL_NOTIF}/received" 2>/dev/null)"; then
-        # A port-forward pins the pod it attached to at start. With the KEDA
-        # ScaledObject applied, that pod can be replaced or scaled away at any
-        # moment (helm sets replicas=1, KEDA reconciles to 0, the tested event
-        # wakes a NEW pod) — leaving us polling a dead tunnel forever. Re-attach
-        # to the Service and report "not yet" for this attempt.
-        kill "$PF_N" 2>/dev/null
-        kubectl port-forward -n "$NS" service/notification-service "${LOCAL_NOTIF}:80" >/dev/null 2>&1 & PF_N=$!
-        return 1
-    fi
+    # The SSH tunnel is stable, but notification-service is KEDA-scaled-to-zero:
+    # until the event wakes it the NodePort has no endpoint and this curl fails —
+    # report "not yet" for this attempt.
+    recv="$(curl -fsS "http://127.0.0.1:${LOCAL_NOTIF}/received" 2>/dev/null)" || return 1
     printf '%s' "$recv" | python3 -c "import sys,json; d=json.load(sys.stdin); sys.exit(0 if any(e.get('order_id')=='$1' for e in d) else 1)" 2>/dev/null
 }
 
@@ -119,11 +114,9 @@ TBL="$(kubectl exec -n "$NS" "$PG_PRIMARY" -c postgres -- psql -d capstone -tAqc
 printf '    ✓ table notifications.notifications present\n'
 
 # ── place an order ────────────────────────────────────────────────────────────
-step "Port-forwards: order(${LOCAL_ORDER}) notification(${LOCAL_NOTIF})"
-kubectl port-forward -n "$NS" service/order-service "${LOCAL_ORDER}:80" >/dev/null 2>&1 & PF_O=$!
-kubectl port-forward -n "$NS" service/notification-service "${LOCAL_NOTIF}:80" >/dev/null 2>&1 & PF_N=$!
-trap '[[ -n "${PF_O:-}" ]]&&kill "$PF_O" 2>/dev/null;[[ -n "${PF_N:-}" ]]&&kill "$PF_N" 2>/dev/null' EXIT
-sleep 3
+step "Bringing up tunnels: order(${LOCAL_ORDER}) notification(${LOCAL_NOTIF})"
+ensure_tunnel order notification
+wait_http "http://127.0.0.1:${LOCAL_ORDER}/" 20 || true
 
 step "Placing an in-stock order (WIDGET-001 x2)"
 ORDER_ID="$(curl -fsS -X POST "http://127.0.0.1:${LOCAL_ORDER}/orders" -H 'Content-Type: application/json' \
@@ -145,11 +138,9 @@ done
 
 # ── durability: restart notification, the row must still be there ─────────────
 step "Restarting notification-service to prove durability (in-memory would lose it)"
-kill "$PF_N" 2>/dev/null; PF_N=""
 kubectl rollout restart deployment/notification-service -n "$NS" >/dev/null
 kubectl rollout status deployment/notification-service -n "$NS" --timeout=150s || fail "restart rollout failed"
-kubectl port-forward -n "$NS" service/notification-service "${LOCAL_NOTIF}:80" >/dev/null 2>&1 & PF_N=$!
-sleep 3
+# The SSH tunnel is stable across the restart; check_received retries below.
 survived=0
 for i in $(seq 1 15); do
     if check_received "$ORDER_ID"; then printf '    ✓ event still present after restart (~%ds)\n' "$((i*2))"; survived=1; break; fi
@@ -161,7 +152,6 @@ printf '\n✓ SUCCESS — Alembic migration ran in an init container; notificati
 
 # ── cleanup on success ────────────────────────────────────────────────────────
 step "Cleanup (success)"
-kill "$PF_O" "$PF_N" 2>/dev/null; PF_O=""; PF_N=""
 helm uninstall "${DEPLOY[@]}" -n "$NS" >/dev/null 2>&1 && echo "service releases uninstalled"
 if (( PURGE_DB )); then
     helm uninstall "$APICURIO_RELEASE" "$KAFKA_RELEASE" "$PG_RELEASE" -n "$NS" >/dev/null 2>&1 && echo "apicurio + kafka + postgres uninstalled"

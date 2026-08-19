@@ -7,9 +7,13 @@ image:
   tag: v1
   pullPolicy: Always
 
+# NodePort so demos reach it over the stable SSH tunnel (local 8080) instead of
+# kubectl port-forward. See demos/lib/tunnels.sh for the allocation map.
 service:
+  type: NodePort
   port: 80
   targetPort: 8080
+  nodePort: 30080
 
 # inventory-service gRPC endpoint (r23) — order-service calls CheckStock here.
 inventory:

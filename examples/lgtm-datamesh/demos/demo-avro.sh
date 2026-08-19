@@ -21,11 +21,12 @@ export MINIKUBE_ROOTLESS=true   # CAP-010
 
 PROFILE="capstone"; NS="capstone"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
+source "${ROOT}/demos/lib/tunnels.sh"
 PG_RELEASE="capstone-postgres"; PG_CHART="charts/capstone/charts/postgres"
 KAFKA_RELEASE="capstone-kafka"; KAFKA_CHART="charts/capstone/charts/kafka"; KAFKA_CR="capstone-kafka"
 APICURIO_RELEASE="apicurio"; APICURIO_CHART="charts/capstone/charts/apicurio"
 SUBJECT="order-placed-value"
-LOCAL_ORDER=18080; LOCAL_NOTIF=18097; LOCAL_APIC=18085
+LOCAL_ORDER=$TP_ORDER; LOCAL_NOTIF=$TP_NOTIF; LOCAL_APIC=$TP_APICURIO   # 8080 order, 8083 notification, 8084 apicurio
 PURGE_DB=0; [[ "${1:-}" == "--purge-db" ]] && PURGE_DB=1
 
 APP_SERVICES=(inventory-service order-service notification-service)
@@ -96,12 +97,10 @@ for svc in "${APP_SERVICES[@]}"; do
 done
 
 # ── 6. place an order (registers schema on producer startup, emits Avro) ──────
-step "Port-forwards: order(${LOCAL_ORDER}) notification(${LOCAL_NOTIF}) apicurio(${LOCAL_APIC})"
-kubectl port-forward -n "$NS" service/order-service "${LOCAL_ORDER}:80" >/dev/null 2>&1 & PF_O=$!
-kubectl port-forward -n "$NS" service/notification-service "${LOCAL_NOTIF}:80" >/dev/null 2>&1 & PF_N=$!
-kubectl port-forward -n "$NS" service/apicurio "${LOCAL_APIC}:8080" >/dev/null 2>&1 & PF_A=$!
-trap '[[ -n "${PF_O:-}" ]]&&kill "$PF_O" 2>/dev/null;[[ -n "${PF_N:-}" ]]&&kill "$PF_N" 2>/dev/null;[[ -n "${PF_A:-}" ]]&&kill "$PF_A" 2>/dev/null' EXIT
-sleep 3
+step "Bringing up tunnels: order(${LOCAL_ORDER}) notification(${LOCAL_NOTIF}) apicurio(${LOCAL_APIC})"
+ensure_tunnel order notification apicurio
+wait_http "http://127.0.0.1:${LOCAL_ORDER}/" 20 || true
+wait_http "http://127.0.0.1:${LOCAL_APIC}/" 20 || true
 
 step "Placing an in-stock order (WIDGET-001 x2) via order-service REST"
 ORDER_JSON="$(curl -fsS -X POST "http://127.0.0.1:${LOCAL_ORDER}/orders" \
@@ -127,14 +126,10 @@ step "Polling notification-service /received for the decoded order.placed event"
 # KEDA's kafka lag poll + pod start + consumer-group join must fit here.
 seen=0
 for i in $(seq 1 90); do
+    # The SSH tunnel is stable, but notification-service is KEDA-scaled-to-zero:
+    # until this event wakes it the NodePort has no endpoint and the curl fails —
+    # treat that as "not yet" and keep polling.
     if ! RECV="$(curl -fsS "http://127.0.0.1:${LOCAL_NOTIF}/received" 2>/dev/null)"; then
-        # A port-forward pins the pod it attached to at start. With the KEDA
-        # ScaledObject applied, that pod can be replaced or scaled away at any
-        # moment (helm sets replicas=1, KEDA reconciles to 0, the tested event
-        # wakes a NEW pod) — leaving us polling a dead tunnel forever. Re-attach
-        # to the Service and treat this attempt as "not yet".
-        kill "$PF_N" 2>/dev/null
-        kubectl port-forward -n "$NS" service/notification-service "${LOCAL_NOTIF}:80" >/dev/null 2>&1 & PF_N=$!
         RECV='[]'
     fi
     if printf '%s' "$RECV" | python3 -c "import sys,json; d=json.load(sys.stdin); sys.exit(0 if any(e.get('order_id')=='$ORDER_ID' and e.get('event_type')=='order.placed' and e.get('item_sku')=='WIDGET-001' for e in d) else 1)" 2>/dev/null; then
@@ -149,7 +144,6 @@ printf '\n✓ SUCCESS — order.placed flows as registered Avro: schema in Apicu
 
 # ── 8. cleanup on success ─────────────────────────────────────────────────────
 step "Cleanup (success)"
-kill "$PF_O" "$PF_N" "$PF_A" 2>/dev/null; PF_O=""; PF_N=""; PF_A=""
 helm uninstall "${APP_SERVICES[@]}" -n "$NS" >/dev/null 2>&1 && echo "service releases uninstalled"
 if (( PURGE_DB )); then
     helm uninstall "$APICURIO_RELEASE" "$KAFKA_RELEASE" "$PG_RELEASE" -n "$NS" >/dev/null 2>&1 && echo "apicurio + kafka + postgres uninstalled"

@@ -20,6 +20,8 @@
 # examples/lgtm-datamesh/:  ./demos/demo-add-data-product.sh up   (then ... down)
 
 set -uo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/tunnels.sh"
 export MINIKUBE_ROOTLESS=true
 
 NS="capstone"
@@ -33,23 +35,20 @@ ARTIFACT_ID="review-service-openapi"
 REVIEWS_SCHEMA_FQN="capstone-postgres.capstone.reviews"
 REVIEWS_TABLE_FQN="capstone-postgres.capstone.reviews.reviews"
 
-L_REVIEW="18086"; L_APIC="18085"; L_OM="18585"
-PIDS=()
+L_REVIEW="$TP_REVIEW"; L_APIC="$TP_APICURIO"; L_OM="$TP_OM"
 
 step() { printf '\n==> %s\n' "$1"; }
 ok()   { printf '    \xe2\x9c\x93 %s\n' "$1"; }
 warn() { printf '    \xe2\x9a\xa0 %s\n' "$1"; }
-fail() { printf '\n\xe2\x9c\x97 FAILED: %s\n' "$1" >&2; cleanup; exit 1; }
-cleanup() { for p in "${PIDS[@]:-}"; do [[ -n "$p" ]] && kill "$p" 2>/dev/null; done; }
-trap cleanup EXIT
+fail() { printf '\n\xe2\x9c\x97 FAILED: %s\n' "$1" >&2; exit 1; }
 
-pf() {  # pf <local> <svc> <remote> ; records pid, waits for the tunnel
-    kubectl port-forward -n "$NS" "svc/$2" "$1:$3" >/dev/null 2>&1 &
-    PIDS+=("$!")
-    sleep 2
+pf() {  # pf <local> <svc> <remote> ; opens a stable tunnel, waits for it
+    local name="${2%-service}"
+    ensure_tunnel "$name"
+    wait_http "http://127.0.0.1:$1/" 20 || true
 }
 
-om_token() {  # echoes an admin bearer token from the port-forwarded server
+om_token() {  # echoes an admin bearer token from the tunneled server
     OM_HOST="http://127.0.0.1:${L_OM}" python3 openmetadata/ingestion/get_token.py
 }
 
@@ -119,17 +118,16 @@ PY
     # ── Ways in ──────────────────────────────────────────────────────────────
     step "The data product is live. Ways to retrieve it and discover its metadata:"
     cat <<EOF
+    Open the stable tunnels:  ./scripts/tunnel-services.sh
+
     Retrieve the data (REST):
-      kubectl port-forward -n $NS svc/review-service 8086:80
-      curl -s localhost:8086/reviews?sku=SKU-ABC-42 | jq
+      curl -s localhost:${TP_REVIEW}/reviews?sku=SKU-ABC-42 | jq
 
     Discover the contract (Apicurio):
-      kubectl port-forward -n $NS svc/apicurio 8085:8080
-      open http://localhost:8085  → artifact '$ARTIFACT_ID' (OpenAPI)
+      open http://localhost:${TP_APICURIO}  → artifact '$ARTIFACT_ID' (OpenAPI)
 
     Discover the data + lineage (OpenMetadata):
-      kubectl port-forward -n $NS svc/openmetadata 8585:8585
-      open http://localhost:8585  → search 'reviews' → Lineage tab
+      open http://localhost:${TP_OM}  → search 'reviews' → Lineage tab
         (reviews.reviews linked to inventory.stock)
 
     Replay/clean up:  ./demos/demo-add-data-product.sh down

@@ -67,6 +67,16 @@ helm upgrade --install keda-add-ons-http kedacore/keda-add-ons-http \
     --set interceptor.replicas.waitTimeout=180s \
     --wait
 
+# ─── 4. Pin the HTTP interceptor proxy to a fixed NodePort ───────────────────
+# The demos wake graphql-gateway the real way — by driving a request through
+# this interceptor (Host: graphql-gateway.capstone) — reached over the stable
+# SSH tunnel (local 8081), never a kubectl port-forward. See demos/lib/tunnels.sh.
+printf '==> Pinning KEDA HTTP interceptor proxy nodePort to 30081\n'
+kubectl patch svc keda-add-ons-http-interceptor-proxy -n "$NAMESPACE" \
+    -p '{"spec":{"type":"NodePort"}}' >/dev/null 2>&1 || true
+kubectl patch svc keda-add-ons-http-interceptor-proxy -n "$NAMESPACE" --type='json' \
+    -p '[{"op":"replace","path":"/spec/ports/0/nodePort","value":30081}]' >/dev/null 2>&1 || true
+
 # ─── Done ────────────────────────────────────────────────────────────────────
 printf '\n==> KEDA core + HTTP add-on installed in the %s namespace.\n\n' "$NAMESPACE"
 printf 'Apply the two scalers, then run the demos:\n'

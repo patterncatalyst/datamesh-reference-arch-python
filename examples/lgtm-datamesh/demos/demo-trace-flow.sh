@@ -17,23 +17,16 @@
 # Run from examples/lgtm-datamesh/:  ./demos/demo-trace-flow.sh
 
 set -uo pipefail
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/tunnels.sh"
 
 NS="capstone"
 OBS_NS="observability"
 HOST="graphql-gateway.capstone"
 PROXY_SVC="keda-add-ons-http-interceptor-proxy"
-GQL_PORT="8082"
-TEMPO_PORT="3201"
-GQL_PF=""
-TEMPO_PF=""
+GQL_PORT="$TP_GATEWAY"
+TEMPO_PORT="$TP_TEMPO"
 
 step() { printf '\n==> %s\n' "$1"; }
-cleanup() {
-    [[ -n "$GQL_PF" ]] && kill "$GQL_PF" 2>/dev/null
-    [[ -n "$TEMPO_PF" ]] && kill "$TEMPO_PF" 2>/dev/null
-    true
-}
-trap cleanup EXIT
 dump() {
     step "DIAGNOSTIC DUMP"
     kubectl get deploy,pods -n "$NS" -l app.kubernetes.io/name=graphql-gateway 2>&1
@@ -55,13 +48,9 @@ kubectl get deploy graphql-gateway -n "$NS" \
 printf '    ✓ interceptor, Tempo, and OTEL-enabled gateway present\n'
 
 # ─── Drive a GraphQL query through the interceptor ───────────────────────────
-step "Port-forwarding the KEDA interceptor ($GQL_PORT → $PROXY_SVC:8080)"
-kubectl port-forward -n keda "svc/$PROXY_SVC" "${GQL_PORT}:8080" >/dev/null 2>&1 &
-GQL_PF=$!
-for _ in $(seq 1 15); do
-    curl -s -o /dev/null --max-time 2 "http://127.0.0.1:${GQL_PORT}/" && break
-    sleep 1
-done
+step "Opening the tunnel to the KEDA interceptor (local ${GQL_PORT} → ${PROXY_SVC}:8080)"
+ensure_tunnel gateway
+wait_http "http://127.0.0.1:${GQL_PORT}/" 15 || true
 
 step "Sending a GraphQL query (wakes the gateway from zero, fans out to backends)"
 # Pre-warm the gateway. KEDA HTTP's interceptor returns 502 with
@@ -105,13 +94,9 @@ printf '    ✓ gateway processed the query (HTTP 200) — a trace should now be
 GW_LOG="$(kubectl logs -n "$NS" -l app.kubernetes.io/name=graphql-gateway --tail=120 2>/dev/null)"
 
 # ─── Confirm the trace landed in Tempo ───────────────────────────────────────
-step "Port-forwarding Tempo ($TEMPO_PORT → tempo:3200) and searching for the trace"
-kubectl port-forward -n "$OBS_NS" svc/tempo "${TEMPO_PORT}:3200" >/dev/null 2>&1 &
-TEMPO_PF=$!
-for _ in $(seq 1 15); do
-    curl -s -o /dev/null --max-time 2 "http://127.0.0.1:${TEMPO_PORT}/ready" && break
-    sleep 1
-done
+step "Opening the tunnel to Tempo (local ${TEMPO_PORT}) and searching for the trace"
+ensure_tunnel tempo
+wait_http "http://127.0.0.1:${TEMPO_PORT}/ready" 15 || true
 
 # BatchSpanProcessor flushes on a ~5s schedule, then Tempo indexes — retry.
 # TraceQL via q= (the legacy tags= param doesn't match current Tempo search).

@@ -17,6 +17,8 @@
 #   ./demos/demo-service.sh <name> --purge-db   also tears down Postgres at the end
 
 set -uo pipefail   # NOT -e: we manage failures explicitly so we can diagnose
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/tunnels.sh"
 export MINIKUBE_ROOTLESS=true   # CAP-010: mandatory for rootless-podman host ops
 
 BASE="${1:?usage: demo-service.sh <name> [--purge-db]}"
@@ -33,7 +35,8 @@ SVC_DIR="services/${SERVICE}"
 CHART="charts/capstone/charts/${SERVICE}"
 PG_RELEASE="capstone-postgres"
 PG_CHART="charts/capstone/charts/postgres"   # the Cluster CR chart (r21)
-LOCAL_PORT=18080
+# The tunnel name is the short service name ($BASE), e.g. "order", "review".
+LOCAL_PORT="$(tunnel_port_for "$BASE")" || { echo "no tunnel mapping for $BASE"; exit 1; }
 
 step() { printf '\n==> %s\n' "$1"; }
 fail() {
@@ -99,11 +102,9 @@ step "Deploying ${SERVICE}"
 helm upgrade --install "$SERVICE" "$CHART" -n "$NS" || fail "helm install failed"
 kubectl rollout status "deployment/${SERVICE}" -n "$NS" --timeout=120s || fail "rollout did not complete"
 
-step "Port-forwarding ${SERVICE} to 127.0.0.1:${LOCAL_PORT}"
-kubectl port-forward -n "$NS" "service/${SERVICE}" "${LOCAL_PORT}:80" >/dev/null 2>&1 &
-PF=$!
-trap '[[ -n "${PF:-}" ]] && kill "$PF" 2>/dev/null' EXIT
-sleep 3
+step "Opening a tunnel to ${SERVICE} (127.0.0.1:${LOCAL_PORT})"
+ensure_tunnel "$BASE"
+wait_http "http://127.0.0.1:${LOCAL_PORT}/" 20 || true
 
 step "Assert GET /health returns ok"
 H="$(curl -fsS "http://127.0.0.1:${LOCAL_PORT}/health")" || fail "/health did not return 200"
@@ -133,7 +134,6 @@ printf '\n✓ SUCCESS — %s health skeleton verified\n' "$SERVICE"
 printf '  (Postgres left running for fast re-runs; pass --purge-db to tear it down)\n'
 
 step "Cleanup (success)"
-kill "$PF" 2>/dev/null; PF=""
 helm uninstall "$SERVICE" -n "$NS" >/dev/null 2>&1 && echo "release \"${SERVICE}\" uninstalled"
 if (( PURGE_DB )); then
     helm uninstall "$PG_RELEASE" -n "$NS" >/dev/null 2>&1 && echo "release \"${PG_RELEASE}\" uninstalled"

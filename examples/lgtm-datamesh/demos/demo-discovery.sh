@@ -20,12 +20,13 @@ export MINIKUBE_ROOTLESS=true   # CAP-010
 
 PROFILE="capstone"; NS="capstone"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
+source "${ROOT}/demos/lib/tunnels.sh"
 PG_RELEASE="capstone-postgres"; PG_CHART="charts/capstone/charts/postgres"
 KAFKA_RELEASE="capstone-kafka"; KAFKA_CHART="charts/capstone/charts/kafka"; KAFKA_CR="capstone-kafka"
 APICURIO_RELEASE="apicurio"; APICURIO_CHART="charts/capstone/charts/apicurio"
 PROTO_PATH="proto/capstone/inventory/v1/inventory.proto"
 GROUP="default"
-LOCAL_ORDER=18080; LOCAL_GW=18099; LOCAL_APIC=18085
+LOCAL_ORDER=$TP_ORDER; LOCAL_GW=$TP_GATEWAY; LOCAL_APIC=$TP_APICURIO   # 8080 order, 8081 gateway-via-interceptor, 8084 apicurio
 PURGE_DB=0; [[ "${1:-}" == "--purge-db" ]] && PURGE_DB=1
 
 DEPLOY=(inventory-service order-service graphql-gateway)
@@ -89,24 +90,16 @@ for svc in "${DEPLOY[@]}"; do
     kubectl rollout status "deployment/${svc}" -n "$NS" --timeout=120s || fail "${svc} rollout failed"
 done
 
-# The SDL fetch port-forwards straight to the gateway Service, but the
-# bootstrap-applied KEDA HTTPScaledObject scales the gateway to zero when idle
-# (rollout status on a 0-replica deployment succeeds instantly, so the loop
-# above doesn't catch it). Wake it by hand; KEDA re-adopts it afterwards.
-gw_avail="$(kubectl get deploy graphql-gateway -n "$NS" -o jsonpath='{.status.availableReplicas}' 2>/dev/null)"
-if ! [[ "$gw_avail" =~ ^[1-9][0-9]*$ ]]; then
-    step "graphql-gateway is scaled to zero — waking it for the SDL fetch"
-    kubectl scale deploy graphql-gateway -n "$NS" --replicas=1 >/dev/null 2>&1
-    kubectl rollout status deployment/graphql-gateway -n "$NS" --timeout=120s || fail "graphql-gateway did not wake"
-fi
+# The SDL fetch reaches the gateway THROUGH the KEDA interceptor (Host header).
+# The gateway is KEDA-scaled-to-zero; wake it the real way before publishing.
+step "Waking graphql-gateway through the KEDA interceptor for the SDL fetch"
+wake_gateway "$NS" || fail "graphql-gateway did not wake through the interceptor"
 
-# ── port-forwards ─────────────────────────────────────────────────────────────
-step "Port-forwards: order(${LOCAL_ORDER}) gateway(${LOCAL_GW}) apicurio(${LOCAL_APIC})"
-kubectl port-forward -n "$NS" service/order-service "${LOCAL_ORDER}:80" >/dev/null 2>&1 & PF_O=$!
-kubectl port-forward -n "$NS" service/graphql-gateway "${LOCAL_GW}:80" >/dev/null 2>&1 & PF_G=$!
-kubectl port-forward -n "$NS" service/apicurio "${LOCAL_APIC}:8080" >/dev/null 2>&1 & PF_A=$!
-trap '[[ -n "${PF_O:-}" ]]&&kill "$PF_O" 2>/dev/null;[[ -n "${PF_G:-}" ]]&&kill "$PF_G" 2>/dev/null;[[ -n "${PF_A:-}" ]]&&kill "$PF_A" 2>/dev/null' EXIT
-sleep 3
+# ── tunnels ────────────────────────────────────────────────────────────────────
+step "Bringing up tunnels: order(${LOCAL_ORDER}) gateway-via-interceptor(${LOCAL_GW}) apicurio(${LOCAL_APIC})"
+ensure_tunnel order apicurio   # gateway tunnel was ensured by wake_gateway above
+wait_http "http://127.0.0.1:${LOCAL_ORDER}/" 20 || true
+wait_http "http://127.0.0.1:${LOCAL_APIC}/" 20 || true
 
 # ── publish ───────────────────────────────────────────────────────────────────
 step "Publishing discovery contracts (OpenAPI + Protobuf + GraphQL SDL)"
@@ -115,19 +108,16 @@ for attempt in 1 2 3; do
     if APICURIO_URL="http://127.0.0.1:${LOCAL_APIC}" \
        ORDER_URL="http://127.0.0.1:${LOCAL_ORDER}" \
        GATEWAY_URL="http://127.0.0.1:${LOCAL_GW}" \
+       GATEWAY_HOST="${GATEWAY_HOST}" \
        PROTO_PATH="$PROTO_PATH" APICURIO_GROUP="$GROUP" \
            ./scripts/publish-discovery-contracts.sh; then
         published=1; break
     fi
-    # The wake above is not enough on its own: the HTTPScaledObject's
-    # scaledownPeriod is 30s, so the gateway can drop back to zero between the
-    # rollout gate and the SDL fetch, killing the pinned port-forward mid-
-    # publish. Re-wake, re-attach, and retry — publishing is idempotent.
-    printf '    publish attempt %d failed — re-waking the gateway and retrying\n' "$attempt"
-    kubectl scale deploy graphql-gateway -n "$NS" --replicas=1 >/dev/null 2>&1
-    kubectl rollout status deployment/graphql-gateway -n "$NS" --timeout=120s >/dev/null 2>&1
-    kill "$PF_G" 2>/dev/null
-    kubectl port-forward -n "$NS" service/graphql-gateway "${LOCAL_GW}:80" >/dev/null 2>&1 & PF_G=$!
+    # The HTTPScaledObject's scaledownPeriod is 30s, so the gateway can drop back
+    # to zero between the wake and the SDL fetch. Re-wake through the interceptor
+    # and retry — publishing is idempotent.
+    printf '    publish attempt %d failed — re-waking the gateway through the interceptor and retrying\n' "$attempt"
+    wake_gateway "$NS" || true
     sleep 2
 done
 (( published )) || fail "publishing discovery contracts failed"
@@ -150,7 +140,6 @@ printf '\n✓ SUCCESS — discovery contracts published; Apicurio now holds all 
 
 # ── cleanup on success ────────────────────────────────────────────────────────
 step "Cleanup (success)"
-kill "$PF_O" "$PF_G" "$PF_A" 2>/dev/null; PF_O=""; PF_G=""; PF_A=""
 helm uninstall "${DEPLOY[@]}" -n "$NS" >/dev/null 2>&1 && echo "service releases uninstalled"
 if (( PURGE_DB )); then
     helm uninstall "$APICURIO_RELEASE" "$KAFKA_RELEASE" "$PG_RELEASE" -n "$NS" >/dev/null 2>&1 && echo "apicurio + kafka + postgres uninstalled"

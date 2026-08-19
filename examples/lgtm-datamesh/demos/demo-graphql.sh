@@ -21,8 +21,9 @@ export MINIKUBE_ROOTLESS=true   # CAP-010
 
 PROFILE="capstone"; NS="capstone"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
+source "${ROOT}/demos/lib/tunnels.sh"
 PG_RELEASE="capstone-postgres"; PG_CHART="charts/capstone/charts/postgres"
-LOCAL_ORDER=18080; LOCAL_GQL=18099
+LOCAL_ORDER=$TP_ORDER; LOCAL_GQL=$TP_GATEWAY   # 8080 order-service, 8081 gateway via KEDA interceptor
 PURGE_DB=0; [[ "${1:-}" == "--purge-db" ]] && PURGE_DB=1
 
 SERVICES=(inventory-service order-service graphql-gateway)
@@ -86,13 +87,12 @@ for svc in inventory-service order-service graphql-gateway; do
 done
 
 # ── 5. seed an order via order-service REST ───────────────────────────────────
-step "Port-forwarding order-service (${LOCAL_ORDER}) and graphql-gateway (${LOCAL_GQL})"
-kubectl port-forward -n "$NS" service/order-service "${LOCAL_ORDER}:80" >/dev/null 2>&1 &
-PF_O=$!
-kubectl port-forward -n "$NS" service/graphql-gateway "${LOCAL_GQL}:80" >/dev/null 2>&1 &
-PF_G=$!
-trap '[[ -n "${PF_O:-}" ]] && kill "$PF_O" 2>/dev/null; [[ -n "${PF_G:-}" ]] && kill "$PF_G" 2>/dev/null' EXIT
-sleep 3
+step "Bringing up tunnels: order-service (${LOCAL_ORDER}) + gateway via the KEDA interceptor (${LOCAL_GQL})"
+ensure_tunnel order
+wait_http "http://127.0.0.1:${LOCAL_ORDER}/" 20 || true
+# graphql-gateway is KEDA-scaled-to-zero; wake it the real way — a request driven
+# through the HTTP interceptor (Host: graphql-gateway.capstone) — not port-forward.
+wake_gateway "$NS" || printf '    ⚠ gateway not Available yet — will retry on the query\n'
 
 step "Placing an in-stock order (WIDGET-001 x2) via order-service REST"
 ORDER_JSON="$(curl -fsS -X POST "http://127.0.0.1:${LOCAL_ORDER}/orders" \
@@ -107,19 +107,16 @@ printf '    order id=%s\n' "$ORDER_ID"
 step "Querying graphql-gateway for the order + nested stock (REST + gRPC stitched)"
 GQL_QUERY="$(printf '{"query":"{ order(id: \\"%s\\") { id itemSku quantity stock { sku quantityOnHand available } } }"}' "$ORDER_ID")"
 RESP=""
-for attempt in 1 2 3; do
+for attempt in 1 2 3 4 5; do
     RESP="$(curl -fsS -X POST "http://127.0.0.1:${LOCAL_GQL}/graphql" \
+        -H "Host: ${GATEWAY_HOST}" \
         -H 'Content-Type: application/json' \
         -d "$GQL_QUERY")" && break
-    # The gateway is KEDA-managed (HTTPScaledObject, scaledownPeriod 30s): with
-    # no interceptor traffic it can scale to zero between the rollout gate and
-    # this query, killing the pinned port-forward. Wake it, re-attach, retry.
-    printf '    query attempt %d failed — waking the gateway and retrying\n' "$attempt"
-    kubectl scale deploy graphql-gateway -n "$NS" --replicas=1 >/dev/null 2>&1
-    kubectl rollout status deployment/graphql-gateway -n "$NS" --timeout=120s >/dev/null 2>&1
-    kill "$PF_G" 2>/dev/null
-    kubectl port-forward -n "$NS" service/graphql-gateway "${LOCAL_GQL}:80" >/dev/null 2>&1 &
-    PF_G=$!
+    # The gateway is KEDA-scaled-to-zero and reached THROUGH the HTTP interceptor
+    # (Host: graphql-gateway.capstone). A cold start — or a scale-down between the
+    # rollout gate and this query — can 502 the first attempts; re-wake and retry.
+    printf '    query attempt %d failed — waking the gateway through the interceptor and retrying\n' "$attempt"
+    wake_gateway "$NS" || true
     sleep 2
     RESP=""
 done
@@ -145,6 +142,5 @@ printf '\n✓ SUCCESS — federated GraphQL query verified (order via REST + sto
 
 # ── 7. cleanup on success ─────────────────────────────────────────────────────
 step "Cleanup (success)"
-kill "$PF_O" "$PF_G" 2>/dev/null; PF_O=""; PF_G=""
 helm uninstall "${SERVICES[@]}" -n "$NS" >/dev/null 2>&1 && echo "releases uninstalled"
 if (( PURGE_DB )); then helm uninstall "$PG_RELEASE" -n "$NS" >/dev/null 2>&1 && echo "postgres uninstalled"; fi

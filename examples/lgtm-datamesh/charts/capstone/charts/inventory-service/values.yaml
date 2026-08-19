@@ -9,9 +9,14 @@ image:
   tag: v1
   pullPolicy: Always
 
+# http exposed as NodePort so demos reach it over the stable SSH tunnel
+# (local 8087) instead of kubectl port-forward; gRPC stays in-cluster only.
+# See demos/lib/tunnels.sh for the allocation map.
 service:
+  type: NodePort
   port: 80
   targetPort: 8080
+  nodePort: 30087
   # gRPC (r23): InventoryService.CheckStock
   grpcPort: 50051
 

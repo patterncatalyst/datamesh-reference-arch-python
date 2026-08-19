@@ -25,13 +25,15 @@
 set -uo pipefail   # NOT -e: failures are handled explicitly so we can diagnose
 export MINIKUBE_ROOTLESS=true   # CAP-010
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/tunnels.sh"
+
 NS="capstone"
 PROFILE="capstone"
 PG_CLUSTER="capstone-postgres"
 OM_DB="openmetadata"
 EXPECTED_VERSION="1.12.8"
-LOCAL_PORT="8585"
-PORT_FORWARD_PID=""
+LOCAL_PORT="$TP_OM"
 SUCCESS=0
 
 step() { printf '\n==> %s\n' "$1"; }
@@ -58,18 +60,9 @@ dump_diagnostics() {
 
 fail() {
     printf '\n✗ FAILED: %s\n' "$1" >&2
-    [[ -n "$PORT_FORWARD_PID" ]] && kill "$PORT_FORWARD_PID" 2>/dev/null
     dump_diagnostics
     exit 1
 }
-
-on_exit() {
-    [[ -n "$PORT_FORWARD_PID" ]] && kill "$PORT_FORWARD_PID" 2>/dev/null || true
-    # This smoke never tears OpenMetadata down — it's a platform install. On
-    # success we simply stop the port-forward (handled above).
-    :
-}
-trap on_exit EXIT
 
 # ─── Pre-flight ──────────────────────────────────────────────────────────────
 
@@ -90,10 +83,8 @@ printf '    ✓ deployment available\n'
 # ─── Version API (proves booted + DB-backed) ─────────────────────────────────
 
 step "Querying the server version API (proves it booted and reached Postgres)"
-kubectl port-forward -n "$NS" svc/openmetadata "${LOCAL_PORT}:8585" >/dev/null 2>&1 &
-PORT_FORWARD_PID=$!
-# Give the forward a moment to establish.
-sleep 4
+ensure_tunnel openmetadata
+wait_http "http://127.0.0.1:${LOCAL_PORT}/" 20 || true
 
 VERSION_JSON="$(curl -fsS "http://127.0.0.1:${LOCAL_PORT}/api/v1/system/version" 2>/dev/null || echo '')"
 [[ -n "$VERSION_JSON" ]] \
@@ -129,6 +120,6 @@ SUCCESS=1
 step "SUCCESS"
 printf 'OpenMetadata %s is deployed, Postgres-backed, and serving its API.\n' "$EXPECTED_VERSION"
 printf 'Open the UI with:\n'
-printf '  kubectl port-forward -n %s svc/openmetadata 8585:8585\n' "$NS"
+printf '  ./scripts/tunnel-services.sh   # then open http://localhost:8585\n'
 printf '  http://127.0.0.1:8585  (admin@open-metadata.org / admin)\n'
 printf '\nNext (r27b): register Postgres + Kafka, ingest, and declare lineage.\n'

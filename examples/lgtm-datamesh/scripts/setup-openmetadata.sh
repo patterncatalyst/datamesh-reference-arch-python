@@ -26,9 +26,9 @@
 # Usage:
 #   ./setup-openmetadata.sh
 #
-# After it completes, reach the UI with:
-#   kubectl port-forward -n capstone svc/openmetadata 8585:8585
-#   # then open http://127.0.0.1:8585  (default login admin@open-metadata.org / admin)
+# After it completes, reach the UI over the stable SSH tunnel:
+#   ./scripts/tunnel-services.sh
+#   # then open http://localhost:8585  (default login admin@open-metadata.org / admin)
 
 set -euo pipefail
 

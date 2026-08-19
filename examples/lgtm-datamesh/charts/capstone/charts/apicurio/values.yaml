@@ -11,9 +11,16 @@ image:
   tag: "3.2.4"
   pullPolicy: IfNotPresent
 
+# Exposed as NodePort so it can be reached over the stable SSH tunnel
+# (scripts/tunnel-services.sh), same as the other persistent UIs — not a
+# kubectl port-forward, which drops when the system quiesces. nodePort 30084 /
+# local 8084 is the canonical Apicurio allocation from the lgtm-minikube-stack
+# skill (local 8084 avoids the ephemeral demo forwards that transiently use 8080).
 service:
+  type: NodePort
   port: 8080
   targetPort: 8080
+  nodePort: 30084
 
 resources:
   requests:

@@ -35,8 +35,8 @@
 #
 # Then verify + view:
 #   ./demos/demo-kiali.sh
-#   kubectl port-forward -n istio-system svc/kiali 20001:20001
-#   open http://localhost:20001   (Graph → namespace: capstone)
+#   ./scripts/tunnel-services.sh   # Kiali on http://localhost:20001/kiali
+#   open http://localhost:20001/kiali   (Graph → namespace: capstone)
 
 set -euo pipefail
 

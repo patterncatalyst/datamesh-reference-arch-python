@@ -23,11 +23,11 @@ export MINIKUBE_ROOTLESS=true
 NS="capstone"
 PROFILE="capstone"
 KEDA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../keda" && pwd)"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/tunnels.sh"
 SEL="app.kubernetes.io/name=graphql-gateway"
 HOST="graphql-gateway.capstone"
-LOCAL_PORT="8081"
+LOCAL_PORT="$TP_GATEWAY"
 PROXY_SVC="keda-add-ons-http-interceptor-proxy"
-PF_PID=""
 declare -a LOAD_PIDS=()
 
 step() { printf '\n==> %s\n' "$1"; }
@@ -36,7 +36,6 @@ count_pods() {
 }
 cleanup() {
     for p in "${LOAD_PIDS[@]:-}"; do kill "$p" 2>/dev/null; done
-    [[ -n "$PF_PID" ]] && kill "$PF_PID" 2>/dev/null
     true
 }
 trap cleanup EXIT
@@ -85,17 +84,13 @@ wait_until "0 replicas" 600 is_zero \
 printf '    ✓ scaled to ZERO (no traffic, costing nothing)\n'
 
 # ─── 2. Wake from zero through the interceptor ───────────────────────────────
-step "Port-forwarding the KEDA HTTP interceptor (proxy :8080)"
-# The proxy listens on 8080 on keda-add-ons-http-interceptor-proxy (matches the
-# proven §12 pattern). Hardcoded — discovering ports[0] risks hitting a non-proxy
-# port, which silently drops the routing and the pending-request metric.
-kubectl port-forward -n keda "svc/$PROXY_SVC" "${LOCAL_PORT}:8080" >/dev/null 2>&1 &
-PF_PID=$!
-# Wait for the port-forward TCP socket to accept connections (not a routing check).
-for _ in $(seq 1 15); do
-    curl -s -o /dev/null --max-time 2 "http://127.0.0.1:${LOCAL_PORT}/" && break
-    sleep 1
-done
+step "Opening the tunnel to the KEDA HTTP interceptor (local ${LOCAL_PORT} → proxy :8080)"
+# The interceptor proxy is pinned to nodePort 30081 (setup-keda.sh); the tunnel
+# forwards local ${LOCAL_PORT} to it. Traffic enters here with a Host header
+# matching the HTTPScaledObject.
+ensure_tunnel gateway
+# Wait for the tunnel socket to accept connections (not a routing check).
+wait_http "http://127.0.0.1:${LOCAL_PORT}/" 15 || true
 
 step "Firing a cold-start request through the interceptor (Host: $HOST)"
 # With interceptor.replicas.waitTimeout raised to 180s (setup-keda.sh), the
@@ -131,16 +126,14 @@ LOAD_PIDS=()
 printf '    ✓ stayed up under load (peak %s replica(s))\n' "$MAXSEEN"
 
 # ─── 3. Traffic stops → scale back to zero ───────────────────────────────────
-# Close the port-forward FIRST — this is THE thing that makes scale-to-zero work.
-# The HTTP add-on scales on in-flight `concurrency`, and an open connection (a
-# held port-forward, keep-alive and all) reads as >=1. While anything is
-# connected the metric never reaches 0, so the scaledownPeriod timer never starts
-# and the gateway looks like it refuses to scale down. Drop the connection and it
-# stands down in ~30s (the HTTPScaledObject's scaledownPeriod) — same ballpark as
-# the Kafka ScaledObject's cooldownPeriod: 30.
-[[ -n "$PF_PID" ]] && kill "$PF_PID" 2>/dev/null; PF_PID=""
+# The HTTP add-on scales on in-flight `concurrency`. Unlike a held kubectl
+# port-forward (whose keep-alive connection reads as >=1 and stalls scale-down),
+# an idle SSH tunnel holds NO connection to the interceptor — so once the load
+# loop's requests drain, concurrency reaches 0 and the gateway stands down in
+# ~30s (the HTTPScaledObject's scaledownPeriod), same ballpark as the Kafka
+# ScaledObject's cooldownPeriod: 30.
 
-step "Stopping traffic (and closing the interceptor connection); waiting for scale back to ZERO (~30s once idle)"
+step "Stopping traffic; waiting for scale back to ZERO (~30s once idle)"
 # We latch on KEDA's decision — the Deployment's desired replicas reaching 0 —
 # rather than waiting for the last pod to finish terminating, so graceful
 # shutdown lag doesn't read as a failure. With the connection closed this is

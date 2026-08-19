@@ -32,7 +32,11 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
 PG_RELEASE="capstone-postgres";  PG_CHART="charts/capstone/charts/postgres"
 KAFKA_RELEASE="capstone-kafka";  KAFKA_CHART="charts/capstone/charts/kafka"; KAFKA_CR="capstone-kafka"
 APICURIO_RELEASE="apicurio";     APICURIO_CHART="charts/capstone/charts/apicurio"
+KAFKAUI_RELEASE="kafka-ui";      KAFKAUI_CHART="charts/capstone/charts/kafka-ui"
 SERVICES=(graphql-gateway inventory-service notification-service order-service payment-service shipping-service)
+
+# Canonical tunnel ports + helpers (ensure_tunnel, wait_http) — no port-forward.
+source "${ROOT}/demos/lib/tunnels.sh"
 
 step() { printf '\n\033[1m==> %s\033[0m\n' "$1"; }
 ok()   { printf '    \xe2\x9c\x93 %s\n' "$1"; }
@@ -59,6 +63,19 @@ step "3/10 CloudNativePG operator"
 kubectl get crd clusters.postgresql.cnpg.io >/dev/null 2>&1 \
     && ok "CNPG CRDs present" \
     || { ./scripts/setup-postgres-operator.sh || fail "postgres-operator setup failed"; }
+
+# The CRDs can be present while the operator pod — which serves the admission
+# webhook — is still starting (e.g. right after a cluster stop/start). Applying
+# the Cluster CR then fails with "failed calling webhook … connection refused".
+# Wait for the operator Deployment to roll out AND its webhook endpoints to be
+# populated before Tier 4 applies the Postgres CR.
+kubectl rollout status -n cnpg-system deploy/cnpg-cloudnative-pg --timeout=180s >/dev/null 2>&1 || true
+for _ in $(seq 1 36); do
+    [[ -n "$(kubectl get endpoints cnpg-webhook-service -n cnpg-system \
+             -o jsonpath='{.subsets[*].addresses[*].ip}' 2>/dev/null)" ]] && break
+    sleep 5
+done
+ok "CNPG operator + webhook ready"
 
 # ── Tier 4: Postgres cluster CR (OpenMetadata depends on this) ───────────────
 step "4/10 Postgres cluster"
@@ -115,13 +132,17 @@ for svc in "${SERVICES[@]}"; do
 done
 
 helm upgrade --install "$APICURIO_RELEASE" "$APICURIO_CHART" -n "$NS" || fail "apicurio install failed"
+# Kafka UI — a data-mesh infrastructure console for browsing Kafka topics,
+# messages, consumer groups, and (via Apicurio ccompat) schemas. Reached over the
+# SSH tunnel on local 8089. Additive; opts out of the mesh (no sidecar).
+helm upgrade --install "$KAFKAUI_RELEASE" "$KAFKAUI_CHART" -n "$NS" || fail "kafka-ui install failed"
 for svc in "${SERVICES[@]}"; do
     helm upgrade --install "$svc" "charts/capstone/charts/$svc" -n "$NS" || fail "$svc install failed"
 done
 # Scalers (gateway scale-to-zero + notification consumer-lag).
 kubectl apply -f keda/notification-scaledobject.yaml >/dev/null 2>&1 || true
 kubectl apply -f keda/gateway-httpscaledobject.yaml >/dev/null 2>&1 || true
-ok "apicurio + ${#SERVICES[@]} services + scalers applied"
+ok "apicurio + kafka-ui + ${#SERVICES[@]} services + scalers applied"
 
 step "Waiting for the core services to be Ready"
 # Skip graphql-gateway (KEDA-scaled to zero by design).
@@ -132,13 +153,12 @@ ok "core services Ready"
 
 # Seed one order so the Kafka topic + Postgres have data for the catalog/ingestion.
 step "Seeding one order (gives the catalog data to ingest)"
-kubectl port-forward -n "$NS" svc/order-service 18080:80 >/dev/null 2>&1 &
-SEED_PF=$!; sleep 3
-curl -fs -o /dev/null --max-time 8 -X POST "http://127.0.0.1:18080/orders" \
+ensure_tunnel order
+wait_http "http://127.0.0.1:${TP_ORDER}/" 20 || true
+curl -fs -o /dev/null --max-time 8 -X POST "http://127.0.0.1:${TP_ORDER}/orders" \
     -H 'Content-Type: application/json' \
     --data '{"customer_id":"cust-1001","item_sku":"WIDGET-001","quantity":1,"amount":19.99}' \
     && ok "seed order placed" || printf '    (seed skipped — place one later via demo-order.sh)\n'
-kill "$SEED_PF" 2>/dev/null || true
 
 # ── Tier 9: Kiali (mesh topology console for the walkthrough's act 5) ───────
 # Kiali is additive and lives in istio-system; depends on Istio + observability
@@ -159,7 +179,22 @@ ok "catalog populated and lineage declared"
 step "Cluster status"
 bash ./scripts/cluster-status.sh || true
 
-step "UI SSH tunnels (Grafana, Prometheus, Tempo, Kiali, OpenMetadata)"
+# Pin external-service NodePorts (idempotent). The KEDA HTTP interceptor and the
+# istio-ingressgateway get their fixed NodePorts from setup-keda.sh / setup-istio.sh
+# — but those tiers are SKIPPED on a stop/start restart where the CRDs/istiod
+# already exist. Re-apply the pins here so the tunnels (gateway via interceptor
+# :8081, ingress :8088) always have a NodePort to reach. (Tempo's pins are applied
+# by setup-observability.sh, which runs unconditionally in Tier 7.)
+step "Pinning external-service NodePorts (interceptor 30081, ingress 30088)"
+kubectl patch svc keda-add-ons-http-interceptor-proxy -n keda \
+    -p '{"spec":{"type":"NodePort"}}' >/dev/null 2>&1 || true
+kubectl patch svc keda-add-ons-http-interceptor-proxy -n keda --type='json' \
+    -p '[{"op":"replace","path":"/spec/ports/0/nodePort","value":30081}]' >/dev/null 2>&1 || true
+kubectl patch svc istio-ingressgateway -n istio-system --type='json' \
+    -p '[{"op":"replace","path":"/spec/ports/1/nodePort","value":30088}]' >/dev/null 2>&1 || true
+ok "interceptor → 30081, istio-ingress :80 → 30088"
+
+step "UI SSH tunnels (Grafana, Prometheus, Tempo, Kiali, OpenMetadata, Apicurio, Kafka UI)"
 ./scripts/tunnel-services.sh
 
 step "Bring-up complete — the cluster is walkthrough-ready."
@@ -167,11 +202,13 @@ cat <<EOF
     # The five-act presenter walkthrough (the deck's "What you can see it do"):
     ./demos/walkthrough.sh
 
-    # UI dashboards (port-forwards started automatically):
+    # UI dashboards (SSH tunnels started automatically):
     #   Grafana        http://localhost:3000
     #   Prometheus     http://localhost:9091
     #   Kiali          http://localhost:20001/kiali
     #   OpenMetadata   http://localhost:8585
+    #   Apicurio       http://localhost:8084
+    #   Kafka UI       http://localhost:8089
     #   Stop them:     ./scripts/tunnel-services.sh --stop
 
     # Other things you can do from here:

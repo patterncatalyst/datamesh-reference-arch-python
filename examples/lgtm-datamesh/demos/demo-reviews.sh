@@ -14,6 +14,8 @@
 # Run from examples/lgtm-datamesh/:  ./demos/demo-reviews.sh
 
 set -uo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/tunnels.sh"
 export MINIKUBE_ROOTLESS=true
 
 NS="capstone"
@@ -23,8 +25,7 @@ CHART="charts/capstone/charts/review-service"
 SERVICE_DIR="services/review-service"
 IMAGE_NAME="review-service"
 IMAGE_TAG="v1"
-PORT="18086"
-PF=""
+PORT="$TP_REVIEW"
 SUCCESS=0
 
 step() { printf '\n==> %s\n' "$1"; }
@@ -41,9 +42,8 @@ dump() {
     fi
     printf '\nClean up manually: helm uninstall %s -n %s\n' "$RELEASE" "$NS"
 }
-fail() { printf '\n✗ FAILED: %s\n' "$1" >&2; [[ -n "$PF" ]] && kill "$PF" 2>/dev/null; dump; exit 1; }
+fail() { printf '\n✗ FAILED: %s\n' "$1" >&2; dump; exit 1; }
 on_exit() {
-    [[ -n "$PF" ]] && kill "$PF" 2>/dev/null || true
     if (( SUCCESS )); then
         step "Cleanup (success)"
         helm uninstall "$RELEASE" -n "$NS" 2>/dev/null || true
@@ -72,14 +72,10 @@ kubectl wait -n "$NS" --for=condition=Ready pod \
     || fail "review-service pod did not become Ready"
 printf '    ✓ review-service Ready\n'
 
-# ─── Port-forward + assert the REST surface ──────────────────────────────────
-step "Port-forwarding review-service ($PORT → svc:80)"
-kubectl port-forward -n "$NS" "svc/${RELEASE}" "${PORT}:80" >/dev/null 2>&1 &
-PF=$!
-for _ in $(seq 1 15); do
-    curl -s -o /dev/null --max-time 2 "http://127.0.0.1:${PORT}/health" && break
-    sleep 1
-done
+# ─── Tunnel + assert the REST surface ────────────────────────────────────────
+step "Opening a tunnel to review-service ($PORT → svc:80)"
+ensure_tunnel review
+wait_http "http://127.0.0.1:${PORT}/health" 15 || true
 
 base="http://127.0.0.1:${PORT}"
 
