@@ -34,7 +34,13 @@
 #     via route.yaml (edge Route) instead of a NodePort.
 
 image:
+  # Mirrored into the internal registry: the CRC VM hit docker.getcollate.io's
+  # Docker-Hub-backed unauthenticated pull-rate limit (toomanyrequests). Pulled
+  # on the host, pushed to the internal registry. On a cluster with egress, use
+  # the upstream default repository (docker.getcollate.io/openmetadata/server).
+  repository: image-registry.openshift-image-registry.svc:5000/datamesh/openmetadata-server
   tag: "1.12.8"
+  pullPolicy: IfNotPresent
 
 openmetadata:
   config:
