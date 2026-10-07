@@ -1,0 +1,18 @@
+=== KEDA autoscaling (Custom Metrics Autoscaler v2.19) — 2026-10-07T17:27:00Z ===
+## operands
+   custom-metrics-autoscaler-operator-794f5df4b6-6r2m4  1/1
+   keda-admission-7b7c985c58-l5v8r  1/1
+   keda-metrics-apiserver-86bd856cfb-56mfn  1/1
+   keda-operator-7dc85965f-xzllt  1/1
+## scaledobject
+NAME                          SCALETARGETKIND      SCALETARGETNAME        MIN   MAX   READY   ACTIVE   FALLBACK   PAUSED   TRIGGERS   AUTHENTICATIONS   AGE
+notification-service-scaler   apps/v1.Deployment   notification-service   0     5     True    False    False      False    kafka                        118s
+## demonstrated cycle (notification-service, Kafka lag on topic order-placed, group notification-service):
+   idle              -> scaled to 0 (scale-to-zero, minReplicaCount:0)
+   burst of 12 orders -> ScaledObject Active=True, scaled 0 -> 1 within ~15s
+   backlog consumed   -> lag cleared, Active=False
+   cooldown (~90s)    -> scaled 1 -> 0
+   (max effective consumers bounded by the single Kafka partition, so it
+    scales 0<->1; maxReplicaCount:5 would engage with more partitions.)
+## HTTP add-on: NOT used (see keda/README.md) — CMA ships core KEDA; the
+   minikube gateway HTTPScaledObject has no drop-in CMA equivalent.
