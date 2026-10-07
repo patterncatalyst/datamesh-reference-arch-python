@@ -107,3 +107,30 @@ Assets: new examples/lgtm-datamesh/openshift/platform/ tree + install-platform.s
 mesh.enabled/observability.otlp.enabled flags (default off); chapter "full platform tier, live"
 section + flipped footer; DRA-008..014; per-layer evidence. Order: operators -> mesh CP ->
 observability -> meshed rollout (2/2) -> mTLS -> canary -> trace -> KEDA -> Prefect -> OM last.
+
+---
+
+## BACKLOG — finish OpenMetadata next time in CRC (deferred 2026-10-07)
+OM is live except the server image, blocked by Docker Hub's unauthenticated pull-rate limit
+(`toomanyrequests`) — hit from BOTH the CRC VM and the host. Everything else is in place:
+OpenSearch is GREEN under the `openmetadata-opensearch` anyuid SA, the `openmetadata` DB/role +
+secrets are provisioned, and `om-app-values.yaml` already points `image.repository` at the internal
+registry mirror `image-registry.openshift-image-registry.svc:5000/datamesh/openmetadata-server:1.12.8`.
+
+To complete (next CRC session):
+1. `podman login docker.io` with a Docker Hub account (raises the pull-rate limit). A Bitwarden
+   item may hold creds — `bw-get-secret` is available on this host.
+2. Mirror the image via the host into the internal registry:
+   `REG=default-route-openshift-image-registry.apps-crc.testing`;
+   `podman login -u kubeadmin -p $(oc whoami -t) --tls-verify=false $REG`;
+   `podman pull docker.getcollate.io/openmetadata/server:1.12.8`;
+   `podman tag ... $REG/datamesh/openmetadata-server:1.12.8`;
+   `podman push --tls-verify=false $REG/datamesh/openmetadata-server:1.12.8`.
+3. `helm upgrade --install openmetadata open-metadata/openmetadata -n datamesh --version 1.12.8 -f om-app-values.yaml`
+   (init container `run-db-migrations` runs the Postgres migrations, then the server starts).
+4. `oc apply -f openshift/platform/openmetadata/route.yaml`; wait `deployment/openmetadata` ready.
+5. `oc apply -f openshift/platform/openmetadata/ingestion-job.yaml`; confirm ≥1 catalog asset.
+6. Reconcile: fix the OpenSearch subchart's serviceAccount values key (the pod ran under `default`
+   SA and had to be patched to `openmetadata-opensearch` live — find the correct `om-deps-values.yaml`
+   key so it binds without a patch); then flip OM from "partial/best-effort" to "verified" in
+   `_docs/11-running-on-openshift-crc.md` (footer + the OpenMetadata subsection) + add a DRA entry.
