@@ -96,6 +96,13 @@ spec:
             periodSeconds: 15
             failureThreshold: 6
           securityContext:
-            allowPrivilegeEscalation: false
-            seccompProfile:
-              type: RuntimeDefault
+            # Run as root: the otel-lgtm image owns its data dirs as uid 0, and
+            # requesting uid 0 forces admission onto the anyuid SCC (restricted-v2
+            # rejects root), which the `lgtm` SA is granted. Without this the pod
+            # lands on restricted-v2 with a random UID and Grafana can't write its
+            # data dir ("Waiting for Grafana to start up..." forever).
+            # NOTE: do NOT set seccompProfile or capabilities here — the anyuid
+            # SCC permits neither (seccompProfiles is empty), and setting them
+            # makes anyuid reject the pod, silently dropping it back to
+            # restricted-v2. runAsUser:0 alone is what anyuid wants.
+            runAsUser: 0
