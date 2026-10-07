@@ -21,3 +21,21 @@ metadata:
 spec:
   mtls:
     mode: STRICT
+---
+# Workload exception: the graphql-gateway is the public edge, reached by the
+# OpenShift router (NOT mesh-aware, sends plaintext). Namespace STRICT (above)
+# would 502 that traffic. Scope PERMISSIVE to just the gateway so the external
+# Route works, while every service-to-service hop in the mesh stays STRICT.
+# (In a production setup you'd instead front it with the Istio ingress gateway
+# and terminate mTLS there; on CRC the OpenShift Route is the simpler edge.)
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: graphql-gateway-permissive
+  namespace: datamesh
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: graphql-gateway
+  mtls:
+    mode: PERMISSIVE
