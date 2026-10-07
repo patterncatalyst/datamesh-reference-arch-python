@@ -51,11 +51,15 @@ You don't need a paid subscription or a cloud account. **OpenShift Local** (CRC 
    appendix was authored against **CRC 2.64.0**, which bundles **OpenShift 4.22.14**.
 4. **Size the host.** CRC's defaults are not enough for seven Python services plus
    Postgres, Kafka, and Apicurio plus OpenShift's own control plane — the infra pods will
-   sit `Pending` with `Insufficient memory` on the defaults. Give it more:
+   sit `Pending` with `Insufficient memory` on the defaults, and the default disk will run
+   into `DiskPressure` once the nine images in this appendix are pushed to the integrated
+   registry (see "What broke on live apply" below). Give it more of all three, while the
+   instance is still stopped — CRC can only grow disk size before the first `crc start`:
 
    ```sh
    crc config set memory 20480   # 20 GB
    crc config set cpus 8
+   crc config set disk-size 80   # 80 GB — the default ~32 GB fills once 9 images are pushed
    ```
 
 5. **Set it up and start it.**
@@ -345,7 +349,29 @@ helm upgrade --install datamesh openshift/helm/datamesh --namespace datamesh
 oc get pods -n datamesh -w
 ```
 
-<!-- LIVE-EVIDENCE: oc get pods -n datamesh -->
+```
+NAME                                    READY   STATUS    RESTARTS        AGE
+apicurio-b8496b8d4-gsqxz                1/1     Running   0               12m
+graphql-gateway-7b4b45db4b-pb86w        1/1     Running   0               12m
+inventory-service-86bd746bb9-5gsr7      1/1     Running   2 (2m51s ago)   12m
+kafka-0                                 1/1     Running   0               12m
+notification-service-78c57864b8-rsh9g   1/1     Running   0               12m
+order-service-5b6b895cf8-lsgsc          1/1     Running   0               12m
+payment-service-7666685477-4cxsv        1/1     Running   3 (3m2s ago)    12m
+postgres-0                              1/1     Running   0               12m
+review-service-64fc9f7c5f-9gjml         1/1     Running   3 (3m7s ago)    12m
+shipping-service-c8c94685b-vzs8l        1/1     Running   3 (2m58s ago)   12m
+```
+
+That's the live run, twelve minutes after `helm upgrade --install`: all ten workloads
+`1/1`. The 2–3 restarts on `inventory-service`, `payment-service`, `review-service`, and
+`shipping-service` are exactly the convergence described above, not a defect —
+those four happened to lose the race against `postgres-0` reaching `Ready` on this
+particular run; `graphql-gateway`, `order-service`, and `notification-service` happened
+to win it. Re-running the same `helm install` against a fresh `crc start` will likely
+distribute the restarts across a different subset of services — which four crash-loop
+is a function of scheduling order and Postgres's own startup time, not something the
+chart controls or needs to.
 
 Expect the app pods to **crash-loop before the infrastructure is ready**, and expect
 that to be fine. `notification-service`'s migrate init container, and every service's
@@ -374,29 +400,109 @@ Health, through the GraphQL gateway's Route (edge TLS):
 curl -sk https://$(oc get route graphql-gateway -n datamesh -o jsonpath='{.spec.host}')/healthz
 ```
 
-<!-- LIVE-EVIDENCE: health curl -->
+```sh
+$ curl -sk https://graphql-gateway-datamesh.apps-crc.testing/healthz
+{"status":"ready","service":"graphql-gateway"}
+```
 
 And a real query through the gateway spanning two or more of the underlying products —
 the point of a GraphQL gateway is composing reads across services the caller never talks
 to directly, so the query worth running is one that can only succeed if that composition
-actually works, for example an order with its inventory and shipping detail attached:
+actually works, for example an order placed through `order-service` with its live stock
+level attached from `inventory-service`:
 
 ```sh
 curl -sk https://$(oc get route graphql-gateway -n datamesh -o jsonpath='{.spec.host}')/graphql \
   -H 'content-type: application/json' \
-  -d '{"query":"{ order(id: \"...\") { id status inventoryItem { sku quantityOnHand } shipment { carrier status } } }"}'
+  -d '{"query":"{ order(id: \"6c5a7fb2-a9d6-44dd-bbe1-eef95c5bdb5e\") { id customerId itemSku quantity status amount stock { sku quantityOnHand available } } }"}'
 ```
 
-<!-- LIVE-EVIDENCE: graphql query result -->
+```json
+{"data": {"order": {"id": "6c5a7fb2-a9d6-44dd-bbe1-eef95c5bdb5e", "customerId": "cust-openshift", "itemSku": "WIDGET-001", "quantity": 2, "status": "placed", "amount": "19.98", "stock": {"sku": "WIDGET-001", "quantityOnHand": 50, "available": true}}}}
+```
 
-A 200 with populated fields on both the `inventoryItem` and `shipment` branches confirms
-the Route, the SCC-assigned UID, the ConfigMap wiring, and the gateway's fan-out to two
-independent services are all working together — not just that one pod answers its own
-health check.
+The top-level `order` fields — `customerId`, `itemSku`, `quantity`, `status`, `amount` —
+come straight from `order-service`'s own Postgres row; the nested `stock` object is a
+second, independent hop the gateway makes over gRPC to `inventory-service`'s `:50051`
+port to resolve `quantityOnHand`/`available` for that same SKU. A 200 with both halves
+populated — the order half and the `stock` half — confirms the Route, the SCC-assigned
+UID, the ConfigMap wiring (`INVENTORY_GRPC_ADDR`), and the gateway's REST-plus-gRPC
+fan-out to two independent services are all working together, not just that one pod
+answers its own health check.
+
+The same placed order also proves out the event-driven path end to end, off the Route
+entirely: `order-service` publishes an Avro-encoded `order.placed` event (schema
+registered in Apicurio) to Kafka when the order above was created, and
+`notification-service` consumed it, Apicurio-deserialized it, and exposed the decoded
+record on its own debug endpoint:
+
+```sh
+$ curl notification-service:8080/received
+[{"order_id": "6c5a7fb2-a9d6-44dd-bbe1-eef95c5bdb5e", "event_type": "order.placed", "customer_id": "cust-openshift", "item_sku": "WIDGET-001", "quantity": 2, "amount": "19.98", "status": "OrderStatus.placed", "created_at": "2026-10-07T16:20:12.074293+00:00"}]
+```
+
+Same order ID, same SKU, same quantity — one `order.placed` write landed through two
+independent consumers of the mesh: the GraphQL gateway's synchronous read path above,
+and Kafka's asynchronous one. Together the two checks exercise everything the chart
+wires up except the document-only tier described below: Route → REST → gRPC on one
+side, Route-independent Kafka produce/consume with schema-registry-backed Avro on the
+other.
 
 ### What broke on live apply
 
-<!-- LIVE-EVIDENCE: live-apply learnings -->
+Two things went wrong on the actual run against CRC, neither in the chart's design —
+both in the tooling around it — plus one thing worth stating plainly because it did
+*not* break: the SCC assignment this appendix spent most of its length justifying.
+
+**1. All ten pods stuck `Pending` behind a `disk-pressure` taint.** Partway through
+`helm upgrade --install`, every pod sat `Pending` with a
+`node.kubernetes.io/disk-pressure:NoSchedule` taint and no obvious resource request
+problem — `oc describe node` wasn't short on memory or CPU. The cause was the registry
+push that happens just before deployment: `build-and-push.sh` had already pushed all
+nine images (seven app images plus the mirrored `postgres`/`kafka` infra images) into
+the integrated registry, and that registry's storage lives on the CRC node's own disk.
+CRC's *default* VM disk is a modest ~32 GB, and nine images pushed into it was enough
+to cross the kubelet's disk-pressure eviction threshold (27 GB used on a 32 GB disk).
+Once a node is under `DiskPressure`, the scheduler taints it and nothing new schedules —
+not a Kubernetes misconfiguration, just the VM running out of room for what this chart
+actually ships. The fix is the same host-sizing move as the memory and CPU bump in the
+prerequisites, just for disk:
+
+```sh
+crc stop
+crc config set disk-size 80
+crc start --pull-secret-file ~/Downloads/pull-secret.txt
+```
+
+After the restart the taint cleared and all ten pods scheduled and converged to `1/1`
+on their own — this appendix's prerequisites section above already reflects the `80`
+value for exactly this reason; a reader following it from a stopped state should never
+hit the taint in the first place. (This is also why `crc config set disk-size` is worth
+setting *before* the first `crc start` rather than discovering it mid-deploy: CRC disk
+size can only be grown while the instance is stopped.)
+
+**2. `build-and-push.sh` exited `2` after every image had already pushed.** The script's
+final step prints a one-line hint for the `--mirror-infra` flag described earlier in
+this appendix. That hint line is passed to `printf` with a leading `--mirror-infra ...`
+string, which `printf` parses as an option flag rather than a format string — an exit
+code `2` with no images actually affected, since the build-and-push loop itself had
+already completed and returned before the hint line ran. The fix is the standard
+`printf`-no-longer-takes-flags-after-this idiom, `printf -- '%s\n' "..."`, which forces
+everything after `--` to be treated as data. Purely cosmetic: by the time the script
+exits non-zero, the registry already has all nine images, which `oc get istag -n
+datamesh` confirms independent of the script's own exit status.
+
+**What didn't break: the SCC assignment.** The entire premise of the "what changes on
+OpenShift" section above — drop `runAsUser` for the seven Python app images and let
+`restricted-v2` assign a UID, pin `runAsUser` for Postgres and Kafka under a
+`datamesh-infra` ServiceAccount bound to `nonroot-v2` — held exactly as designed on the
+first deploy, no iteration needed. The live SCC/UID table earlier in this appendix is
+the proof: all seven app pods landed on `restricted-v2` with the same OpenShift-assigned
+UID, `1000650000` (the images' `USER 1001:0` made them agnostic to whichever UID that
+turned out to be), while `postgres-0` kept its required `70` and `kafka-0` its required
+`1000`, both legally, both under `nonroot-v2` via the `datamesh-infra` RoleBinding. The
+two breakages above were the registry-storage footprint and a shell quoting bug — not
+the admission model this appendix is actually about.
 
 ## The document-only counterparts
 
@@ -474,11 +580,27 @@ reachable from the cluster. Neither was applied for this appendix's verification
 
 ---
 
-*Verification status: this appendix's narrative, chart, and build tooling are
-authored and match what's committed at
-`examples/lgtm-datamesh/openshift/helm/datamesh/**`, `openshift/README.md`, and
-`openshift/build-and-push.sh`. Live confirmation on OpenShift Local (CRC 2.64.0,
-OpenShift 4.22.14) — pod status, the SCC/UID assignment for app versus infra pods, and
-the two `curl` checks above — is captured separately.*
-
-<!-- LIVE-EVIDENCE: verification-status footer -->
+*Verification status: **verified live**, 2026-10-07, on OpenShift Local (CRC 2.64.0,
+OpenShift 4.22.14, single node, 20 GB RAM / 8 vCPU / 80 GB disk). All ten workloads —
+the seven application Deployments, Apicurio, and the Postgres and Kafka StatefulSets —
+reached `1/1 Running` in Project `datamesh`. SCC behavior was confirmed by reading each
+pod's effective SCC and runtime UID: the seven app pods under `restricted-v2` with
+OpenShift-assigned UID `1000650000`, `postgres-0` under `nonroot-v2` with UID `70`, and
+`kafka-0` under `nonroot-v2` with UID `1000`, both infra pods running under the
+`datamesh-infra` ServiceAccount. The GraphQL gateway's Route returned
+`{"status":"ready","service":"graphql-gateway"}` from `/healthz`, and a cross-service
+`/graphql` query through that same Route returned a populated `order` object from
+`order-service` joined to a populated `stock` object resolved over gRPC from
+`inventory-service` — the Route, the SCC-assigned UID, the ConfigMap wiring, and the
+gateway's REST-plus-gRPC fan-out, all exercised together. The Kafka path was confirmed
+independently: the same order's `order.placed` event, Avro-encoded against the Apicurio
+schema registry, was observed decoded on `notification-service`'s own endpoint. The full
+capture is committed at
+[`examples/lgtm-datamesh/openshift/evidence/verification.txt`](https://github.com/patterncatalyst/datamesh-reference-arch-python/blob/main/examples/lgtm-datamesh/openshift/evidence/verification.txt).
+**Not verified:** the document-only tier (Service Mesh, Custom Metrics Autoscaler,
+cluster/user-workload observability, OpenMetadata) and the GitOps `Application` plus
+Tekton pipeline were authored but not applied against this cluster — no operators for
+any of them were installed for this verification pass. Re-confirm by re-running `helm
+upgrade --install` against a fresh `crc start`, then re-driving the two Route `curl`s
+and re-reading each pod's SCC annotation — the assigned app UID will differ per cluster,
+but the SCC names, the infra UIDs, and the 200s should not.*

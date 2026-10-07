@@ -1,3 +1,8 @@
+---
+title: "Plan — OpenShift/CRC appendix"
+render_with_liquid: false
+---
+
 # Plan — Appendix chapter "Running on OpenShift (CRC) locally" + runnable CRC assets
 
 Status: APPROVED by user 2026-10-07. Built via lgtm-relay (Opus plan → Sonnet build → Opus gate).
