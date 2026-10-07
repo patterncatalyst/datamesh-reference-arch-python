@@ -103,7 +103,7 @@ if [[ "$MIRROR_INFRA" == "true" ]]; then
   done
   printf '\nMirrored images match the defaults in openshift/helm/datamesh/values.yaml\n'
   printf '(postgres.image, kafka.image). On a cluster WITH Docker Hub egress, skip\n'
-  printf '--mirror-infra and uncomment the upstream refs in values.yaml instead.\n'
+  printf -- '--mirror-infra and uncomment the upstream refs in values.yaml instead.\n'
 fi
 
 printf '\n==> Done. helm upgrade --install will pull from %s/%s/<name>:%s\n' "$REG" "$NAMESPACE" "$TAG"
