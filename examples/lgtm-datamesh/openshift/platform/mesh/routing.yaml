@@ -1,51 +1,16 @@
-# routing.yaml — the Istio traffic-management resources for the
-# order-service v1/v2 canary, ported/retargeted from
-# ../../../istio/routing.yaml (minikube/`capstone`) to OpenShift/`datamesh`.
+# routing.yaml — the order-service v1/v2 canary, as MESH-INTERNAL traffic
+# management (ported from ../../../istio/routing.yaml, retargeted to OpenShift).
 #
-#   Gateway          — exposes order-service through the Sail-managed
-#                      ingress gateway, so external traffic entering via
-#                      ingress-route.yaml's Route can reach the
-#                      VirtualService. Included here (the source file's
-#                      three objects travel together) even though the
-#                      VirtualService/DestinationRule split is this file's
-#                      primary purpose — without a Gateway binding, the
-#                      VirtualService below has nothing to attach to for
-#                      external traffic.
-#   VirtualService   — the canary control: splits HTTP traffic between the
-#                      v1 and v2 subsets by weight. Fixed initial 90/10 split
-#                      (not the minikube source's __W_V1__/__W_V2__
-#                      placeholders — no demo-canary-verify.sh equivalent
-#                      exists yet in this tree; adjust the weights in place
-#                      to shift the split).
-#   DestinationRule  — names the two subsets (v1, v2) by the `version` pod
-#                      label app-deployment.yaml (v1, when mesh.enabled) and
-#                      order-service-v2.yaml (v2) each set.
-#
-# VERIFY-POINTS (Istio API; confirm against the installed OSSM3/Sail Istio
-# version — istio.yaml's spec.version placeholder — these are not renderable
-# offline):
-#   * apiVersion networking.istio.io/v1.
-#   * The Gateway selector below assumes the Sail-managed ingress gateway
-#     carries the conventional `istio: ingressgateway` label; confirm live
-#     against whatever Gateway/ingress deployment OSSM3 actually provisions
-#     (see ingress-route.yaml's own live-confirm note on the Service name).
----
-apiVersion: networking.istio.io/v1
-kind: Gateway
-metadata:
-  name: order-service-gateway
-  namespace: datamesh
-spec:
-  selector:
-    istio: ingressgateway
-  servers:
-    - port:
-        number: 80
-        name: http
-        protocol: HTTP
-      hosts:
-        - "*"
----
+# Unlike the minikube source (which fronted the split with an istio
+# ingressgateway Gateway), OSSM3/Sail does not provision a default ingress
+# gateway, and the datamesh edge is the graphql-gateway behind an OpenShift
+# Route — so there is nothing external to attach a Gateway to. Instead the
+# VirtualService has NO `gateways:` field, which means it applies to the
+# `mesh` (sidecar-to-sidecar) traffic by default: every in-cluster caller of
+# `order-service` (the graphql-gateway, and direct callers) gets the weighted
+# split. The DestinationRule names the v1/v2 subsets by the `version` pod
+# label (app-deployment.yaml sets v1 when mesh.enabled; order-service-v2.yaml
+# sets v2). Shift the split by editing the weights and re-applying.
 apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
@@ -53,13 +18,11 @@ metadata:
   namespace: datamesh
 spec:
   hosts:
-    - "*"
-  gateways:
-    - order-service-gateway
+    - order-service          # the ClusterIP Service name; mesh-internal host
   http:
     - route:
         - destination:
-            host: order-service        # the ClusterIP Service (fronts both subsets)
+            host: order-service
             subset: v1
           weight: 90
         - destination:

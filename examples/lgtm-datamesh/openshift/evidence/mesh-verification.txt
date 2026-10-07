@@ -1,0 +1,23 @@
+=== MESH (OpenShift Service Mesh 3 / Sail, Istio v1.30) — 2026-10-07T17:24:15Z ===
+## istio control plane
+default ready=Healthy
+istiod-56dfdd6676-4sk9s   1/1     Running   0          26m
+## sidecars (app=2/2 meshed, infra=1/1 unmeshed)
+   apicurio-b8496b8d4-gsqxz  1/1  Running
+   graphql-gateway-59cb5d9bdb-d857q  2/2  Running
+   inventory-service-59fb4b56dd-lmnws  2/2  Running
+   kafka-0  1/1  Running
+   notification-service-574c7777fd-g96kf  2/2  Running
+   order-service-7bc7b65794-9xz2s  2/2  Running
+   payment-service-7697cc677b-gcr2p  2/2  Running
+   postgres-0  1/1  Running
+   review-service-5dd885866d-4bwmr  2/2  Running
+   shipping-service-55b48d67df-fzr28  2/2  Running
+## PeerAuthentication (STRICT namespace + gateway PERMISSIVE edge exception)
+NAME                         MODE         AGE
+default                      STRICT       4m35s
+graphql-gateway-permissive   PERMISSIVE   3m40s
+## canary split over 30 req to order-service/version (VS 90/10): v1=26 v2=4
+## order-service subsets
+   order-service-7bc7b65794-9xz2s  2/2
+   order-service-v2-d66b8d465-2tp28  2/2

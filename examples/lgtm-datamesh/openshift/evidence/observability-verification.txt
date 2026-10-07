@@ -1,0 +1,19 @@
+=== OBSERVABILITY (grafana/otel-lgtm all-in-one) — 2026-10-07T17:24:15Z ===
+## lgtm pod (anyuid/root, see live-apply fix)
+   lgtm-68cc94896f-pw9xl  1/1  scc=anyuid
+## Grafana health via Route
+{
+  "database": "ok",
+  "version": "11.4.0",
+  "commit": "b58701869e1a11b696010a6f28bd96b68a2cf0d0"
+}## Tempo ingesting per-service traces (services observed producing spans):
+   graphql-gateway: 5 recent traces
+   order-service: 5 recent traces
+   inventory-service: 5 recent traces
+   notification-service: 5 recent traces
+   payment-service: 0 recent traces
+## HONEST LIMIT: per-service traces flow to Tempo, but spans are NOT stitched
+   into one cross-service trace — the gateway's downstream HTTP/gRPC client
+   does not propagate W3C traceparent (app-instrumentation gap, not an
+   OpenShift/mesh issue). Each service roots its own trace. Envoy mesh spans
+   likewise can't correlate without app header propagation.
