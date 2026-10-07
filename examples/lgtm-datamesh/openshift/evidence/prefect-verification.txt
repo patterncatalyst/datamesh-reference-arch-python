@@ -1,0 +1,11 @@
+=== PREFECT (3.x OSS, Postgres-backed) — 2026-10-07T17:28:40Z ===
+## pods
+   prefect-server-8556bcd77f-g7whr  1/1
+   prefect-worker-7dc8b447cd-rs25h  1/1
+## server health via Route
+   GET https://prefect-server-datamesh.apps-crc.testing/api/health -> true
+## backend: core Postgres StatefulSet, dedicated 'prefect' database (role prefect)
+## flow run (ran the example 2-task flow against the server API):
+   flow 'datamesh-example-flow' run 'zircon-waxbill' -> COMPLETED
+   tasks say_hello / say_goodbye -> Completed
+   confirmed via /api/flow_runs/filter: [('zircon-waxbill','COMPLETED')]
