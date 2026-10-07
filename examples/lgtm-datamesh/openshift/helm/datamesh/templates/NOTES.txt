@@ -1,0 +1,19 @@
+The data mesh is deploying to namespace "{{ .Release.Namespace }}".
+
+Watch it come up:
+  oc get pods -n {{ .Release.Namespace }} -w
+
+Infrastructure (postgres, kafka, apicurio) starts first; the seven data-product
+services become Ready once their probes pass. The external entry points are
+Routes:
+  graphql-gateway:  oc get route graphql-gateway -n {{ .Release.Namespace }} -o jsonpath='{.spec.host}'
+  apicurio:         oc get route apicurio -n {{ .Release.Namespace }} -o jsonpath='{.spec.host}'
+
+The graphql-gateway Route is the system's query edge; order-service publishes
+`order-placed` events to Kafka, which notification-service consumes (Avro,
+schema fetched from Apicurio). Everything else is ClusterIP-only (reachable
+in-cluster).
+
+Out of scope for this chart (document-only in the tutorial's appendix, not
+deployed here): OpenMetadata, Prefect, the LGTM observability stack, KEDA
+autoscaling, and the Istio mesh.

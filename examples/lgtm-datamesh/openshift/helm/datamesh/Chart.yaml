@@ -1,0 +1,21 @@
+apiVersion: v2
+name: datamesh
+description: >-
+  The §17 capstone data mesh (7 Python data-product services + GraphQL gateway,
+  with Postgres, single-broker KRaft Kafka, and the Apicurio schema registry)
+  deployed to OpenShift. The OpenShift counterpart to charts/capstone/ — same
+  live-core topology, but using Routes for ingress, the internal image registry
+  for images, and SCCs instead of pinned UIDs. OpenMetadata, Prefect, the LGTM
+  observability stack, KEDA autoscaling, and the Istio mesh are intentionally
+  OUT of scope for this chart — they are document-only appendix material, not
+  part of the runnable OpenShift core.
+type: application
+version: 1.0.0
+appVersion: "1.0"
+keywords:
+  - fastapi
+  - data-mesh
+  - kafka
+  - openshift
+maintainers:
+  - name: patterncatalyst

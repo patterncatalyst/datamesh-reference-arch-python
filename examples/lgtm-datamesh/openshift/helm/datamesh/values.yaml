@@ -1,0 +1,131 @@
+# values.yaml — the knobs for deploying the capstone data mesh's live core to
+# OpenShift.
+#
+# The seven application workloads are described declaratively in `services`
+# below; templates/app-deployment.yaml and app-service.yaml range over this
+# map, so the whole topology is one template driven by data (the same idiom
+# charts/capstone/charts/<svc>/ spells out one subchart per service).
+#
+# SCOPE: this chart packages only the live core — the 7 services, Postgres,
+# Kafka, and Apicurio. OpenMetadata, Prefect, the LGTM observability stack
+# (otel-collector/prometheus/tempo/grafana), KEDA/autoscaling, and the Istio
+# mesh are document-only appendix material and are NOT deployed here.
+
+# Container image settings. On OpenShift the images live in the integrated
+# registry; in-cluster pulls use the registry's Service DNS, which is what a
+# Deployment's imagePullPolicy sees. Override `registry` for an external
+# registry (Quay, etc.). Matches the capstone's existing `:v1` mutable-tag
+# convention (charts/capstone/values.yaml), but IfNotPresent here since
+# OpenShift builds push a new image per `oc` build, not a dev inner-loop.
+image:
+  registry: "image-registry.openshift-image-registry.svc:5000/datamesh"
+  tag: "v1"
+  pullPolicy: IfNotPresent
+
+# Dev-only Postgres credential. One shared cluster, database `capstone`, one
+# schema per service (mirrors charts/capstone/charts/postgres/values.yaml:
+# cluster.database=capstone, cluster.owner=capstone_app).
+# PRODUCTION: replace with a SealedSecret / ExternalSecret — never plaintext here.
+postgres:
+  username: "capstone_app"
+  password: "capstone_dev_only"
+  database: "capstone"
+  # Mirrored into the internal registry: the CRC VM cannot reach Docker Hub, so
+  # the upstream docker.io/library/postgres:16-alpine was pulled on the host
+  # and pushed here. On a cluster with Docker Hub egress, use the upstream ref
+  # directly (commented below).
+  image: "image-registry.openshift-image-registry.svc:5000/datamesh/postgres:16-alpine"
+  # image: "docker.io/library/postgres:16-alpine"
+  storage: "2Gi"
+
+kafka:
+  # Mirrored like postgres above (upstream: docker.io/apache/kafka:3.8.0).
+  # Plain KRaft StatefulSet — NOT the Strimzi `Kafka`/`KafkaNodePool` CRs the
+  # minikube capstone (charts/capstone/charts/kafka/) uses; Strimzi isn't
+  # assumed to be installed on the target OpenShift cluster.
+  image: "image-registry.openshift-image-registry.svc:5000/datamesh/kafka:3.8.0"
+  # image: "docker.io/apache/kafka:3.8.0"
+  clusterId: "MkU3OEVBNTcwNTJENDM2Qk"
+  storage: "2Gi"
+  # Matches charts/capstone/charts/order-service's KAFKA_ORDER_TOPIC default.
+  topic: "order-placed"
+
+# Apicurio Registry 3 — schema/contract registry (CAP-018). quay.io is
+# generally reachable even where Docker Hub egress is blocked, so no mirrored
+# form is offered here (unlike postgres/kafka above).
+apicurio:
+  image: "quay.io/apicurio/apicurio-registry:3.2.4"
+  port: 8080
+
+# ServiceAccount for the infra StatefulSets (postgres/kafka). Their upstream
+# images require specific non-root UIDs (postgres 70, kafka 1000), which
+# OpenShift's default `restricted-v2` SCC will not allow (it assigns a random
+# UID from the namespace range). Binding this SA to `nonroot-v2` lets those
+# pods keep their own UID. The application pods need no such grant: their UBI9
+# python-312 images already run as `USER 1001:0` (see services/<svc>/Containerfile),
+# and restricted-v2's randomly assigned UID + group 0 is all they need, so they
+# use the default SA + restricted-v2. Apicurio (a Quarkus/JVM image) likewise
+# needs no special UID and also uses the default SA.
+infra:
+  serviceAccountName: "datamesh-infra"
+  scc: "nonroot-v2"
+
+# Two external Routes: the GraphQL gateway (the system's query edge) and
+# Apicurio (the contracts registry UI/API). Flip `route: true` on any other
+# service to expose it; Apicurio's Route is wired directly in apicurio.yaml
+# since it isn't part of this services map.
+#
+# `db` names the Postgres schema a service owns (omitted ⇒ no datasource env).
+# `kafka: true` adds a 10s preStop sleep + longer terminationGracePeriodSeconds
+# for graceful consumer/producer shutdown (ch.30-style pattern, carried over
+# from the modernization appendix).
+services:
+  graphql-gateway:
+    port: 8080
+    probe: http
+    size: small
+    route: true
+  inventory-service:
+    port: 8080
+    grpcPort: 50051
+    probe: http
+    size: large
+    db: inventory
+  notification-service:
+    port: 8080
+    probe: http
+    size: large
+    db: notifications
+    kafka: true          # Kafka consumer (order-placed) → graceful-shutdown window
+    migrate: true         # Alembic `upgrade head` init container (CAP-021)
+  order-service:
+    port: 8080
+    probe: http
+    size: large
+    db: orders
+    kafka: true           # Kafka producer (order-placed)
+  payment-service:
+    port: 8080
+    probe: http
+    size: large
+    db: payments
+  review-service:
+    port: 8080
+    probe: http
+    size: large
+    db: reviews
+  shipping-service:
+    port: 8080
+    probe: http
+    size: large
+    db: shipping
+
+# Resource tiers referenced by each service's `size` (values carried over from
+# charts/capstone/charts/<svc>/values.yaml requests/limits).
+resources:
+  small:
+    requests: { cpu: 100m, memory: 192Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+  large:
+    requests: { cpu: 100m, memory: 192Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
