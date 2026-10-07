@@ -1,0 +1,53 @@
+# om-deps-values.yaml — trimmed OpenMetadata *dependencies* for the OpenShift
+# datamesh deploy. Override file merged by Helm onto the upstream
+# open-metadata/openmetadata-dependencies chart defaults (pin chart 1.12.8 to
+# match om-app-values.yaml and the minikube source).
+#
+# Retargeted from examples/lgtm-datamesh/openmetadata/om-deps-values.yaml
+# (CAP-022's decisions carry over unchanged — MySQL disabled, Airflow
+# disabled, OpenSearch single-node): this port only changes OpenShift-specific
+# plumbing (the anyuid ServiceAccount binding) and a VERIFY-POINT on the
+# sysctl init container. There is no Postgres key in this file: the
+# dependencies chart's own Postgres fields are irrelevant here (OpenMetadata's
+# backend is pointed at the core datamesh Postgres entirely from
+# om-app-values.yaml, same as the minikube source does for CNPG).
+
+global:
+  security:
+    allowInsecureImages: true
+
+# Replaced by reuse of the core datamesh Postgres (see om-app-values.yaml).
+mysql:
+  enabled: false
+
+# Ingestion runs as a one-off Job (ingestion-job.yaml), not Airflow DAGs.
+airflow:
+  enabled: false
+
+# Single-node OpenSearch (Bitnami chart, pulled in as a dependency of
+# openmetadata-dependencies). The chart default (singleNode: true, 1 GiB
+# heap, security plugin disabled) is what we want; we only shrink the PVC and
+# bind the anyuid ServiceAccount (opensearch-scc.yaml) the Bitnami image needs
+# on OpenShift (it pins a UID the default restricted-v2 SCC won't allow).
+opensearch:
+  enabled: true
+  persistence:
+    size: 10Gi
+  serviceAccount:
+    create: false
+    name: openmetadata-opensearch   # bound to system:openshift:scc:anyuid, see opensearch-scc.yaml
+  # VERIFY-POINT: the Bitnami OpenSearch subchart runs a privileged
+  # initContainer (image docker.io/bitnami/os-shell or similar) to raise the
+  # host's vm.max_map_count sysctl before the main container starts. That
+  # initContainer requires a privileged SCC OpenShift won't grant alongside
+  # anyuid alone. The exact values key for this toggle has drifted across
+  # Bitnami chart versions (`sysctlImage.enabled` in some releases,
+  # `sysctl.enabled` in others) — confirm the live key with:
+  #   helm show values open-metadata/openmetadata-dependencies --version 1.12.8 | grep -A3 sysctl
+  # and set whichever key that chart version exposes to `false`. Both are set
+  # below so the override lands whichever key the pulled chart actually uses;
+  # Helm silently ignores an unknown key, so this is safe either way.
+  sysctlImage:
+    enabled: false
+  sysctl:
+    enabled: false

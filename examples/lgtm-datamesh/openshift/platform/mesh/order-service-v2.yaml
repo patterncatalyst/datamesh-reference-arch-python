@@ -1,0 +1,120 @@
+# order-service-v2.yaml — the canary's v2 subset (ported from
+# ../../../istio/order-service-v2.yaml, retargeted from minikube/`capstone`
+# to OpenShift/`datamesh`).
+#
+# Deployed ALONGSIDE the Helm-managed v1 order-service (app-deployment.yaml,
+# which — when `mesh.enabled: true` — already carries `istio.io/rev: default`
+# and `version: v1`). Same image, same env/config contract as v1: envFrom the
+# same `datamesh-app-config` ConfigMap and `datamesh-postgres-app` Secret the
+# Helm chart's templates/configmap-app.yaml + templates/secret-app.yaml
+# create, so this canary is a real, DB/Kafka/gRPC-backed order-service, not a
+# stub — its /healthz readiness probe checks Postgres, so without working
+# env it would never go Ready and Istio would route no traffic to it.
+#
+# Same image as v1 (same tag the Helm chart's values.yaml image.registry/tag
+# compose): v2 is for the routing demo, differentiated only by `API_VERSION`
+# (reused from the minikube canary's convention — if order-service exposes a
+# GET /version or response header keyed off this env, it now reports "v2").
+#
+# Selector `app.kubernetes.io/name: order-service, version: v2` is disjoint
+# from the Helm Deployment's selector (`app.kubernetes.io/name: order-service`
+# only — app-deployment.yaml never adds `version` to its selector, only to
+# the pod template), so the two Deployments co-exist without fighting over
+# the same ReplicaSet. The plain `order-service` Service
+# (app-service.yaml, selector `app.kubernetes.io/name: order-service` only)
+# fronts both subsets; routing.yaml's VirtualService/DestinationRule decide
+# the v1/v2 split.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service-v2
+  namespace: datamesh
+  labels:
+    app.kubernetes.io/name: order-service
+    app.kubernetes.io/part-of: capstone
+    version: v2
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: order-service
+      version: v2
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: order-service
+        app.kubernetes.io/part-of: capstone
+        version: v2
+        # istio.io/rev LABEL — same OSSM3/Sail injection trigger as the v1
+        # Deployment (DRA-010); kept as a literal `default` here rather than
+        # a Helm value since this manifest is plain YAML, not a chart template.
+        istio.io/rev: default
+    spec:
+      # Kafka producer: allow in-flight records to send before SIGKILL —
+      # matches order-service's `kafka: true` entry in
+      # ../../helm/datamesh/values.yaml / app-deployment.yaml.
+      terminationGracePeriodSeconds: 45
+      containers:
+        - name: order-service
+          image: "image-registry.openshift-image-registry.svc:5000/datamesh/order-service:v1"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: datamesh-app-config
+          env:
+            - name: API_VERSION
+              value: "v2"                   # the only behavioural diff from v1
+            - name: SERVICE_SCHEMA
+              value: "orders"
+            - name: PG_HOST
+              value: "postgres.datamesh.svc.cluster.local"
+            - name: PG_PORT
+              value: "5432"
+            - name: PG_DATABASE
+              valueFrom:
+                secretKeyRef: { name: datamesh-postgres-app, key: dbname }
+            - name: PG_USER
+              valueFrom:
+                secretKeyRef: { name: datamesh-postgres-app, key: username }
+            - name: PG_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: datamesh-postgres-app, key: password }
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sh", "-c", "sleep 10"]
+          startupProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests: { cpu: 100m, memory: 192Mi }
+            limits:   { cpu: 500m, memory: 512Mi }
+          # No runAsUser — restricted-v2 assigns the UID, same as the Helm
+          # chart's app Deployments (DRA-004).
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault

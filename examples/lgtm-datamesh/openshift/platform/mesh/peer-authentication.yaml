@@ -1,0 +1,23 @@
+# peer-authentication.yaml — namespace-wide mTLS for `datamesh`.
+#
+# Named `default`: the name Istio requires for a namespace-scoped
+# PeerAuthentication to act as that namespace's default policy. Adapted from
+# modernizing-enterprise-applications/deploy/k8s/istio/peer-authentication.yaml
+# (there scoped to `mea`), itself adapted from
+# datamesh-reference-arch-quarkus/k8s/istio/peer-authentication.yaml.
+#
+# APPLY ORDER: only after a green meshed rollout (install-platform.sh applies
+# this after the `helm upgrade --set mesh.enabled=true` step, once all 7 app
+# Deployments report Ready with sidecars). Applying STRICT before every pod
+# in `datamesh` carries a sidecar would break any still-unmeshed pod's
+# inbound traffic — enforced by the receiving Envoy sidecar, not the API
+# server, so Postgres/Kafka/Apicurio (no sidecar, not relabeled) are
+# unaffected either way and keep accepting their own plaintext as before.
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: datamesh
+spec:
+  mtls:
+    mode: STRICT

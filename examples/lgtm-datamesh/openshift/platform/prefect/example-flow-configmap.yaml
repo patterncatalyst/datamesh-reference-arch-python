@@ -1,0 +1,38 @@
+# example-flow-configmap.yaml — a minimal 2-task Prefect flow, shipped as a
+# ConfigMap so it can be mounted into a one-off Job/Pod and run against the
+# server+worker above to prove a flow run reaches Completed. See README.md
+# for the run/verify commands.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prefect-example-flow
+  namespace: datamesh
+  labels:
+    app.kubernetes.io/name: prefect-example-flow
+    app.kubernetes.io/part-of: capstone
+data:
+  flow.py: |
+    """Tiny 2-task flow to prove the datamesh Prefect server+worker wiring
+    is live: deploy it, trigger a run, and watch it reach Completed."""
+    from prefect import flow, task
+
+
+    @task
+    def say_hello() -> str:
+        print("hello from the datamesh example flow")
+        return "hello"
+
+
+    @task
+    def say_goodbye(greeting: str) -> None:
+        print(f"{greeting} — and goodbye")
+
+
+    @flow(name="datamesh-example-flow")
+    def example_flow() -> None:
+        greeting = say_hello()
+        say_goodbye(greeting)
+
+
+    if __name__ == "__main__":
+        example_flow()

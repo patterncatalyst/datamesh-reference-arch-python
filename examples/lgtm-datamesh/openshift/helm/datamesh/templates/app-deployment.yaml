@@ -26,6 +26,15 @@ spec:
       labels:
         app.kubernetes.io/name: {{ $name }}
         app.kubernetes.io/part-of: capstone
+        {{- if $root.Values.mesh.enabled }}
+        # istio.io/rev LABEL (not an annotation) — the OSSM3/Sail revisioned
+        # webhook's injection trigger (DRA-010).
+        istio.io/rev: {{ $root.Values.mesh.revision }}
+        {{- if eq $name "order-service" }}
+        # Matches the DestinationRule `v1` subset (openshift/platform/mesh/routing.yaml).
+        version: v1
+        {{- end }}
+        {{- end }}
     spec:
       {{- if $svc.kafka }}
       # Kafka producer/consumer: allow in-flight records to send/commit before SIGKILL.
@@ -80,7 +89,7 @@ spec:
           envFrom:
             - configMapRef:
                 name: datamesh-app-config
-          {{- if or $svc.db $svc.grpcPort }}
+          {{- if or $svc.db $svc.grpcPort $root.Values.observability.otlp.enabled }}
           env:
             {{- if $svc.db }}
             - name: SERVICE_SCHEMA
@@ -102,6 +111,21 @@ spec:
             {{- if $svc.grpcPort }}
             - name: GRPC_PORT
               value: {{ $svc.grpcPort | quote }}
+            {{- end }}
+            {{- if $root.Values.observability.otlp.enabled }}
+            # otel-lgtm OTLP/http (openshift/platform/observability/) — traces
+            # only (DRA-011); the opentelemetry-instrument entrypoint these
+            # images ship is a no-op until these are set.
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ $root.Values.observability.otlp.endpoint | quote }}
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "http/protobuf"
+            - name: OTEL_SERVICE_NAME
+              value: {{ $name | quote }}
+            - name: OTEL_TRACES_SAMPLER
+              value: "always_on"
+            - name: OTEL_METRICS_EXPORTER
+              value: "none"
             {{- end }}
           {{- end }}
           {{- if $svc.kafka }}

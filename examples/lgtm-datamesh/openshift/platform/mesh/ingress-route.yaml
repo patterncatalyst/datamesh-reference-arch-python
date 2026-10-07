@@ -1,0 +1,33 @@
+# ingress-route.yaml — OpenShift edge Route exposing the Sail-managed Istio
+# ingress gateway at a real `*.apps-crc.testing` hostname, so the
+# order-service v1/v2 canary (routing.yaml) is reachable from outside the
+# cluster without a NodePort/SSH tunnel — same "Routes, not NodePort"
+# pattern the live core already uses (DRA-005, ../../helm/datamesh/templates/route.yaml).
+#
+# LIVE-CONFIRM PLACEHOLDER: `spec.to.name` assumes the OSSM3 (Sail operator)
+# default `Istio` CR (istio.yaml) provisions its ingress gateway Service as
+# `istio-ingressgateway` in `istio-system` — the same name the classic
+# istioctl `default` profile uses (scripts/setup-istio.sh). Sail does not
+# install a gateway by default the way istioctl's `default` profile does;
+# confirm live which Service actually fronts the gateway Deployment/Pod
+# (e.g. `oc get svc -n istio-system -l app=istio-ingressgateway`, or if no
+# gateway was deployed, apply one from samples/gateway in the OSSM3 docs
+# before this Route can resolve) — the orchestrator confirms this against
+# the live cluster. `spec.port.targetPort: http2` likewise assumes the
+# conventional istio-ingressgateway Service port name for its HTTP listener
+# (8080/http2); confirm against `oc get svc istio-ingressgateway -n
+# istio-system -o yaml` and adjust if the live Service names it differently.
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: order-service-canary
+  namespace: istio-system
+spec:
+  to:
+    kind: Service
+    name: istio-ingressgateway   # CONFIRM LIVE — see note above
+  port:
+    targetPort: http2
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

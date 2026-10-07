@@ -1,0 +1,82 @@
+# server-deployment.yaml — Prefect 3.x OSS server, Postgres-backed.
+#
+# Reuses the core datamesh Postgres instance (openshift/helm/datamesh/templates/postgres.yaml,
+# Service `postgres`) rather than bundling a second Postgres — see
+# decisions.md DRA-013. The `prefect` database + a DEDICATED `prefect` login
+# role (NOT the shared `capstone_app` role the core app secret uses) are
+# provisioned by ../install-platform.sh's `provision_prefect_db` — confirmed
+# by reading that script directly (PREFECT_DB=PREFECT_ROLE="prefect",
+# PREFECT_PASSWORD="prefect", a hardcoded demo value, same caveat as
+# scripts/setup-openmetadata.sh's OM_PASSWORD). That script does the SQL-side
+# provisioning only; it creates no Kubernetes Secret, so
+# postgres-credentials-secret.yaml (this directory) republishes the same
+# literal demo password as a Secret this Deployment can `secretKeyRef`.
+#
+# PREFECT_API_DATABASE_CONNECTION_URL is assembled from the secret's
+# username/password via Kubernetes' `$(VAR_NAME)` env-value interpolation
+# (a container's `value:` field may reference any env var defined earlier in
+# the same container, including ones populated via secretKeyRef) — so the
+# credential itself never appears as a literal in this manifest.
+#
+# Image: prefecthq/prefect:3-latest is a floating tag (tracks the latest 3.x
+# release). Pin to a specific tag (e.g. prefecthq/prefect:3.1-python3.12) for
+# anything beyond a demo/tutorial cluster, since a floating tag can change
+# the Postgres schema-migration behavior out from under a running server.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prefect-server
+  namespace: datamesh
+  labels:
+    app.kubernetes.io/name: prefect-server
+    app.kubernetes.io/part-of: capstone
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: prefect-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: prefect-server
+        app.kubernetes.io/part-of: capstone
+    spec:
+      containers:
+        - name: prefect-server
+          image: docker.io/prefecthq/prefect:3-latest
+          imagePullPolicy: IfNotPresent
+          command: ["prefect", "server", "start", "--host", "0.0.0.0"]
+          ports:
+            - name: api
+              containerPort: 4200
+          env:
+            - name: PREFECT_SERVER_API_HOST
+              value: "0.0.0.0"
+            - name: PREFECT_PG_USER
+              valueFrom:
+                secretKeyRef: { name: prefect-postgres-app, key: username }
+            - name: PREFECT_PG_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: prefect-postgres-app, key: password }
+            - name: PREFECT_API_DATABASE_CONNECTION_URL
+              value: "postgresql+asyncpg://$(PREFECT_PG_USER):$(PREFECT_PG_PASSWORD)@postgres.datamesh.svc.cluster.local:5432/prefect"
+          readinessProbe:
+            httpGet: { path: /api/health, port: api }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: { path: /api/health, port: api }
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            failureThreshold: 6
+          resources:
+            requests: { cpu: 250m, memory: 512Mi }
+            limits: { cpu: 1000m, memory: 1Gi }
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault

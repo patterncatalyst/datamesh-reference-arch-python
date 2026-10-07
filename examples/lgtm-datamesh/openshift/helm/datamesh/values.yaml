@@ -129,3 +129,26 @@ resources:
   large:
     requests: { cpu: 100m, memory: 192Mi }
     limits:   { cpu: 500m, memory: 512Mi }
+
+# Platform-tier opt-in flags — both default OFF so a plain `helm install`
+# renders exactly the live-core chart DRA-002/DRA-006 verified (no mesh
+# labels, no OTEL env). The platform layer (openshift/platform/mesh/,
+# openshift/platform/observability/) flips these on via
+# `helm upgrade --set mesh.enabled=true --set observability.otlp.enabled=true`
+# once the Istio control plane and the LGTM stack are up (DRA-009).
+mesh:
+  enabled: false
+  # istio.io/rev pod-template LABEL value — the OSSM3 (Sail operator)
+  # injection trigger. A LABEL, not the classic `sidecar.istio.io/inject`
+  # ANNOTATION: Sail's revisioned webhook selects pods by the `istio.io/rev`
+  # (or `istio-injection`) LABEL, so the old annotation-only pattern from
+  # ../../istio/order-service-v2.yaml silently does not inject under OSSM3
+  # (DRA-010).
+  revision: default
+observability:
+  otlp:
+    enabled: false
+    # otel-lgtm all-in-one's OTLP/http receiver (openshift/platform/observability/).
+    # Traces only (DRA-011) — OTEL_METRICS_EXPORTER=none below keeps metrics
+    # load off this single-replica backend.
+    endpoint: "http://lgtm.datamesh.svc:4318"

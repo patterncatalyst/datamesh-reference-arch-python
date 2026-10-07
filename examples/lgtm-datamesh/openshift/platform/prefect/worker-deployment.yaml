@@ -1,0 +1,48 @@
+# worker-deployment.yaml — a Prefect worker (process type) that polls the
+# `default-pool` work pool and executes flow runs as local subprocesses
+# inside this container.
+#
+# The work pool itself is not a Kubernetes object — `default-pool` is created
+# server-side (Prefect's own metadata, stored in the `prefect` Postgres
+# database) the first time something references it. The simplest way is to
+# have the install step (or a one-off Job) run:
+#   prefect work-pool create default-pool --type process
+# before/alongside this Deployment's first start; a worker that polls a
+# not-yet-created pool just logs and retries, it doesn't crash.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prefect-worker
+  namespace: datamesh
+  labels:
+    app.kubernetes.io/name: prefect-worker
+    app.kubernetes.io/part-of: capstone
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: prefect-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: prefect-worker
+        app.kubernetes.io/part-of: capstone
+    spec:
+      containers:
+        - name: prefect-worker
+          image: docker.io/prefecthq/prefect:3-latest
+          imagePullPolicy: IfNotPresent
+          command: ["prefect", "worker", "start", "--pool", "default-pool", "--type", "process"]
+          env:
+            - name: PREFECT_API_URL
+              value: "http://prefect-server.datamesh.svc:4200/api"
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault

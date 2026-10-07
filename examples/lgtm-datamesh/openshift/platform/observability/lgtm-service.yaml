@@ -1,0 +1,41 @@
+# lgtm-service.yaml — `lgtm` (ClusterIP): the in-cluster DNS name both the
+# app containers (OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm.datamesh.svc:4318,
+# ../../helm/datamesh/values.yaml observability.otlp.endpoint) and the Istio
+# mesh's `otel` extensionProvider (../mesh/istio.yaml, port 4317/grpc) point
+# at. Ported from
+# modernizing-enterprise-applications/deploy/k8s/observability/lgtm-service.yaml
+# (there namespace `mea`, 6 ports); trimmed to the 3 ports this build
+# actually uses (otlp-grpc/otlp-http/grafana) — Prometheus/Loki/Tempo's own
+# query ports aren't exposed as a cluster Service since Grafana reaches them
+# over localhost inside the same all-in-one container (lgtm-deployment.yaml).
+#
+# Port name "grpc-otlp", not "otlp-grpc": Istio's port-protocol
+# auto-detection keys off the port name's prefix (before the first "-")
+# being a recognized token (grpc, http, http2, tcp, tls, ...) — "otlp-grpc"
+# doesn't match ("otlp" isn't recognized), so Envoy would silently treat the
+# mesh's own OTLP/gRPC trace-export (istio.yaml) as opaque TCP and every
+# export call would fail. This bug was found and fixed live in the
+# modernization source (see its lgtm-service.yaml comment); carried forward
+# here rather than re-discovered.
+apiVersion: v1
+kind: Service
+metadata:
+  name: lgtm
+  namespace: datamesh
+  labels:
+    app.kubernetes.io/name: lgtm
+    app.kubernetes.io/part-of: capstone
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: lgtm
+  ports:
+    - name: grpc-otlp
+      port: 4317
+      targetPort: 4317
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+    - name: grafana
+      port: 3000
+      targetPort: 3000
