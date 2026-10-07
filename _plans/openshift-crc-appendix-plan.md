@@ -94,3 +94,16 @@ through the host (a real learning from the modernization run).
 - Hardcoded `.capstone.svc` endpoints leak → grep rendered template before apply.
 - CNPG/AMQ Streams CRD drift → oc apply schema rejection → verify apiVersion vs installed operator.
 - Operator not in catalogs → Subscription no CSV → verify redhat-operators + community-operators CatalogSources.
+
+---
+
+## PHASE 2 — Full platform tier (added 2026-10-07, user: "full set incl OpenMetadata", 32GB)
+APPROVED (OM best-effort). Opus plan returned; CRC resized to 32GB/14cpu/100GB (core green).
+Layers: KEDA (Custom Metrics Autoscaler + Kafka-lag ScaledObject on notification), Istio (OSSM3
+Sail operator + IstioCNI, pod-label injection on 7 services, canary + STRICT mTLS, edge Route),
+observability (grafana/otel-lgtm all-in-one + re-enable OTLP env), Prefect (server+worker, reuse
+core Postgres), OpenMetadata (OpenSearch single-node + OM server, anyuid SA, best-effort).
+Assets: new examples/lgtm-datamesh/openshift/platform/ tree + install-platform.sh; app-chart
+mesh.enabled/observability.otlp.enabled flags (default off); chapter "full platform tier, live"
+section + flipped footer; DRA-008..014; per-layer evidence. Order: operators -> mesh CP ->
+observability -> meshed rollout (2/2) -> mTLS -> canary -> trace -> KEDA -> Prefect -> OM last.
