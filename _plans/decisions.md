@@ -637,3 +637,106 @@ if OpenSearch still crashloops on the live cluster.
   (`capstone_app`'s pre-existing one, DRA-013's `prefect`, and this
   decision's `openmetadata`) — see DRA-013's consequences for the shared
   rotation caveat.
+
+---
+
+## DRA-015 — Gateway-scoped `PERMISSIVE` `PeerAuthentication` exception under namespace `STRICT` mTLS
+
+**Status:** decided; implemented at
+`openshift/platform/mesh/peer-authentication.yaml`; confirmed live 2026-10-07
+against the resized (32 GB/14 vCPU/100 GB) CRC instance.
+
+**Context.** DRA-010 put the seven app Deployments behind Sail/OSSM3's
+revisioned sidecar injection. Once a namespace-wide `PeerAuthentication`
+named `default` was applied with `mtls.mode: STRICT` — the mTLS posture this
+reference's minikube mesh chapter (`_docs/06-progressive-delivery-mtls.md`)
+already teaches — the live cluster's `graphql-gateway` Route started
+returning `502` from the
+OpenShift router. The cause: the router is not a mesh participant and
+delivers plain HTTP to the gateway's sidecar; `STRICT` mode rejects any
+inbound connection that isn't mTLS, so the router's own plaintext request
+never reached the gateway container at all. This is not a bug in the mesh or
+the Route — it is `STRICT` doing exactly what it's supposed to do to a
+connection with no client certificate.
+
+**Decision.** Keep the namespace-wide `default` `PeerAuthentication` at
+`STRICT` for every mesh-internal hop, and add a second, narrowly scoped
+`PeerAuthentication` (`graphql-gateway-permissive`) selecting only
+`app.kubernetes.io/name: graphql-gateway`, set to `PERMISSIVE`. `PERMISSIVE`
+accepts both mTLS and plaintext on the same port, so the Route's plaintext
+traffic is admitted while every other service-to-service call in the mesh —
+including calls *to* `graphql-gateway` from inside the mesh — continues
+negotiating mTLS as normal, since in-mesh callers still present a client
+certificate `PERMISSIVE` is happy to accept.
+
+**Rejected alternative.** Set the namespace default to `PERMISSIVE` instead
+of `STRICT`, then tighten individual services — rejected because it inverts
+the reference's established "secure by default, carve out named exceptions"
+posture (this reference's minikube mTLS chapter already teaches `STRICT` as
+the baseline) into "insecure by default, remember to lock down everything
+else," which fails open for any future service the chart adds and nobody
+remembers to re-tighten.
+
+**Consequences.**
+
+- This is the one piece of this appendix's mesh configuration that a reader
+  is likely to hit as a visible failure (a 502 through the public Route)
+  rather than a silent misconfiguration, so it's called out both in the
+  manifest's own comments and in "The full platform tier, live" section of
+  this appendix, not just left to be rediscovered.
+- A production deployment would more likely front the mesh with an Istio
+  ingress gateway and terminate mTLS there instead of carving out a
+  per-service `PERMISSIVE` exception — noted as a comment in
+  `peer-authentication.yaml` but not implemented, since OSSM3/Sail
+  provisions no default ingress gateway (DRA-010) and standing one up was
+  out of scope for this appendix.
+
+---
+
+## DRA-016 — otel-lgtm under `anyuid`: `runAsUser: 0` only, no `seccompProfile`/`capabilities`
+
+**Status:** decided; implemented at
+`openshift/platform/observability/lgtm-deployment.yaml`; confirmed live
+2026-10-07.
+
+**Context.** DRA-011 chose the `grafana/otel-lgtm` all-in-one image, whose
+data directories are owned by UID 0, admitted via the `anyuid` SCC under a
+dedicated `lgtm` ServiceAccount rather than `restricted-v2` (which rejects
+root outright). While authoring the pod's `securityContext`, the
+instinctive hardening move — adding `seccompProfile: { type: RuntimeDefault
+}` and `capabilities: { drop: ["ALL"] }`, the same pattern
+`app-deployment.yaml` already uses for the seven app pods under
+`restricted-v2` — was tried first. Applied live, the pod did not fail to
+admit loudly; it silently landed on `restricted-v2` instead of `anyuid`
+(because `anyuid`'s allowed seccomp-profile list is empty, so a pod
+requesting a non-empty one doesn't match that SCC and falls through to the
+next one it does match), picked up a random UID there, and hung forever at
+"Waiting for Grafana to start up..." because that UID couldn't write
+`/data`. No SCC-denial event pointed at the cause — the pod looked like it
+just failed to start.
+
+**Decision.** Set only `runAsUser: 0` in the `lgtm` container's
+`securityContext` — no `seccompProfile`, no `capabilities` block of any
+kind — and document the omission inline in the manifest as deliberate, not
+an oversight a later hardening pass should "fix."
+
+**Rejected alternative.** Keep the hardened `securityContext`
+(`seccompProfile`/`capabilities`) and instead grant a custom SCC that
+permits both root *and* a restricted seccomp profile — rejected as
+unnecessary complexity for a single, non-production observability backend:
+`anyuid` already exists, is already subscribed on this cluster via
+`openshift/platform/subscriptions/`, and the only thing standing between it
+and admission was the extra hardening fields this decision removes.
+
+**Consequences.**
+
+- This is now the second "silent SCC fallback" lesson in this appendix,
+  after DRA-004's loud-rejection case for `restricted-v2` — worth
+  remembering that SCC admission can fail *quietly* into a worse-matching
+  SCC rather than rejecting the pod outright, which is harder to debug from
+  `oc describe pod` alone than a `CreateContainerConfigError`.
+- Any future addition to `lgtm-deployment.yaml`'s `securityContext` should
+  be tested against a live `oc get pod lgtm-... -o jsonpath='{.metadata.annotations.openshift\.io/scc}'`
+  check before assuming it's harmless — the rendered YAML looks
+  more secure with the extra fields, but the live SCC assignment is what
+  actually determines whether Grafana can write its data directory.

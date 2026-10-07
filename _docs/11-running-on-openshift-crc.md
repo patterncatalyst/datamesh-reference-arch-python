@@ -30,8 +30,13 @@ that gets it running.
 One scoping note up front, visible in the chart's own `Chart.yaml`: this is the **live
 core** of the capstone — the seven services, Postgres, Kafka, and Apicurio — not the
 full minikube stack. OpenMetadata, Prefect, the LGTM observability stack, KEDA
-autoscaling, and the Istio mesh are intentionally out of this chart. The last section of
-this appendix explains why and what their OpenShift-native counterparts would be.
+autoscaling, and the Istio mesh are intentionally out of this chart *by default*. A
+later section of this appendix, "The full platform tier, live," brings all five of
+those layers up on top of this same core as an **opt-in** addition — applied via
+`openshift/platform/install-platform.sh` plus two chart flags
+(`mesh.enabled`/`observability.otlp.enabled`) rather than baked into a plain `helm
+install` — and reports what's actually verified live for each, rather than just
+documenting the OpenShift-native counterpart.
 
 ![The chart's topology on CRC — app pods under restricted-v2, infra pods under nonroot-v2, the integrated registry, and two edge-TLS Routes]({% raw %}{{ '/assets/diagrams/18-crc-openshift-topology.svg' | relative_url }}{% endraw %})
 
@@ -57,7 +62,20 @@ You don't need a paid subscription or a cloud account. **OpenShift Local** (CRC 
    instance is still stopped — CRC can only grow disk size before the first `crc start`:
 
    ```sh
-   crc config set memory 20480   # 20 GB
+   crc config set memory 32768   # 32 GB
+   crc config set cpus 14
+   crc config set disk-size 100  # 100 GB
+   ```
+
+   This is the sizing the **full platform tier** actually needs — Istio sidecars on
+   every app pod, the otel-lgtm observability backend, KEDA's operands, and Prefect's
+   and OpenMetadata's dependencies, all on top of the live core (see "The full platform
+   tier, live" below, and DRA-008 in `_plans/decisions.md`). If you only want the **live
+   core** — the seven services, Postgres, Kafka, and Apicurio, with none of the platform
+   tier applied — the smaller footprint this chart originally shipped with still works:
+
+   ```sh
+   crc config set memory 20480   # 20 GB — core only
    crc config set cpus 8
    crc config set disk-size 80   # 80 GB — the default ~32 GB fills once 9 images are pushed
    ```
@@ -443,10 +461,10 @@ $ curl notification-service:8080/received
 
 Same order ID, same SKU, same quantity — one `order.placed` write landed through two
 independent consumers of the mesh: the GraphQL gateway's synchronous read path above,
-and Kafka's asynchronous one. Together the two checks exercise everything the chart
-wires up except the document-only tier described below: Route → REST → gRPC on one
-side, Route-independent Kafka produce/consume with schema-registry-backed Avro on the
-other.
+and Kafka's asynchronous one. Together the two checks exercise everything the live-core
+chart wires up — Route → REST → gRPC on one side, Route-independent Kafka
+produce/consume with schema-registry-backed Avro on the other — independent of the
+platform tier described below.
 
 ### What broke on live apply
 
@@ -504,42 +522,152 @@ turned out to be), while `postgres-0` kept its required `70` and `kafka-0` its r
 two breakages above were the registry-storage footprint and a shell quoting bug — not
 the admission model this appendix is actually about.
 
-## The document-only counterparts
+## The full platform tier, live
 
-Four layers covered elsewhere in this reading set are intentionally **not** part of this
-chart, for the reason stated plainly in `Chart.yaml`: a CRC instance's 20 GB budget
-covers seven services plus Postgres, Kafka, and Apicurio comfortably, but doesn't leave
-headroom for a service mesh, an autoscaler, a full observability stack, and a data
-catalog on top — not without either starving the live core or sizing CRC well past what
-a laptop reasonably offers. Rather than cut corners on all five, this appendix documents
-each layer's OpenShift-native counterpart as a starting point and keeps the verified core
-to what actually fits.
+The live core above is the Helm chart's whole job — but this appendix also brings up
+the five layers that chart deliberately leaves out, as an **opt-in platform tier** on
+top of that same core. None of this changes the core's default behavior: a plain `helm
+upgrade --install datamesh openshift/helm/datamesh` still renders exactly the chart
+described above, with no mesh labels and no OTEL environment variables anywhere in it —
+both `mesh.enabled` and `observability.otlp.enabled` default to `false` in
+`values.yaml`. The platform tier only appears once you additionally run
+[`openshift/platform/install-platform.sh`](https://github.com/patterncatalyst/datamesh-reference-arch-python/blob/main/examples/lgtm-datamesh/openshift/platform/install-platform.sh)
+and flip those two flags on (`helm upgrade --set mesh.enabled=true --set
+observability.otlp.enabled=true`).
 
-- **The mesh** ([chapter 6]({{ '/docs/06-progressive-delivery-mtls/' | relative_url }})). On
-  vanilla Kubernetes this capstone uses Istio directly. **OpenShift Service Mesh** is
-  Red Hat's supported distribution of Istio, installed through OperatorHub/OLM rather
-  than a raw `istioctl install` — the same `DestinationRule`/`VirtualService` canary
-  mechanics this reference already teaches carry over unchanged once the operator is in
-  place.
-- **Autoscaling** ([chapter 7]({{ '/docs/07-elastic-and-resilient/' | relative_url }})).
-  KEDA itself *is* the OpenShift-native answer here, but OpenShift packages it as the
-  **Custom Metrics Autoscaler** operator rather than a standalone Helm install — same
-  `ScaledObject` CRD, same scale-to-zero behavior, different install path.
-- **Observability** ([chapter 8]({{ '/docs/08-observability/' | relative_url }})). In
-  place of standing up the full LGTM stack (Loki/Grafana/Tempo/Mimir) as this capstone
-  does on minikube, OpenShift ships **cluster monitoring** out of the box and
-  **user-workload monitoring** as an opt-in extension of it — a Prometheus-compatible
-  path for the services' own metrics without installing anything beyond enabling the
-  feature.
-- **The catalog** ([chapter 4]({{ '/docs/04-contracts-and-catalog/' | relative_url }})).
-  **OpenMetadata** is the same tool this capstone already uses on minikube; nothing about
-  it is Kubernetes-distribution-specific, so the OpenShift counterpart is the same
-  Deployment, sized to fit alongside the live core rather than run concurrently with it
-  on a single CRC instance.
+Four of the five layers below are verified live against the resized CRC instance from
+the prerequisites. The fifth, OpenMetadata, is best-effort and partial — read that
+subsection carefully before treating it as done. The full capture for each layer is
+committed under
+[`examples/lgtm-datamesh/openshift/evidence/`](https://github.com/patterncatalyst/datamesh-reference-arch-python/tree/main/examples/lgtm-datamesh/openshift/evidence/).
 
-None of these four were applied against the live cluster for this appendix — they're
-authored as the next step for a reader who wants the full stack on OpenShift, not as
-something this appendix claims to have verified.
+### Service mesh: OpenShift Service Mesh 3 (Sail operator), Istio v1.30
+
+[Chapter 6]({{ '/docs/06-progressive-delivery-mtls/' | relative_url }}) runs Istio
+directly on minikube, labeling the whole namespace for injection. OpenShift's mesh is
+**OpenShift Service Mesh 3** (OSSM3), Red Hat's Sail-operator-based distribution:
+`openshift/platform/mesh/istio.yaml` and `istio-cni.yaml` install it as an `Istio` CR
+plus a matching `IstioCNI` CR, not a raw `istioctl install`. Injection is a
+pod-template **LABEL**, `istio.io/rev`, set on the seven app Deployments (and the
+order-service canary) behind the chart's `mesh.enabled` flag — Sail's revisioned
+injection webhook doesn't reliably fire on the classic `sidecar.istio.io/inject`
+*annotation* the minikube overlay uses. Postgres, Kafka, and Apicurio stay unlabeled,
+unmeshed infrastructure, which is exactly what the live sidecar counts show: the seven
+app pods carry `2/2` (app container plus Envoy), the three infra pods stay `1/1`.
+
+Namespace-wide mTLS is `STRICT` — a `PeerAuthentication` named `default` — with one
+scoped exception: a second `PeerAuthentication`, `graphql-gateway-permissive`, sets
+`PERMISSIVE` for just the gateway. The OpenShift Route fronting the gateway is not
+mesh-aware and arrives as plaintext, and `STRICT` namespace-wide rejected that edge
+traffic outright (502s from the Route) before the gateway-scoped exception was carved
+out — the live lesson behind this appendix's newest decision entry. Every other hop in
+the mesh — service to service, all mesh-internal — stays `STRICT`.
+
+The v1/v2 canary itself runs as a **mesh-internal** `VirtualService`/`DestinationRule`
+rather than through an Istio ingress gateway: OSSM3 provisions no default ingress
+gateway the way istioctl's `default` profile does, and the edge is already the
+OpenShift Route, so the weighted split applies to sidecar-to-sidecar traffic instead of
+external ingress. Over 30 requests to `order-service`, the observed split against the
+configured 90/10 `VirtualService` weights was **v1=26, v2=4**.
+
+(Evidence: `examples/lgtm-datamesh/openshift/evidence/mesh-verification.txt`.)
+
+### Autoscaling: Custom Metrics Autoscaler (Red Hat's KEDA distribution)
+
+[Chapter 7]({{ '/docs/07-elastic-and-resilient/' | relative_url }}) scales
+`notification-service` to zero on Kafka consumer lag using core KEDA on minikube.
+OpenShift's supported path packages the same KEDA API as the **Custom Metrics
+Autoscaler** operator: `openshift/platform/keda/kedacontroller.yaml` stands up a
+`KedaController` operand, and `notification-scaledobject.yaml` ports the Kafka
+consumer-lag `ScaledObject` for `notification-service` against topic `order-placed`.
+
+The full scale cycle was observed live: idle at zero replicas (`minReplicaCount: 0`) →
+a burst of 12 orders drove the `ScaledObject` to `Active=True` and scaled 0→1 within
+~15 seconds → the backlog drained, `Active` returned to `False` → a roughly 90-second
+cooldown scaled it back 1→0. The KEDA HTTP add-on that scales `graphql-gateway` on
+minikube is **not** part of the Custom Metrics Autoscaler — CMA ships core KEDA only —
+so gateway HTTP-request scale-to-zero was dropped on OpenShift; there's no drop-in CMA
+equivalent for it.
+
+(Evidence: `examples/lgtm-datamesh/openshift/evidence/keda-verification.txt`.)
+
+### Observability: grafana/otel-lgtm, running as root under `anyuid`
+
+[Chapter 8]({{ '/docs/08-observability/' | relative_url }}) stands up the full split
+Loki/Grafana/Tempo/Mimir stack on minikube. This appendix instead deploys the
+single-container `grafana/otel-lgtm` all-in-one image
+(`openshift/platform/observability/lgtm-deployment.yaml`) — Collector, Tempo, Loki,
+Mimir, and Grafana in one Deployment — and re-enables OTLP export from the services via
+the chart's `observability.otlp.enabled` flag, scoped to traces only
+(`OTEL_METRICS_EXPORTER=none` keeps metrics load off a single-replica backend).
+
+The real lesson here was admission, not the image. The otel-lgtm image owns its data
+directories as UID 0, so its pod needs `runAsUser: 0`, which forces it onto the
+`anyuid` SCC via a dedicated `lgtm` ServiceAccount — `restricted-v2` rejects root
+outright. The non-obvious part: adding a `seccompProfile` or `capabilities` block to
+that same `securityContext` — the kind of change that reads as pure hardening — makes
+`anyuid` **reject** the pod instead of admitting it, because its allowed
+seccomp-profile list is empty. That rejection doesn't surface as a loud SCC-denial
+event; it silently drops the pod back onto `restricted-v2`'s randomly assigned UID,
+where Grafana can't write `/data` and the pod hangs forever at "Waiting for Grafana to
+start up...", with nothing pointing at the real cause. `runAsUser: 0` alone — no
+`seccompProfile`, no `capabilities` — is what `anyuid` actually wants.
+
+Live, Grafana reports healthy through its Route (`"database": "ok"`), and Tempo is
+ingesting per-service traces: `graphql-gateway`, `order-service`, `inventory-service`,
+and `notification-service` each produced recent traces during the capture window
+(`payment-service` produced none in that window).
+
+**Honest limit, stated plainly:** those are per-service traces, not one stitched
+cross-service trace. The gateway's downstream HTTP/gRPC calls don't propagate a W3C
+`traceparent` header, so each service roots its own trace instead of continuing the
+caller's — an application-instrumentation gap, not something OpenShift or the mesh
+fails to do. Envoy's own mesh spans hit the same ceiling: they can't correlate across
+hops without the application propagating that header either.
+
+(Evidence: `examples/lgtm-datamesh/openshift/evidence/observability-verification.txt`.)
+
+### Orchestration: Prefect 3.x, server and worker on the core Postgres
+
+Prefect's server and worker (`openshift/platform/prefect/server-deployment.yaml`,
+`worker-deployment.yaml`) reuse the core `postgres` StatefulSet via a dedicated
+`prefect` database and login role, rather than bundling a second Postgres instance —
+this chart's established one-Postgres-per-cluster convention.
+
+Live, the server's `/api/health` returned `true` through its Route, and the example
+two-task flow (`datamesh-example-flow`) ran end to end against the server API: both the
+`say_hello` and `say_goodbye` tasks, and the flow run itself (`zircon-waxbill`), reached
+`COMPLETED`, confirmed via `/api/flow_runs/filter`.
+
+(Evidence: `examples/lgtm-datamesh/openshift/evidence/prefect-verification.txt`.)
+
+### Catalog: OpenMetadata — best-effort, partial
+
+[Chapter 4]({{ '/docs/04-contracts-and-catalog/' | relative_url }}) uses OpenMetadata on
+minikube. The OpenShift port is the same tool, retargeted to this chart's Postgres for
+its backend database and a single-node OpenSearch for search — and it is the one layer
+in this platform tier that is **not** fully verified live.
+
+**What's live:** OpenSearch came up `green` (single node, confirmed against its own
+`:9200/_cluster/health` endpoint) once its pod was bound to a dedicated
+`openmetadata-opensearch` ServiceAccount granted the `anyuid` SCC. That fixed-UID/
+fsGroup admission gate was the hard part of this whole layer, and it's solved: the
+`openmetadata` database and role are provisioned in the core Postgres, and the
+Secrets/SCC wiring the OM server needs is in place.
+
+**What's blocked, and why it isn't a deployment defect:** the OpenMetadata server image
+(`docker.getcollate.io/openmetadata/server:1.12.8`) fails to pull —
+`ImagePullBackOff`, `toomanyrequests: unauthenticated pull rate limit` — against Docker
+Hub, from both the CRC VM and the host directly. That's an **external quota**, not a
+problem with the chart, the database wiring, or the SCC grant: the two unblock paths are
+authenticating to Docker Hub (`podman login docker.io`) before mirroring the image into
+the internal registry, or waiting out the rate-limit reset window (roughly six hours);
+neither was exercised for this verification pass. The distinction matters if you
+reproduce this yourself — the hard problem (SCC admission for a fixed-UID,
+fsGroup-dependent dependency) is solved; an unrelated external rate limit is what's
+still standing between this layer and a running OM server.
+
+(Evidence: `examples/lgtm-datamesh/openshift/evidence/openmetadata-verification.txt`.)
 
 ## GitOps and Pipelines: the managed counterpart
 
@@ -581,26 +709,75 @@ reachable from the cluster. Neither was applied for this appendix's verification
 ---
 
 *Verification status: **verified live**, 2026-10-07, on OpenShift Local (CRC 2.64.0,
-OpenShift 4.22.14, single node, 20 GB RAM / 8 vCPU / 80 GB disk). All ten workloads —
-the seven application Deployments, Apicurio, and the Postgres and Kafka StatefulSets —
-reached `1/1 Running` in Project `datamesh`. SCC behavior was confirmed by reading each
-pod's effective SCC and runtime UID: the seven app pods under `restricted-v2` with
-OpenShift-assigned UID `1000650000`, `postgres-0` under `nonroot-v2` with UID `70`, and
-`kafka-0` under `nonroot-v2` with UID `1000`, both infra pods running under the
-`datamesh-infra` ServiceAccount. The GraphQL gateway's Route returned
-`{"status":"ready","service":"graphql-gateway"}` from `/healthz`, and a cross-service
-`/graphql` query through that same Route returned a populated `order` object from
-`order-service` joined to a populated `stock` object resolved over gRPC from
-`inventory-service` — the Route, the SCC-assigned UID, the ConfigMap wiring, and the
-gateway's REST-plus-gRPC fan-out, all exercised together. The Kafka path was confirmed
-independently: the same order's `order.placed` event, Avro-encoded against the Apicurio
-schema registry, was observed decoded on `notification-service`'s own endpoint. The full
-capture is committed at
+OpenShift 4.22.14, single node). Two tiers were verified on this date, at the two host
+sizings in the prerequisites' "Size the host" step.
+
+**Live core** (20 GB RAM / 8 vCPU / 80 GB disk; `helm upgrade --install datamesh
+openshift/helm/datamesh --namespace datamesh`, both platform flags left at their
+`false` default). All ten workloads — the seven application Deployments, Apicurio, and
+the Postgres and Kafka StatefulSets — reached `1/1 Running` in Project `datamesh`. SCC
+behavior was confirmed by reading each pod's effective SCC and runtime UID: the seven
+app pods under `restricted-v2` with OpenShift-assigned UID `1000650000`, `postgres-0`
+under `nonroot-v2` with UID `70`, and `kafka-0` under `nonroot-v2` with UID `1000`, both
+infra pods running under the `datamesh-infra` ServiceAccount. The GraphQL gateway's
+Route returned `{"status":"ready","service":"graphql-gateway"}` from `/healthz`, and a
+cross-service `/graphql` query through that same Route returned a populated `order`
+object from `order-service` joined to a populated `stock` object resolved over gRPC
+from `inventory-service` — the Route, the SCC-assigned UID, the ConfigMap wiring, and
+the gateway's REST-plus-gRPC fan-out, all exercised together. The Kafka path was
+confirmed independently: the same order's `order.placed` event, Avro-encoded against
+the Apicurio schema registry, was observed decoded on `notification-service`'s own
+endpoint. The full capture is committed at
 [`examples/lgtm-datamesh/openshift/evidence/verification.txt`](https://github.com/patterncatalyst/datamesh-reference-arch-python/blob/main/examples/lgtm-datamesh/openshift/evidence/verification.txt).
-**Not verified:** the document-only tier (Service Mesh, Custom Metrics Autoscaler,
-cluster/user-workload observability, OpenMetadata) and the GitOps `Application` plus
-Tekton pipeline were authored but not applied against this cluster — no operators for
-any of them were installed for this verification pass. Re-confirm by re-running `helm
-upgrade --install` against a fresh `crc start`, then re-driving the two Route `curl`s
-and re-reading each pod's SCC annotation — the assigned app UID will differ per cluster,
-but the SCC names, the infra UIDs, and the 200s should not.*
+
+**Full platform tier** (32 GB RAM / 14 vCPU / 100 GB disk; the same live core plus
+`openshift/platform/install-platform.sh` and `mesh.enabled=true` /
+`observability.otlp.enabled=true`):
+
+- **Service mesh** — OSSM3/Sail, Istio v1.30: the seven app pods report `2/2` (app
+  container plus Envoy sidecar) against the three infra pods' `1/1`; namespace-wide
+  `PeerAuthentication` `STRICT` with a `graphql-gateway-permissive` `PERMISSIVE`
+  exception so the non-mesh OpenShift Route still reaches the edge; the order-service
+  v1/v2 canary (mesh-internal `VirtualService`, no ingress gateway) split 26/4 over 30
+  requests against a 90/10 configured weight.
+  (`examples/lgtm-datamesh/openshift/evidence/mesh-verification.txt`)
+- **Autoscaling** — Custom Metrics Autoscaler: the `notification-service-scaler`
+  `ScaledObject` demonstrated the full cycle live — idle at zero replicas, scaled 0→1
+  within ~15s of a 12-order burst raising Kafka consumer lag, back to 0 after a ~90s
+  cooldown once the backlog cleared.
+  (`examples/lgtm-datamesh/openshift/evidence/keda-verification.txt`)
+- **Observability** — grafana/otel-lgtm all-in-one under the `anyuid` SCC, root with no
+  seccomp profile or capabilities (see DRA-016): Grafana reports `"database": "ok"`
+  through its Route, and Tempo is ingesting per-service traces from `graphql-gateway`,
+  `order-service`, `inventory-service`, and `notification-service`.
+  (`examples/lgtm-datamesh/openshift/evidence/observability-verification.txt`)
+- **Orchestration** — Prefect 3.x server and worker on the core Postgres: `/api/health`
+  returned `true` through its Route, and the example flow run (`zircon-waxbill`,
+  `datamesh-example-flow`) reached `COMPLETED`.
+  (`examples/lgtm-datamesh/openshift/evidence/prefect-verification.txt`)
+- **Catalog (OpenMetadata) — partial/best-effort, not fully verified:** OpenSearch
+  reached `green` under a dedicated `anyuid`-bound ServiceAccount — the fixed-UID/
+  fsGroup SCC gate, the hard part, is solved — while the OpenMetadata server itself is
+  blocked by an external Docker Hub unauthenticated pull-rate limit
+  (`toomanyrequests`), not a deployment defect: the chart, database wiring, and SCC
+  grant are all in place and simply unproven because the server image never pulled.
+  (`examples/lgtm-datamesh/openshift/evidence/openmetadata-verification.txt`)
+
+**Honest limits, carried forward:**
+
+- Observability's per-service traces are **not** stitched into one cross-service
+  trace — the services don't propagate a W3C `traceparent` header across their
+  HTTP/gRPC calls, an application-instrumentation gap, not an OpenShift or mesh
+  limitation.
+- OpenMetadata's server component remains unverified live, blocked on an external
+  registry quota rather than anything this build controls.
+- **OpenShift GitOps** (the `Application` at `openshift/gitops/application.yaml`) and
+  **OpenShift Pipelines** (Tekton) remain authored, not applied — no operators for
+  either were installed for either verification pass.
+
+Re-confirm the live core by re-running `helm upgrade --install` against a fresh `crc
+start`, then re-driving the two Route `curl`s and re-reading each pod's SCC annotation —
+the assigned app UID will differ per cluster, but the SCC names, the infra UIDs, and the
+200s should not. Re-confirm the platform tier by re-running `install-platform.sh` on
+top of a resized instance and re-capturing the same evidence files under
+`examples/lgtm-datamesh/openshift/evidence/`.*
