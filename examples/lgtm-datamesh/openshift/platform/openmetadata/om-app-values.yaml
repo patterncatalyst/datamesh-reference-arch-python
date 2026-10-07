@@ -1,0 +1,74 @@
+# om-app-values.yaml — OpenMetadata *server* config for the OpenShift
+# datamesh deploy. Override file merged by Helm onto the upstream
+# open-metadata/openmetadata chart defaults (chart 1.12.8).
+#
+# Retargeted from examples/lgtm-datamesh/openmetadata/om-app-values.yaml.
+# Decisions carried over unchanged (CAP-022): no Airflow/pipeline-service
+# client; search = the single-node OpenSearch from om-deps-values.yaml (the
+# chart default elasticsearch block — host=opensearch, port 9200, http,
+# searchType=opensearch — already matches that deploy, so no override needed
+# here, same as the source file).
+#
+# Changed from the minikube source — the backend database:
+#   * host:     postgres.datamesh.svc.cluster.local (the plain StatefulSet
+#     Service in openshift/helm/datamesh/templates/postgres.yaml), NOT
+#     capstone-postgres-rw (that's the CNPG read-write Service the minikube
+#     deploy uses; this cluster has no CNPG operator/Cluster).
+#   * databaseName: openmetadata — a second database on the same Postgres
+#     instance, with a DEDICATED `openmetadata` login role (NOT the shared
+#     `capstone_app` role the core app secret uses) — both created by
+#     ../install-platform.sh's `provision_openmetadata_db` (confirmed by
+#     reading that script: OPENMETADATA_ROLE=OPENMETADATA_DB="openmetadata"),
+#     same shape as the minikube source's setup-openmetadata.sh.
+#   * auth.username / auth.password.secretRef: `openmetadata` /
+#     `openmetadata-db-app-secret` (this directory's postgres-credentials-secret.yaml)
+#     — install-platform.sh only provisions the role+database over SQL, it
+#     creates no Kubernetes Secret, so that manifest republishes the same
+#     demo password as a Secret this chart can read.
+#   * dbParams: sslmode=disable, not require — the plain postgres:16-alpine
+#     StatefulSet in this chart has no TLS listener configured (no server
+#     cert, no `ssl=on`), unlike CNPG which always presents a self-signed
+#     cert. VERIFY-POINT: if this is wrong, `sslmode=prefer` negotiates TLS
+#     and falls back to plaintext, so it's the safe first thing to try.
+#   * service.type: ClusterIP, not NodePort — OpenShift exposes the UI/API
+#     via route.yaml (edge Route) instead of a NodePort.
+
+image:
+  # Mirrored into the internal registry: the CRC VM hit docker.getcollate.io's
+  # Docker-Hub-backed unauthenticated pull-rate limit (toomanyrequests). Pulled
+  # on the host, pushed to the internal registry. On a cluster with egress, use
+  # the upstream default repository (docker.getcollate.io/openmetadata/server).
+  repository: image-registry.openshift-image-registry.svc:5000/datamesh/openmetadata-server
+  tag: "1.12.8"
+  pullPolicy: IfNotPresent
+
+openmetadata:
+  config:
+    deployPipelinesConfig:
+      enabled: false
+    pipelineServiceClientConfig:
+      enabled: false
+
+    database:
+      host: postgres.datamesh.svc.cluster.local
+      port: 5432
+      driverClass: org.postgresql.Driver
+      dbScheme: postgresql
+      databaseName: openmetadata
+      auth:
+        username: openmetadata
+        password:
+          secretRef: openmetadata-db-app-secret
+          secretKey: openmetadata-db-password
+      dbParams: "sslmode=disable"
+
+service:
+  type: ClusterIP
+  port: 8585
+
+resources:
+  requests:
+    cpu: "500m"
+    memory: "2Gi"
+  limits:
+    memory: "3Gi"

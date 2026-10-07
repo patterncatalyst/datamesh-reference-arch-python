@@ -1,0 +1,17 @@
+# namespaces.yaml — the two namespaces the OSSM3 (Sail operator) control
+# plane and CNI plugin live in. Neither is the `datamesh` application
+# namespace: `istio-system` hosts the Istio control plane (istiod) the
+# `Istio` CR (istio.yaml) and `IstioCNI` CR (istio-cni.yaml) target, and
+# `istio-cni` hosts the CNI DaemonSet IstioCNI installs.
+#
+# Pre-req for istio.yaml / istio-cni.yaml — the Sail operator CRs assume
+# their target namespace already exists; they do not create it themselves.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: istio-system
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: istio-cni

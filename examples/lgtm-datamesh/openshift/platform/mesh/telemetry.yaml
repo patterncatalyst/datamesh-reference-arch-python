@@ -1,0 +1,20 @@
+# telemetry.yaml — namespace-scoped Telemetry for `datamesh` (no selector ->
+# applies to every meshed workload in the namespace): routes Envoy's own
+# trace spans to the `otel` extensionProvider (istio.yaml) at 100% sampling,
+# matching the app-level OTEL_TRACES_SAMPLER=always_on env
+# (../../helm/datamesh/templates/app-deployment.yaml, DRA-011) so a single
+# end-to-end trace captures both mesh-hop and app-hop spans at full
+# fidelity. Adapted from
+# modernizing-enterprise-applications/deploy/k8s/istio/telemetry.yaml
+# (there mesh-wide in `istio-system` for the `mea` namespace); scoped here
+# directly to `datamesh` instead.
+apiVersion: telemetry.istio.io/v1
+kind: Telemetry
+metadata:
+  name: datamesh-tracing
+  namespace: datamesh
+spec:
+  tracing:
+    - providers:
+        - name: otel
+      randomSamplingPercentage: 100

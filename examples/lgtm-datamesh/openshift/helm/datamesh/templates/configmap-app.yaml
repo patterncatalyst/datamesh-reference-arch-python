@@ -1,0 +1,34 @@
+{{- $dns := include "datamesh.dns" . -}}
+# Shared env contract for the app Deployments that need cross-service
+# addresses — the Helm port of the endpoints charts/capstone/values.yaml's
+# `global:` block hardcodes to the `capstone` namespace. Every address here is
+# built from the release namespace ({{ .Release.Namespace }}) so the chart is
+# namespace-portable (installed as `datamesh` per the README, but not
+# hardcoded to it).
+#
+# Tracing/OTLP env vars are intentionally OMITTED: the LGTM observability
+# stack (otel-collector/tempo/etc.) is out of scope for this chart (see
+# Chart.yaml). The service images' OpenTelemetry auto-instrumentation
+# (opentelemetry-instrument) is a no-op when no OTEL_* env is set, so running
+# untraced here is just the images' documented default behavior.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: datamesh-app-config
+  labels:
+    {{- include "datamesh.labels" . | nindent 4 }}
+data:
+  # Kafka (r25 pattern) — order-service produces, notification-service consumes.
+  KAFKA_BOOTSTRAP: "kafka.{{ $dns }}:9092"
+  KAFKA_ORDER_TOPIC: {{ .Values.kafka.topic | quote }}
+  KAFKA_GROUP: "notification-service"
+
+  # Apicurio schema registry (r25b) — order-service registers, notification-service reads.
+  APICURIO_URL: "http://apicurio.{{ $dns }}:{{ .Values.apicurio.port }}"
+  KAFKA_ORDER_SUBJECT: "order-placed-value"
+
+  # order-service's gRPC call to inventory-service (r23: CheckStock).
+  INVENTORY_GRPC_ADDR: "inventory-service.{{ $dns }}:50051"
+
+  # graphql-gateway's two downstream clients (its own placeholder names).
+  ORDER_REST_URL: "http://order-service.{{ $dns }}:8080"

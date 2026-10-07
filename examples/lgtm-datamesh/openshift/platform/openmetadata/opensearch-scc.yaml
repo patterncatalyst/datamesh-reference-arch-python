@@ -1,0 +1,44 @@
+# opensearch-scc.yaml — grants the Bitnami OpenSearch pod (deployed by the
+# openmetadata-dependencies chart, om-deps-values.yaml) the `anyuid` SCC.
+#
+# The Bitnami OpenSearch image pins a fixed, non-arbitrary UID (1000, matching
+# upstream OpenSearch's own image convention). OpenShift's default
+# `restricted-v2` SCC assigns a random UID from the namespace's allocated
+# range and refuses any pod that insists on a specific one, so the pod needs
+# a ServiceAccount bound to a more permissive SCC. `anyuid` (not `privileged`)
+# is the minimum grant that allows a self-chosen UID while still enforcing
+# the rest of restricted-v2's constraints (no host namespaces, no privilege
+# escalation, etc.) — same pattern the core chart uses for Postgres/Kafka via
+# the `datamesh-infra` ServiceAccount (see
+# openshift/helm/datamesh/templates/serviceaccount-infra.yaml), just a
+# dedicated SA here so the OpenMetadata OpenSearch sub-release doesn't need to
+# share that one.
+#
+# The OpenSearch sub-release must actually USE this ServiceAccount — set via
+# om-deps-values.yaml's `opensearch.serviceAccount.create: false` +
+# `opensearch.serviceAccount.name: openmetadata-opensearch`.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: openmetadata-opensearch
+  namespace: datamesh
+  labels:
+    app.kubernetes.io/name: openmetadata-opensearch
+    app.kubernetes.io/part-of: capstone
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: openmetadata-opensearch-anyuid
+  namespace: datamesh
+  labels:
+    app.kubernetes.io/name: openmetadata-opensearch
+    app.kubernetes.io/part-of: capstone
+subjects:
+  - kind: ServiceAccount
+    name: openmetadata-opensearch
+    namespace: datamesh
+roleRef:
+  kind: ClusterRole
+  name: system:openshift:scc:anyuid
+  apiGroup: rbac.authorization.k8s.io

@@ -1,0 +1,28 @@
+# kedacontroller.yaml — the KedaController operand for the Custom Metrics
+# Autoscaler (CMA) operator, Red Hat's KEDA distribution (OpenShift's
+# supported equivalent of upstream `helm install kedacore/keda` used on the
+# minikube capstone — see ../subscriptions/cma-subscription.yaml for the
+# Subscription that installs the operator itself).
+#
+# PREREQUISITE: the operator's CSV in namespace openshift-keda must be
+# Succeeded before this is applied:
+#   oc get csv -n openshift-keda -l operators.coreos.com/openshift-custom-metrics-autoscaler-operator.openshift-keda
+#   oc wait --for=jsonpath='{.status.phase}'=Succeeded csv -n openshift-keda -l ...
+# Applying the KedaController before the CSV is Succeeded fails: the CRD
+# (keda.sh/v1alpha1 KedaController) doesn't exist until the operator installs
+# it.
+#
+# watchNamespace is left empty, which the CMA operand treats as "watch every
+# namespace" (cluster-wide), so this single operand serves notification-service
+# in `datamesh` without per-namespace operand duplication.
+apiVersion: keda.sh/v1alpha1
+kind: KedaController
+metadata:
+  name: keda
+  namespace: openshift-keda
+spec:
+  watchNamespace: ""
+  operator:
+    logLevel: info
+  metricsServer:
+    logLevel: "0"

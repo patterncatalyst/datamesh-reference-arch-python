@@ -1,0 +1,17 @@
+# server-service.yaml — ClusterIP Service fronting the Prefect server's API/UI.
+apiVersion: v1
+kind: Service
+metadata:
+  name: prefect-server
+  namespace: datamesh
+  labels:
+    app.kubernetes.io/name: prefect-server
+    app.kubernetes.io/part-of: capstone
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: prefect-server
+  ports:
+    - name: api
+      port: 4200
+      targetPort: api

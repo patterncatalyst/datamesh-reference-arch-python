@@ -1,0 +1,23 @@
+# lgtm-route.yaml — edge Route to the Grafana UI (port 3000), same
+# "Routes, not NodePort" pattern as the live core (DRA-005). Grafana runs
+# with anonymous Admin access (GF_AUTH_ANONYMOUS_* in lgtm-deployment.yaml —
+# ported unchanged from the modernization source) rather than a login flow,
+# appropriate for a local reference build, not production.
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: lgtm-grafana
+  namespace: datamesh
+  labels:
+    app.kubernetes.io/name: lgtm
+    app.kubernetes.io/part-of: capstone
+spec:
+  to:
+    kind: Service
+    name: lgtm
+    weight: 100
+  port:
+    targetPort: grafana
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

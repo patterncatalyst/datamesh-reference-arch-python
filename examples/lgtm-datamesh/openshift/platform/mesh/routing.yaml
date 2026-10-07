@@ -1,0 +1,46 @@
+# routing.yaml — the order-service v1/v2 canary, as MESH-INTERNAL traffic
+# management (ported from ../../../istio/routing.yaml, retargeted to OpenShift).
+#
+# Unlike the minikube source (which fronted the split with an istio
+# ingressgateway Gateway), OSSM3/Sail does not provision a default ingress
+# gateway, and the datamesh edge is the graphql-gateway behind an OpenShift
+# Route — so there is nothing external to attach a Gateway to. Instead the
+# VirtualService has NO `gateways:` field, which means it applies to the
+# `mesh` (sidecar-to-sidecar) traffic by default: every in-cluster caller of
+# `order-service` (the graphql-gateway, and direct callers) gets the weighted
+# split. The DestinationRule names the v1/v2 subsets by the `version` pod
+# label (app-deployment.yaml sets v1 when mesh.enabled; order-service-v2.yaml
+# sets v2). Shift the split by editing the weights and re-applying.
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: order-service
+  namespace: datamesh
+spec:
+  hosts:
+    - order-service          # the ClusterIP Service name; mesh-internal host
+  http:
+    - route:
+        - destination:
+            host: order-service
+            subset: v1
+          weight: 90
+        - destination:
+            host: order-service
+            subset: v2
+          weight: 10
+---
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: order-service
+  namespace: datamesh
+spec:
+  host: order-service
+  subsets:
+    - name: v1
+      labels:
+        version: v1
+    - name: v2
+      labels:
+        version: v2

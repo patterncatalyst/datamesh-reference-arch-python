@@ -1,0 +1,53 @@
+# notification-scaledobject.yaml — Kafka consumer-lag autoscaling for
+# notification-service on OpenShift, via the Custom Metrics Autoscaler (CMA).
+#
+# Ported from examples/lgtm-datamesh/keda/notification-scaledobject.yaml
+# (the minikube/Strimzi version). The ScaledObject spec is identical KEDA
+# API (keda.sh/v1alpha1) — only the target names change:
+#   * namespace:        datamesh   (not capstone)
+#   * scaleTargetRef:    Deployment `notification-service` — same name, created
+#     by openshift/helm/datamesh/templates/app-deployment.yaml (the `services`
+#     map in values.yaml ranges over service names 1:1 into Deployment names).
+#   * bootstrapServers:  kafka.datamesh.svc.cluster.local:9092 — the plain
+#     StatefulSet Service in openshift/helm/datamesh/templates/kafka.yaml
+#     (port named `plaintext`, port 9092). Not Strimzi-managed here, so there
+#     is no `-kafka-bootstrap` suffix. FQDN used because the CMA operand runs
+#     in `openshift-keda`, a different namespace than the trigger's target —
+#     OpenShift/Kubernetes DNS search-path expansion does resolve the short
+#     3-label form `kafka.datamesh.svc` cross-namespace (ndots:5 search tries
+#     `<name>.<ns>.svc.<search-domain>` and lands on the real record), but the
+#     fully-qualified form removes any doubt and matches the source file's
+#     own stated rationale for using FQDN here.
+#   * consumerGroup:     notification-service — confirmed in
+#     services/notification-service/app/config.py (`kafka_group` default) and
+#     restated in openshift/helm/datamesh/templates/configmap-app.yaml's
+#     `KAFKA_GROUP: "notification-service"` key, which is what the running
+#     container actually uses (env wins over the Python default).
+#   * topic:             order-placed — confirmed in the same config.py
+#     (`kafka_order_topic` default) and in openshift/helm/datamesh/values.yaml
+#     `kafka.topic: "order-placed"` / configmap-app.yaml `KAFKA_ORDER_TOPIC`.
+#
+# minReplicaCount/maxReplicaCount/pollingInterval/cooldownPeriod are per this
+# authoring step's spec (0/5/15/60), not copied from the minikube source
+# (which used 0/3/5/30) — looser polling/cooldown suits a demo cluster that
+# isn't being driven as hard as the minikube kafka-lag demo script.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: notification-service-scaler
+  namespace: datamesh
+spec:
+  scaleTargetRef:
+    name: notification-service
+  pollingInterval: 15
+  cooldownPeriod: 60
+  minReplicaCount: 0
+  maxReplicaCount: 5
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: kafka.datamesh.svc.cluster.local:9092
+        consumerGroup: notification-service
+        topic: order-placed
+        lagThreshold: "5"
+        offsetResetPolicy: earliest

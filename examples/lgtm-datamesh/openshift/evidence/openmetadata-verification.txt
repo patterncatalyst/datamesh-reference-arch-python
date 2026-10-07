@@ -1,0 +1,21 @@
+=== OPENMETADATA (best-effort) — 2026-10-07T17:36:15Z ===
+## OUTCOME: PARTIAL — OpenSearch dependency GREEN; OM server blocked by an
+   EXTERNAL Docker Hub unauthenticated pull-rate limit (not an OpenShift issue).
+
+## VERIFIED live:
+   - openmetadata/openmetadata-dependencies chart installed (OpenSearch single-node).
+   - SCC gate SOLVED: OpenSearch pod needs fsGroup 1000 + uid 0/1000; its chart
+     ran under the 'default' SA (the values serviceAccount key didn't bind), so it
+     was patched to SA 'openmetadata-opensearch' (bound to anyuid) -> admitted.
+     opensearch-0  1/1  scc=anyuid
+   - OpenSearch cluster health: green (1 node) — confirmed via :9200/_cluster/health.
+   - openmetadata DB + role provisioned in core Postgres; secrets + airflow placeholder applied.
+
+## BLOCKED:
+   - OM server image docker.getcollate.io/openmetadata/server:1.12.8 -> ImagePullBackOff
+     'toomanyrequests: unauthenticated pull rate limit'. The CRC VM AND the host both
+     hit it (Docker-Hub-backed). Mirror-via-host also failed with the same quota.
+   - Unblock options: authenticate to Docker Hub (podman login docker.io) to raise the
+     limit then mirror to the internal registry (om-app-values.yaml already points
+     image.repository at .../datamesh/openmetadata-server:1.12.8), or wait ~6h for reset.
+   - Not a deployment defect: the chart, DB wiring, SCC, and search backend are all in place.

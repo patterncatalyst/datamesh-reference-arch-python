@@ -1,0 +1,43 @@
+# istio.yaml — the OSSM3 (Sail operator) control-plane CR.
+#
+# `istio-system` must already exist (namespaces.yaml) before this applies —
+# the Sail operator does not create its own target namespace.
+#
+# spec.updateStrategy.type: InPlace (not RevisionBased) — a single
+# always-current `default` revision, matching `mesh.revision: default` in
+# ../../helm/datamesh/values.yaml (the pod-template `istio.io/rev` label
+# app-deployment.yaml sets). RevisionBased would require bumping that value
+# on every control-plane upgrade; out of scope for this reference build.
+#
+# meshConfig.extensionProviders' `otel` provider + defaultConfig.tracing
+# wire Envoy's own spans (mesh hops, not app spans) to the same otel-lgtm
+# backend (../observability/) the app containers export to directly via
+# OTEL_EXPORTER_OTLP_ENDPOINT (DRA-011) — ported from
+# modernizing-enterprise-applications/deploy/k8s/istio/istio-install.yaml,
+# retargeted from the IstioOperator/istioctl API to the Sail operator's
+# `Istio` CR and from `mea` to `datamesh`/`lgtm.datamesh.svc`.
+#
+# LIVE-CONFIRM PLACEHOLDER: spec.version must be a real Sail-supported Istio
+# version string, not a comment. Fill it from the orchestrator's live check:
+#   oc get packagemanifest servicemeshoperator3 -o jsonpath='{.status.channels[?(@.name=="stable")].currentCSVDesc.annotations}'
+#   oc explain istio.spec.version
+# version: v1.NN-NNN   (fill from: oc get packagemanifest servicemeshoperator3 -o ... / oc explain istio.spec.version — orchestrator confirms live)
+apiVersion: sailoperator.io/v1
+kind: Istio
+metadata:
+  name: default
+spec:
+  namespace: istio-system
+  updateStrategy:
+    type: InPlace
+  version: v1.30-latest   # confirmed live against OSSM3 v3.4.3: oc explain istio.spec.version
+  values:
+    meshConfig:
+      extensionProviders:
+        - name: otel
+          opentelemetry:
+            port: 4317
+            service: lgtm.datamesh.svc.cluster.local
+      defaultConfig:
+        tracing:
+          sampling: 100

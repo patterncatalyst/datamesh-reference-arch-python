@@ -1,0 +1,20 @@
+# server-route.yaml — edge Route exposing the Prefect UI/API outside the cluster.
+# Prefect's server serves both the REST API and the web UI from the same port
+# (4200), so one Route covers both.
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: prefect-server
+  namespace: datamesh
+  labels:
+    app.kubernetes.io/name: prefect-server
+    app.kubernetes.io/part-of: capstone
+spec:
+  to:
+    kind: Service
+    name: prefect-server
+  port:
+    targetPort: api
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

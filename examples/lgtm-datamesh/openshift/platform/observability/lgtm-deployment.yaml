@@ -1,0 +1,108 @@
+# lgtm-deployment.yaml — the all-in-one grafana/otel-lgtm image (OpenTelemetry
+# Collector + Tempo + Loki + Mimir + Grafana in one container), ported from
+# modernizing-enterprise-applications/deploy/k8s/observability/lgtm-deployment.yaml
+# (there namespace `mea`) to `datamesh`, scoped per DRA-011 to re-enabling
+# OTLP **traces only** for this reference build.
+#
+# NO otelcol-configmap.yaml / grafana-datasources-configmap.yaml here
+# (unlike the modernization source, which mounts both): this build doesn't
+# need the modernization version's one addition over the image's built-in
+# defaults — a `prometheus/istio-mesh` scrape config for mesh *metrics*. This
+# chart only re-enables OTLP traces (OTEL_METRICS_EXPORTER=none on every app
+# container, ../../helm/datamesh/templates/app-deployment.yaml), so the
+# image's baked-in default Collector config (OTLP in -> Tempo/Loki/Mimir) and
+# baked-in default Grafana datasources (Tempo/Loki/Prometheus, all
+# pre-provisioned by grafana/otel-lgtm out of the box) are exactly what's
+# needed, with no volumes/ServiceAccount/RBAC to mount a custom config at
+# all. If a later iteration adds mesh metrics scraping, port both configmaps
+# back in alongside the `lgtm` ServiceAccount + ClusterRole the Kubernetes
+# service-discovery needs (see the modernization source's rbac.yaml).
+#
+# Mem request/limit per spec (1Gi/2Gi) — the compose stack's 1g limit becomes
+# the request floor here, same reasoning as the modernization source.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lgtm
+  namespace: datamesh
+  labels:
+    app.kubernetes.io/name: lgtm
+    app.kubernetes.io/part-of: capstone
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: lgtm
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: lgtm
+        app.kubernetes.io/part-of: capstone
+        # Deliberately NOT given istio.io/rev — the observability backend
+        # itself stays unmeshed, same reasoning as Postgres/Kafka/Apicurio
+        # (none of those are relabeled when mesh.enabled either): it's the
+        # thing receiving mesh + app telemetry, not a participant being
+        # observed.
+    spec:
+      # Runs under the `lgtm` SA bound to anyuid (see lgtm-serviceaccount.yaml):
+      # the all-in-one image must run as its own UID to write Grafana/Tempo/Loki
+      # data, which restricted-v2's random UID forbids.
+      serviceAccountName: lgtm
+      containers:
+        - name: lgtm
+          image: docker.io/grafana/otel-lgtm:0.8.1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: GF_AUTH_ANONYMOUS_ENABLED
+              value: "true"
+            - name: GF_AUTH_ANONYMOUS_ORG_ROLE
+              value: "Admin"
+            - name: GF_AUTH_DISABLE_LOGIN_FORM
+              value: "true"
+          ports:
+            - name: otlp-grpc
+              containerPort: 4317
+            - name: otlp-http
+              containerPort: 4318
+            - name: grafana
+              containerPort: 3000
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "250m"
+            limits:
+              memory: "2Gi"
+              cpu: "2"
+          # Grafana+Tempo+Loki+Mimir+collector all boot in one container on a
+          # constrained single node, so give it a generous startup grace (up to
+          # 5 min) before liveness can kill it — the earlier aggressive liveness
+          # probe restarted it mid-boot in a loop.
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            periodSeconds: 15
+            failureThreshold: 6
+          securityContext:
+            # Run as root: the otel-lgtm image owns its data dirs as uid 0, and
+            # requesting uid 0 forces admission onto the anyuid SCC (restricted-v2
+            # rejects root), which the `lgtm` SA is granted. Without this the pod
+            # lands on restricted-v2 with a random UID and Grafana can't write its
+            # data dir ("Waiting for Grafana to start up..." forever).
+            # NOTE: do NOT set seccompProfile or capabilities here — the anyuid
+            # SCC permits neither (seccompProfiles is empty), and setting them
+            # makes anyuid reject the pod, silently dropping it back to
+            # restricted-v2. runAsUser:0 alone is what anyuid wants.
+            runAsUser: 0

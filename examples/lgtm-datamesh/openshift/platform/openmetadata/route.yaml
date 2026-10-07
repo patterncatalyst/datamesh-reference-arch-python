@@ -1,0 +1,23 @@
+# route.yaml — edge Route to the OpenMetadata server, port 8585 (confirmed in
+# om-app-values.yaml's `service.port` and the minikube source's
+# setup-openmetadata.sh, which pins the equivalent NodePort to the same
+# 8585 target port). The server Service itself (name `openmetadata`) is
+# created by the `open-metadata/openmetadata` chart install, not by a
+# manifest in this directory.
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: openmetadata
+  namespace: datamesh
+  labels:
+    app.kubernetes.io/name: openmetadata
+    app.kubernetes.io/part-of: capstone
+spec:
+  to:
+    kind: Service
+    name: openmetadata
+  port:
+    targetPort: 8585
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

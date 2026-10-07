@@ -1,0 +1,17 @@
+# istio-cni.yaml — the Sail operator's CNI plugin CR.
+#
+# Required on OpenShift: restricted-v2 (the default SCC every workload here
+# runs under — see ../../helm/datamesh/README "What changes" and DRA-004)
+# blocks the classic istio-init NET_ADMIN/NET_RAW init-container approach to
+# redirecting pod traffic into the Envoy sidecar. IstioCNI does that
+# redirection from a privileged DaemonSet running outside the app pod's SCC
+# instead, so meshed app pods stay on restricted-v2 with no elevated
+# capabilities of their own.
+#
+# `istio-cni` must already exist (namespaces.yaml) before this applies.
+apiVersion: sailoperator.io/v1
+kind: IstioCNI
+metadata:
+  name: default
+spec:
+  namespace: istio-cni
