@@ -57,6 +57,14 @@ else
         check_published_ports \
             || fail "stopped profile does not publish the required NodePorts on 127.0.0.1 — recreate it (deletes the cluster; re-run ./scripts/bootstrap-capstone.sh afterwards): ./scripts/setup-capstone-profile.sh --replace"
     fi
+    # A stopped profile holds no listeners: every host port must be free, or
+    # docker fails with a raw bind error. A node container that is still running
+    # (wedged apiserver/etcd) holds its own docker-proxy listeners: exempt them.
+    own_ports=""
+    if profile_container_running; then
+        own_ports="$(published_ports | awk '{print $2}' | tr '\n' ' ')"
+    fi
+    assert_host_ports_free "$own_ports" || fail "host ports are not free (see above); stop other clusters and compose stacks, then re-run"
     printf '    starting (this also clears a stopped/wedged node)...\n'
     minikube start -p "$PROFILE" >/dev/null 2>&1 \
         || fail "minikube start failed — run ./scripts/setup-capstone-profile.sh for first-time provisioning"
@@ -92,6 +100,7 @@ if wait_cp 60; then
 else
     warn "control plane not healthy after 60s — likely a wedged etcd. Cycling the node..."
     minikube stop -p "$PROFILE"  >/dev/null 2>&1 || fail "minikube stop failed"
+    assert_host_ports_free "" || fail "host ports are not free after the stop (see above); stop other clusters and compose stacks, then re-run"
     minikube start -p "$PROFILE" >/dev/null 2>&1 || fail "minikube start failed"
     if wait_cp 180; then
         ok "control plane recovered after node cycle"
