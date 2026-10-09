@@ -862,8 +862,10 @@ status table of what is published and reachable.
 
 ## DRA-020 — Newest stable platform on Kubernetes v1.36.5; UBI 10 + Python 3.14
 
-**Status:** decided 2026-10-09; offline-grounded (charts rendered, CRs validated
-against the operators' CRDs, all service images built). Live run pending.
+**Status:** decided 2026-10-09; verified live 2026-10-09 on Docker Engine
+29.8.2 + minikube 1.39.0 (bootstrap, every demo group, walkthrough 5/5,
+stop/start; see `_plans/reconciliation.md`). The CRC appendix is re-checked at
+its next run.
 
 **Context.** User decision on 2026-10-09: every component on its newest stable
 release, checked upstream (GitHub releases excluding pre-releases, the Helm
