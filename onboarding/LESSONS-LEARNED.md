@@ -297,6 +297,31 @@ Images loaded with `minikube image load` are tagged `capstone/<svc>:v1`, and the
 
 These describe the earlier rootless-podman setup. They are kept for the reasoning, not as instructions; the current setup is Docker Engine + containerd (DRA-019). <!-- forbidden-ok -->
 
+### Why minikube moved off rootless podman (historical) <!-- forbidden-ok -->
+
+The capstone ran minikube with the rootless podman driver from r20 to October 2026. <!-- forbidden-ok -->
+On 2026-10-08, recreating the profile on minikube v1.38.1 (Fedora 44, podman 5.8.7) <!-- forbidden-ok -->
+surfaced a run of problems, each needing its own workaround, while the sibling <!-- forbidden-ok -->
+Quarkus reference ran the same platform on the docker driver with none of them:
+
+| Problem | Symptom | Workaround it needed |
+|---|---|---|
+| Node `FORWARD` policy `DROP` | Fresh node Ready, but CoreDNS timed out, the Istio ingress gateway never became Ready, and pods could not reach each other (ping, TCP and UDP all failed) | Reset the policy to `ACCEPT` inside the node after every start |
+| `minikube addons enable` under CRI-O + crun <!-- forbidden-ok --> | `check paused: list paused: runc: sudo runc list -f json` failed with `open /run/runc: no such file or directory` | Enable addons only through `minikube start --addons=` |
+| Hostpath volumes created `0755 root` under CRI-O <!-- forbidden-ok --> | CloudNativePG `initdb` (uid 26): `could not create directory ".../pgdata": Permission denied` | Switch the default StorageClass to local-path |
+| Mixed OCI runtimes <!-- forbidden-ok --> | Podman ran the node with crun while containerd ran pods with runc <!-- forbidden-ok --> | Switch the in-node runtime to CRI-O, which caused the two rows above <!-- forbidden-ok --> |
+| Image distribution | Images built on the host never reached the node's runtime; `minikube image build`/`load` unreliable on this driver | A registry addon, a random loopback push port, and three CAPs (007/009/010) |
+| Rootless plumbing <!-- forbidden-ok --> | `sudo podman` prompts without `MINIKUBE_ROOTLESS=true`; hostPort pods failing without host iptables modules; PID exhaustion at the default `pids_limit` | Env var on every script, host kernel-module and pids pre-flights |
+
+Each workaround worked, but together they made the minikube path fragile and <!-- forbidden-ok -->
+unlike what learners run elsewhere. DRA-019 moved the minikube capstone to Docker <!-- forbidden-ok -->
+Engine with containerd and runc, and kept podman only for the optional <!-- forbidden-ok -->
+OpenShift Local (CRC) appendix, where it is the native Red Hat tool. <!-- forbidden-ok -->
+The entries below record each problem in detail.
+
+The lesson: when a local-cluster driver needs a workaround per tier, compare it
+against a known-good sibling setup early instead of stacking fixes.
+
 ### PID ceiling on rootless podman nodes (historical) <!-- forbidden-ok -->
 
 The default `pids_limit` for rootless podman is 2048, which is plenty for <!-- forbidden-ok -->
@@ -321,7 +346,7 @@ every fresh node. `ensure_node_forwarding` now resets the policy after each star
 
 The podman driver runs the node container with crun. Pairing it with <!-- forbidden-ok -->
 `--container-runtime=containerd` puts runc under the pods, so the stack used two
-OCI runtimes. The capstone now uses CRI-O, whose minikube default is crun (DRA-018). <!-- forbidden-ok -->
+OCI runtimes. For a short time the capstone switched to CRI-O, whose minikube default is crun (DRA-018, since superseded by DRA-019). <!-- forbidden-ok -->
 One side effect: `minikube addons enable` fails under CRI-O + crun because its <!-- forbidden-ok -->
 paused-container check calls `runc list`; enable addons in `minikube start --addons=`
 instead.
