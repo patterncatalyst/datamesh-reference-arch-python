@@ -84,14 +84,15 @@ start rather than retrofitting it.
 
 This is worth its own section because it's the single part of the capstone that
 reliably trips people up, and it's a direct consequence of a deliberate choice made
-back in §3: the capstone uses the **rootless-podman driver with the containerd
-runtime**, because that's the most realistic local mirror of how Kubernetes runs in
+back in §3: the capstone uses the **rootless-podman driver with the CRI-O
+runtime** (crun inside the node, the same OCI runtime podman uses on the host), because
+a CRI runtime in the node is the most realistic local mirror of how Kubernetes runs in
 production. The cost of that realism is that getting a locally-built image to the
 kubelet is not as simple as you'd expect.
 
 The intuitive approaches are unreliable on this driver. `minikube image build` can
-exit successfully without the image actually landing in the profile's containerd
-store, so the pod then fails to pull. `minikube image load` can report "image not
+exit successfully without the image actually landing in the profile's CRI-O
+image store, so the pod then fails to pull. `minikube image load` can report "image not
 found" for an image that's plainly present, because the lookup goes through the
 rootless podman socket in a way that doesn't resolve.
 

@@ -82,7 +82,7 @@ end to end, verified order-independent (see
 | Services | Python 3.12, FastAPI, SQLAlchemy + Alembic, Poetry | Five domain services + GraphQL gateway; migrations via init-containers |
 | Protocols | REST (OpenAPI), gRPC (Protobuf/buf), GraphQL (SDL), Kafka (Avro) | The deliberate protocol mix: cross-product APIs, hot paths, read surface, async spine |
 | Packaging | Helm (umbrella chart + per-service subcharts), podman | One chart tree for the whole system; images built on the host, pushed to the in-cluster registry |
-| Substrate | Kubernetes v1.32 on minikube (rootless podman driver, containerd) | The whole system on one 24 GB profile |
+| Substrate | Kubernetes v1.32 on minikube (rootless podman driver, CRI-O + crun) | The whole system on one 24 GB profile |
 | Database | CloudNativePG operator, PostgreSQL | One shared cluster, schema-per-service ownership |
 | Events | Strimzi operator, Apache Kafka | The asynchronous spine (`order-placed` topic) |
 | Contracts | Apicurio Registry | OpenAPI + Protobuf + GraphQL SDL (discovery) and Avro (runtime, Confluent-compatible API) |

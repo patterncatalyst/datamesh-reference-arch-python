@@ -103,7 +103,7 @@ echo
 echo "  Next: start the istio minikube profile and install Istio into it:"
 echo
 echo "    minikube start -p istio --memory=6g --cpus=4 \\"
-echo "        --container-runtime=containerd --rootless=true"
+echo "        --container-runtime=cri-o --rootless=true"
 echo "    istioctl install --set profile=demo -y"
 echo
 echo "  Or run the full §11 demo end-to-end:"

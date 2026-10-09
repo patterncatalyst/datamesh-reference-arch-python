@@ -792,3 +792,32 @@ status table of what is published and reachable.
   other workloads before starting, so the published host ports are free.
 - `_plans/archive/` and `*.archive.md` are the historical record. They are
   unchanged, describe superseded host access, and are excluded from the gate.
+
+---
+
+## DRA-018 — In-node runtime: CRI-O with crun on the rootless-podman driver
+
+**Status:** decided 2026-10-08; recorded in `examples/lgtm-datamesh/scripts/setup-capstone-profile.sh` (`RUNTIME="cri-o"`).
+
+**Context.** The capstone profile ran `--driver=podman --container-runtime=containerd`. That mixes OCI runtimes: rootless podman runs the node container with crun, while containerd inside the node runs pods with runc. A fresh profile on minikube v1.38.1 also showed two node-image problems, independent of the runtime choice:
+
+- The node image starts Docker once at first boot, before minikube masks it. Docker 29 enables IP forwarding in the node's network namespace and sets the iptables `FORWARD` policy to `DROP`. kindnet expects `ACCEPT`, so every pod-to-pod and pod-to-Service packet is dropped. CoreDNS times out and the Istio ingress gateway never becomes Ready.
+- Under CRI-O with crun, `minikube addons enable` fails its paused-container check, because that check calls `runc list` and `/run/runc` does not exist.
+
+**Decision.**
+
+- One OCI runtime end to end: podman driver, CRI-O in the node, crun under both. minikube's CRI-O defaults to `default_runtime = "crun"`.
+- `setup-capstone-profile.sh` enables the registry addon in `minikube start --addons=metrics-server,registry`, not with `minikube addons enable`.
+- `ensure_node_forwarding` (in `demos/lib/endpoints.sh`) resets the node's `FORWARD` policy to `ACCEPT` when it finds `DROP`. `setup-capstone-profile.sh` runs it after creating or starting the profile, and `cluster-up.sh` runs it after every start. The rule lives in the node container's network namespace, not on the host.
+
+**Rejected alternatives.**
+
+- Keep containerd and runc: two OCI runtimes in one stack, contrary to the "podman means crun" rule.
+- Switch the CNI (for example `--cni=bridge`) to dodge the `DROP` policy: the policy drops forwarded traffic whatever the CNI, so this changes more and fixes nothing.
+- Add `ACCEPT` rules only for `10.244.0.0/16`: Service traffic is DNAT-ed through kube-proxy, so pod-CIDR rules alone are fragile. Restoring the default kindnet expects is simpler.
+
+**Consequences.**
+
+- Existing profiles created with containerd must be recreated: `./scripts/setup-capstone-profile.sh --replace` (deletes the cluster; re-run `./scripts/bootstrap-capstone.sh` afterwards).
+- If a future node image stops starting Docker at boot, `ensure_node_forwarding` becomes a no-op.
+- Any script that enables an addon later must pass it at start, or will hit the paused-check failure.

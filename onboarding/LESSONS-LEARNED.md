@@ -218,14 +218,36 @@ meshed pod still reports `2/2` because the sidecar's `Always`-restart
 init-container counts. Memorialised throughout the archive's recent
 CAPs.
 
-### Rootless-podman + containerd minikube has its own image-distribution model
+### A fresh rootless-podman node can drop all pod traffic
+
+On minikube v1.38.1, a new capstone profile came up Ready, yet CoreDNS timed out
+and the Istio ingress gateway never passed its readiness probe. A busybox pod
+could not ping, TCP-connect, or send UDP to any other pod. The cause was inside the
+node: the node image starts Docker once at first boot, and Docker 29 sets the
+iptables `FORWARD` policy to `DROP` when it enables IP forwarding. kindnet expects
+`ACCEPT`, so every forwarded packet was dropped (`iptables -L FORWARD -v` showed the
+policy counter climbing). Recreating the profile did not help; it reproduces on
+every fresh node. `ensure_node_forwarding` now resets the policy after each start
+(DRA-018). The lesson: when every pod-network path fails at once, read the node's
+`FORWARD` policy before blaming the CNI or DNS.
+
+### Pick one OCI runtime: podman driver means CRI-O and crun
+
+The podman driver runs the node container with crun. Pairing it with
+`--container-runtime=containerd` puts runc under the pods, so the stack used two
+OCI runtimes. The capstone now uses CRI-O, whose minikube default is crun (DRA-018).
+One side effect: `minikube addons enable` fails under CRI-O + crun because its
+paused-container check calls `runc list`; enable addons in `minikube start --addons=`
+instead.
+
+### Rootless-podman minikube has its own image-distribution model
 
 You can't `docker push` to localhost and expect minikube to find it,
 because rootless podman's daemon isn't accessible from the cluster's
-node, and minikube's containerd runtime doesn't share an image cache
+node, and the in-node CRI runtime (CRI-O since 2026-10; containerd before) doesn't share an image cache
 with the host. The reference uses minikube's in-cluster registry as
 the distribution point (build → tag for the in-cluster registry →
-push → containerd pulls from inside the cluster). Memorialised as
+push → the node's runtime pulls from inside the cluster). Memorialised as
 CAP-007, CAP-009, CAP-010 — three CAPs because it took that many
 iterations to land. The lesson: rootless minikube has its own
 image-distribution shape and `docker push localhost:5000/img` is not it.
