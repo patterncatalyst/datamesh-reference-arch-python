@@ -102,7 +102,7 @@ report_ns keda          "keda (autoscaler + HTTP add-on)"
 
 # KEDA HTTPScaledObject — the gateway is meant to scale to zero, so 0 pods is fine.
 hso="$(kubectl get httpscaledobject -n capstone graphql-gateway-http \
-    -o jsonpath='{.status.conditions[?(@.type=="HTTPScaledObjectIsReady")].status}' 2>/dev/null || true)"
+    -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || true)"
 if [[ "$hso" == "True" ]]; then
     ok "KEDA HTTPScaledObject for graphql-gateway is Ready (gateway may be scaled to zero — expected)"
 else

@@ -298,6 +298,22 @@ about 3 s on one lookup, exactly the client's 3 s deadline. `GRPC_DNS_RESOLVER=n
 resolver like every other library in the pod. The lesson: when a gRPC deadline fails
 but the server is fast, time name resolution separately from the call.
 
+### "Newest stable" for one component can break its neighbour
+
+Moving to the newest stable platform (DRA-020) turned up three cases where a
+correct, current release broke something next to it. The OpenMetadata 2.0.5
+dependencies chart ships OpenSearch 3.5.0, which rejects the server's UUID-format
+`X-Request-Id` ("Should be 32 hexadecimal characters"), so every search-index
+write, lineage included, fails with HTTP 500; OpenSearch stays at 3.4.0 until
+the pair moves together. Installing the newest OpenTelemetry packages into a
+service venv quietly upgraded protobuf from the locked 5.29 to 7.x, past the
+pin the committed gRPC stubs were generated for; the install now runs under a
+`pip freeze` constraint of the venv it extends. And KEDA, doing its job, scales
+the Kafka consumer to zero between a demo's steps, so a demo that restarts it
+or reads its API holds the `ScaledObject` with `autoscaling.keda.sh/paused-replicas`
+(`demos/lib/keda.sh`). The lesson: pin exact versions, and check what a bump
+does to the components that talk to it, not only to the component itself.
+
 ### Pushing to a loopback registry only works on a native engine
 
 A push to a registry on the host's loopback port is made by the container engine's daemon, so the address is resolved from the daemon's network namespace. On a native Docker Engine that is the host. On a VM-based engine (Docker Desktop) the daemon runs inside a VM whose `127.0.0.1` is not the host's, and the push fails with `dial tcp [::1]:5000: i/o timeout`. `minikube image load` hands the image to the profile directly and works with any engine, which is why the capstone uses it and runs no registry.

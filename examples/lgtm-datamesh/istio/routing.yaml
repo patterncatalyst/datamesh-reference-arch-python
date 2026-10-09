@@ -12,8 +12,8 @@
 #                      label, so the VirtualService can target them.
 #
 # VERIFY-POINTS (Istio API; confirm against the installed Istio version —
-# matches §11's 1.29.x — these are not renderable offline):
-#   * apiVersion networking.istio.io/v1 (v1beta1 also accepted on 1.29.x).
+# pinned 1.31.1 — these are not renderable offline):
+#   * apiVersion networking.istio.io/v1 (the stable API since Istio 1.22).
 #   * The Gateway selector `istio: ingressgateway` matches the default
 #     ingress-gateway install; the smoke reaches that Service on its published
 #     NodePort, 127.0.0.1:8088.

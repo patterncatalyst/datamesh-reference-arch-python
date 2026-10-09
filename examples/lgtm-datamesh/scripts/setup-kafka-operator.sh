@@ -5,7 +5,7 @@
 # in CAP-002). Pinned to a specific Strimzi version for reproducibility.
 #
 # Strimzi runs Kafka in KRaft mode (no ZooKeeper) since 0.46; the cluster CR
-# is deployed separately by the kafka subchart. Strimzi 0.51 requires
+# is deployed separately by the kafka subchart. Strimzi 1.2 requires
 # Kubernetes 1.30+.
 #
 # Idempotent: re-running upgrades the operator in place.
@@ -13,7 +13,7 @@
 set -euo pipefail
 
 NS="capstone"
-STRIMZI_VERSION="0.51.0"
+STRIMZI_VERSION="1.2.0"
 
 step() { printf '\n==> %s\n' "$1"; }
 

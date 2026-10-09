@@ -69,13 +69,13 @@ server/worker:
 
 ```
 oc run prefect-example-runner -n datamesh --rm -it --restart=Never \
-  --image=docker.io/prefecthq/prefect:3-latest \
+  --image=docker.io/prefecthq/prefect:3.8.8-python3.14 \
   --overrides='
 {
   "spec": {
     "containers": [{
       "name": "prefect-example-runner",
-      "image": "docker.io/prefecthq/prefect:3-latest",
+      "image": "docker.io/prefecthq/prefect:3.8.8-python3.14",
       "command": ["python", "/flows/flow.py"],
       "env": [{"name": "PREFECT_API_URL", "value": "http://prefect-server.datamesh.svc:4200/api"}],
       "volumeMounts": [{"name": "flow", "mountPath": "/flows"}]

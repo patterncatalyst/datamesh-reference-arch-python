@@ -1,6 +1,6 @@
 # om-deps-values.yaml — trimmed OpenMetadata *dependencies* for the OpenShift
 # datamesh deploy. Override file merged by Helm onto the upstream
-# open-metadata/openmetadata-dependencies chart defaults (pin chart 1.12.8 to
+# open-metadata/openmetadata-dependencies chart defaults (pin chart 2.0.5 to
 # match om-app-values.yaml and the minikube source).
 #
 # Retargeted from examples/lgtm-datamesh/openmetadata/om-deps-values.yaml
@@ -31,11 +31,26 @@ airflow:
 # on OpenShift (it pins a UID the default restricted-v2 SCC won't allow).
 opensearch:
   enabled: true
+  # The 2.0.5 dependencies chart ships OpenSearch 3.5.0, which rejects the
+  # UUID-format X-Request-Id the OpenMetadata 2.0.5 server sends, so every
+  # search-index write fails with HTTP 500. 3.4.0 is the newest release that
+  # works (found on the minikube path, 2026-10-09). Re-check when OpenMetadata
+  # or the dependencies chart moves.
+  image:
+    tag: "3.4.0"
   persistence:
     size: 10Gi
+    # The fsgroup-volume init container defaults to busybox:latest; pin it.
+    image: busybox
+    imageTag: "1.38.0"
   serviceAccount:
     create: false
     name: openmetadata-opensearch   # bound to system:openshift:scc:anyuid, see opensearch-scc.yaml
+  # KNOWN ISSUE (re-check at the next CRC run): the OpenSearch subchart does not
+  # read this serviceAccount block; it takes the ServiceAccount from
+  # rbac.serviceAccountName, and only when rbac.create is true, in which case the
+  # chart creates the SA itself (clashing with opensearch-scc.yaml's). The
+  # 2026-10-07 CRC run patched the StatefulSet's serviceAccountName by hand.
   # VERIFY-POINT: the Bitnami OpenSearch subchart runs a privileged
   # initContainer (image docker.io/bitnami/os-shell or similar) to raise the
   # host's vm.max_map_count sysctl before the main container starts. That
@@ -43,11 +58,14 @@ opensearch:
   # anyuid alone. The exact values key for this toggle has drifted across
   # Bitnami chart versions (`sysctlImage.enabled` in some releases,
   # `sysctl.enabled` in others) — confirm the live key with:
-  #   helm show values open-metadata/openmetadata-dependencies --version 1.12.8 | grep -A3 sysctl
+  #   helm show values open-metadata/openmetadata-dependencies --version 2.0.5 | grep -A3 sysctl
   # and set whichever key that chart version exposes to `false`. Both are set
   # below so the override lands whichever key the pulled chart actually uses;
   # Helm silently ignores an unknown key, so this is safe either way.
   sysctlImage:
     enabled: false
   sysctl:
+    enabled: false
+  # Chart 2.0.5 names the toggle sysctlInit (default false); set explicitly.
+  sysctlInit:
     enabled: false

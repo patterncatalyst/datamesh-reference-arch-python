@@ -30,6 +30,8 @@ spec:
   namespace: istio-system
   updateStrategy:
     type: InPlace
+  # The minikube path pins Istio 1.31.1 (2026-10-09); the Sail-supported versions
+  # depend on the OSSM3 CSV, re-checked at the next CRC run.
   version: v1.30-latest   # confirmed live against OSSM3 v3.4.3: oc explain istio.spec.version
   values:
     meshConfig:

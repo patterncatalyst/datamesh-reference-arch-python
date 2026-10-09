@@ -26,7 +26,7 @@
 #   # Build + push the 7 app images only (default):
 #   ./openshift/build-and-push.sh -r default-route-openshift-image-registry.apps-crc.testing -n datamesh
 #
-#   # Also mirror postgres:16-alpine and apache/kafka:3.8.0 from Docker Hub into
+#   # Also mirror postgres:18.6-alpine and apache/kafka:4.3.1 from Docker Hub into
 #   # the same registry/namespace, for clusters where the CRC VM has no Docker
 #   # Hub egress (see openshift/helm/datamesh/values.yaml postgres.image / kafka.image):
 #   ./openshift/build-and-push.sh -r default-route-openshift-image-registry.apps-crc.testing -n datamesh --mirror-infra
@@ -89,8 +89,8 @@ done
 if [[ "$MIRROR_INFRA" == "true" ]]; then
   step "Mirroring infra images (Docker Hub egress fallback)"
   declare -A INFRA_IMAGES=(
-    [postgres]="docker.io/library/postgres:16-alpine"
-    [kafka]="docker.io/apache/kafka:3.8.0"
+    [postgres]="docker.io/library/postgres:18.6-alpine"
+    [kafka]="docker.io/apache/kafka:4.3.1"
   )
   for name in "${!INFRA_IMAGES[@]}"; do
     upstream="${INFRA_IMAGES[$name]}"

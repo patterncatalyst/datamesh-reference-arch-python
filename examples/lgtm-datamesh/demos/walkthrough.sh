@@ -20,7 +20,7 @@
 #
 # Note on Act 1 (CAP-046): the Go panic on POST forwarding
 # (kedacore/http-add-on#1668) that blocked the interceptor path in v0.12.2 and
-# v0.14.0 was fixed upstream; the KEDA HTTP add-on is now at v0.15.0
+# v0.14.0 was fixed upstream in v0.15.0; the KEDA HTTP add-on is now at v0.16.0
 # (setup-keda.sh). The trace act therefore wakes the gateway the real way — a
 # request through the interceptor (Host: graphql-gateway.capstone) over the
 # published NodePort. It runs demo-trace-flow.sh.

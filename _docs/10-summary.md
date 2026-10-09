@@ -188,7 +188,7 @@ job extends to giving every domain a *trusted base* to layer on.
 ![A trusted base for every data product — the supply chain the platform gives each domain]({{ '/assets/diagrams/17-trusted-supply-chain.svg' | relative_url }})
 
 The deck pairs this reference with OpenShift's specific supply chain:
-Red Hat Universal Base Image (UBI) — `ubi9/python-311` is the base for
+Red Hat Universal Base Image (UBI) — `ubi10/python-314-minimal` is the base for
 every Python service in the reference. UBI is freely redistributable
 and enterprise-maintained, which means a domain team gets a base image
 they can use without licensing constraints and that's patched on a

@@ -6,7 +6,7 @@ replicas: 1
 
 image:
   repository: ghcr.io/kafbat/kafka-ui
-  tag: "latest"          # pin to a released tag (e.g. v1.x) for reproducible builds
+  tag: "v1.5.0"          # pinned: newest kafbat/kafka-ui release
   pullPolicy: IfNotPresent
 
 kafka:

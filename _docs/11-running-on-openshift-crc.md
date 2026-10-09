@@ -337,7 +337,7 @@ images with no further wiring. Pushing auto-creates an ImageStream per image in 
 namespace, which is how the internal registry tracks what it's holding.
 
 **One real snag worth planning for.** The CRC VM's outbound networking does not
-necessarily reach Docker Hub — a direct `podman pull docker.io/library/postgres:16-alpine`
+necessarily reach Docker Hub — a direct `podman pull docker.io/library/postgres:18.6-alpine`
 run *inside* the cluster's image-pull path can fail with something like `dial tcp
 registry-1.docker.io:443: i/o timeout`, which shows up as `postgres-0`/`kafka-0` stuck in
 `ImagePullBackOff` after `helm install`. The *host* running `podman`/`oc`, by contrast,
@@ -349,15 +349,15 @@ directly:
 ./openshift/build-and-push.sh -r "$REG" -n datamesh --mirror-infra
 ```
 
-which pulls `docker.io/library/postgres:16-alpine` and `docker.io/apache/kafka:3.8.0` on
-the host, retags them into `$REG/datamesh/postgres:16-alpine` and
-`$REG/datamesh/kafka:3.8.0`, and pushes — exactly the refs `values.yaml`'s
+which pulls `docker.io/library/postgres:18.6-alpine` and `docker.io/apache/kafka:4.3.1` on
+the host, retags them into `$REG/datamesh/postgres:18.6-alpine` and
+`$REG/datamesh/kafka:4.3.1`, and pushes — exactly the refs `values.yaml`'s
 `postgres.image`/`kafka.image` default to. On a cluster whose CRC VM *does* have Docker
 Hub egress, skip `--mirror-infra` and uncomment the commented upstream `docker.io/...`
 lines in `values.yaml` instead; both forms are left in the file, one active.
 
 Apicurio needs no such mirror: its image lives on `quay.io`
-(`quay.io/apicurio/apicurio-registry:3.2.4`), which CRC's networking reaches directly, so
+(`quay.io/apicurio/apicurio-registry:3.3.3`), which CRC's networking reaches directly, so
 `apicurio.yaml`'s Deployment references it unmirrored.
 
 ![Building and pushing: the host bridges the CRC VM's Docker Hub egress gap; Apicurio pulls from quay.io directly]({% raw %}{{ '/assets/diagrams/19-crc-image-delivery.svg' | relative_url }}{% endraw %})
@@ -774,6 +774,16 @@ endpoint. The full capture is committed at
   limitation.
 - OpenMetadata's server component remains unverified live, blocked on an external
   registry quota rather than anything this build controls.
+- The verification above ran on the appendix's earlier image pins
+  (`postgres:16-alpine`, `kafka:3.8.0`, Apicurio 3.2.4, otel-lgtm 0.8.1, Prefect
+  `3-latest`, OpenMetadata 1.12.8). On 2026-10-09 the pins moved to the newest
+  stable tags (`postgres:18.6-alpine`, `kafka:4.3.1`, Apicurio 3.3.3, otel-lgtm
+  0.36.0, Prefect 3.8.8-python3.14, OpenMetadata 2.0.5 with OpenSearch 3.4.0;
+  DRA-020); they have
+  not been run on CRC yet. Postgres 18 cannot open a 16 data directory, so an
+  existing install needs a fresh PVC. The operator CSVs (Service Mesh 3, Custom
+  Metrics Autoscaler) and the OSSM3 Istio version can't be resolved without a
+  cluster; they are re-checked at the next CRC run.
 - **OpenShift GitOps** (the `Application` at `openshift/gitops/application.yaml`) and
   **OpenShift Pipelines** (Tekton) remain authored, not applied — no operators for
   either were installed for either verification pass.

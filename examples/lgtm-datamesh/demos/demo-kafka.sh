@@ -21,6 +21,7 @@ PROFILE="capstone"; NS="capstone"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
 source "${ROOT}/demos/lib/endpoints.sh"
 source "${ROOT}/demos/lib/images.sh"
+source "${ROOT}/demos/lib/keda.sh"
 PG_RELEASE="capstone-postgres"; PG_CHART="charts/capstone/charts/postgres"
 KAFKA_RELEASE="capstone-kafka"; KAFKA_CHART="charts/capstone/charts/kafka"
 KAFKA_CR="capstone-kafka"
@@ -84,7 +85,7 @@ kubectl get crd clusters.postgresql.cnpg.io >/dev/null 2>&1 || fail "CloudNative
 helm upgrade --install "$PG_RELEASE" "$PG_CHART" -n "$NS" --create-namespace || fail "postgres CR install failed"
 pg_ready=0
 for i in $(seq 1 60); do
-    if kubectl get pods -n "$NS" -l "cnpg.io/cluster=${PG_RELEASE},role=primary" \
+    if kubectl get pods -n "$NS" -l "cnpg.io/cluster=${PG_RELEASE},cnpg.io/instanceRole=primary" \
         -o jsonpath='{.items[0].status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"; then
         printf '    primary Ready after ~%ds\n' "$((i*5))"; pg_ready=1; break
     fi
@@ -101,9 +102,12 @@ done
 # ── 6. place an order (emits order.placed) ────────────────────────────────────
 step "Checking endpoints: order-service (${LOCAL_ORDER}) and notification-service (${LOCAL_NOTIF})"
 ensure_endpoint order notification
+# KEDA scales notification-service to zero when there is no lag, and can do so
+# between this demo's steps. Hold it at one replica for the demo (released on
+# exit; demo-keda-kafka.sh is the demo that shows the zero → up → zero cycle).
+keda_hold_replicas notification-service-scaler 1 notification-service \
+    || fail "notification-service did not come up under the KEDA hold"
 wait_http "http://127.0.0.1:${LOCAL_ORDER}/" 20 || true
-# notification-service is KEDA-scaled-to-zero; its Service has no ready endpoint until
-# the order.placed event below wakes it — the poll loop tolerates that.
 
 step "Placing an in-stock order (WIDGET-001 x2) via order-service REST"
 ORDER_JSON="$(curl -fsS -X POST "http://127.0.0.1:${LOCAL_ORDER}/orders" \
@@ -116,14 +120,12 @@ printf '    order id=%s\n' "$ORDER_ID"
 
 # ── 7. poll notification /received for the event ──────────────────────────────
 step "Polling notification-service /received for the order.placed event"
-# ~180s window, not ~60s: when the bootstrap-applied KEDA ScaledObject has
-# notification-service scaled to zero, this very event is what wakes it —
-# KEDA's kafka lag poll + pod start + consumer-group join must fit here.
+# ~180s window: the consumer-group join after a fresh rollout can take a while
+# even with notification-service held at one replica (keda_hold_replicas above).
 seen=0
 for i in $(seq 1 90); do
-    # The published NodePort needs no client-side process, but notification-service is KEDA-scaled-to-zero:
-    # until the order.placed event wakes it the NodePort has no endpoint and the
-    # curl fails — treat that as "not yet" and keep polling.
+    # A failed curl (endpoint briefly unavailable, e.g. during a restart) means
+    # "not yet": keep polling.
     if ! RECV="$(curl -fsS "http://127.0.0.1:${LOCAL_NOTIF}/received" 2>/dev/null)"; then
         RECV='[]'
     fi

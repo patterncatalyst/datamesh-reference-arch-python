@@ -53,10 +53,9 @@ ensure_endpoint gateway
 wait_http "http://127.0.0.1:${GQL_PORT}/" 15 || true
 
 step "Sending a GraphQL query (wakes the gateway from zero, fans out to backends)"
-# Pre-warm the gateway. KEDA HTTP's interceptor returns 502 with
-# X-Keda-Http-Cold-Start: true if its cold-start budget expires before the
-# workload is ready (uvicorn cold start can outrun the default ~15s
-# DialRetryTimeout). So we ping the interceptor once with a cheap GET, ignore
+# Pre-warm the gateway. KEDA HTTP's interceptor (0.16) returns 504 if its
+# readiness budget (interceptor.readinessTimeout, 180s in setup-keda.sh)
+# expires before the workload is ready. So we ping the interceptor once with a cheap GET, ignore
 # its response (whatever it is — that request's job was to trigger the
 # scale-from-zero), then wait for the gateway pod to actually be Available
 # before sending the real query.
@@ -73,9 +72,9 @@ fi
 # which is the downstream hop we want in the trace. With a real order the
 # inventory gRPC hop appears too (see demo-graphql.sh).
 GQL_BODY='{"query":"{ order(id: \"trace-probe\") { id itemSku quantity stock { sku quantityOnHand available } } }"}'
-# Retry transient non-200s: the 0.12.2 interceptor has a cold-start race
-# (CAP-046) where the first POSTs after a scale-from-zero can 502 while its
-# route to the fresh endpoint warms up.
+# Retry transient non-200s. Kept from the 0.12.2 era, whose interceptor had a
+# cold-start race (CAP-046) where the first POSTs after a scale-from-zero could
+# fail while its route to the fresh endpoint warmed up; harmless on 0.16.
 CODE="000"
 for attempt in 1 2 3 4 5; do
     CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 \

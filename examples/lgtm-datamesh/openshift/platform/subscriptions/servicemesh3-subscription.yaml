@@ -1,5 +1,8 @@
 # OpenShift Service Mesh 3 (Sail-based Istio operator), cluster-scoped.
 # Installs into openshift-operators, which already has a global OperatorGroup.
+# Operator CSVs resolve from the channel at install time and cannot be checked
+# without a cluster; the 2026-10-09 platform bump left them as-is. CSVs
+# re-checked at the next CRC run.
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:

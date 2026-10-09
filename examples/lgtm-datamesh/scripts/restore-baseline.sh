@@ -43,7 +43,7 @@ kubectl get ns "$NS" >/dev/null 2>&1 || fail "namespace $NS not found — run bo
 
 # ── platform sanity (warn only) ───────────────────────────────────────────────
 step "Platform check (warn-only — bootstrap owns these tiers)"
-kubectl get pods -n "$NS" -l "cnpg.io/cluster=capstone-postgres,role=primary" --no-headers 2>/dev/null | grep -q Running \
+kubectl get pods -n "$NS" -l "cnpg.io/cluster=capstone-postgres,cnpg.io/instanceRole=primary" --no-headers 2>/dev/null | grep -q Running \
     && ok "Postgres primary Running" || warn "Postgres primary not Running — re-run bootstrap-capstone.sh"
 kubectl get kafka capstone-kafka -n "$NS" >/dev/null 2>&1 \
     && ok "Kafka CR present" || warn "Kafka CR missing — re-run bootstrap-capstone.sh"

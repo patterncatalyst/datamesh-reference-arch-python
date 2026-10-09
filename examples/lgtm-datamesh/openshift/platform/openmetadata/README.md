@@ -59,7 +59,7 @@ helm repo add open-metadata https://helm.open-metadata.org/
 helm repo update open-metadata
 
 helm upgrade --install openmetadata-dependencies open-metadata/openmetadata-dependencies \
-  --namespace datamesh --version 1.12.8 \
+  --namespace datamesh --version 2.0.5 \
   --values om-deps-values.yaml --wait --timeout 10m
 
 # Wait for OpenSearch to actually come up healthy before installing the
@@ -70,7 +70,7 @@ oc exec -n datamesh openmetadata-dependencies-opensearch-0 -- \
   curl -s localhost:9200/_cluster/health | grep -E '"status":"(green|yellow)"'
 
 helm upgrade --install openmetadata open-metadata/openmetadata \
-  --namespace datamesh --version 1.12.8 \
+  --namespace datamesh --version 2.0.5 \
   --values om-app-values.yaml --wait --timeout 10m
 
 oc apply -f route.yaml
@@ -132,7 +132,7 @@ ingestion Job also assumes it, via `OM_ADMIN_PASSWORD`).
    ```
 
 3. **Postgres TLS mismatch.** `om-app-values.yaml` sets `sslmode=disable`
-   because this chart's plain `postgres:16-alpine` StatefulSet has no TLS
+   because this chart's plain `postgres:18.6-alpine` StatefulSet has no TLS
    listener (unlike the minikube source's CNPG cluster, which always presents
    a cert and needs `sslmode=require`). If the install uses a different
    Postgres than this chart's, re-check which is correct.

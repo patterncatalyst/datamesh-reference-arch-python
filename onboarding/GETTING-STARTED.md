@@ -85,7 +85,7 @@ What's verified to work end to end:
   volumes
 - **Kernel:** `fs.inotify.max_user_instances` raised (the bootstrap audits
   this and prints the exact `sysctl` command if it isn't)
-- **Tooling:** minikube, kubectl, helm
+- **Tooling:** minikube 1.39.0+ (the profile pins Kubernetes v1.36.5), kubectl 1.36, helm, istioctl 1.31.1
 - **Network:** outbound HTTPS to pull images, charts, and operators
 
 What probably works but isn't verified: other Fedora and RHEL versions, and any

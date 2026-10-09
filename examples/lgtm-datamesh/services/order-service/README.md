@@ -46,7 +46,7 @@ poetry run uvicorn app.main:app --port 8080
 
 ## Build
 
-The Containerfile is a UBI 9 Python 3.12 multi-stage build
+The Containerfile is a UBI 10 Python 3.14 (`python-314-minimal`) multi-stage build
 (CAP-005). Build it into the capstone minikube profile:
 
 ```bash
@@ -63,7 +63,7 @@ if present via a `poetry.lock*` glob).
 services/order-service/
 ├── pyproject.toml      ← Poetry deps + metadata
 ├── poetry.lock         ← (generate with `poetry lock`, then commit)
-├── Containerfile       ← UBI 9 multi-stage
+├── Containerfile       ← UBI 10 multi-stage
 ├── README.md           ← this file
 ├── app/
 │   ├── __init__.py
@@ -82,7 +82,7 @@ Every other service (inventory, payment, shipping, notification)
 follows this same shape:
 
 - Poetry `pyproject.toml`
-- UBI 9 multi-stage `Containerfile`
+- UBI 10 multi-stage `Containerfile`
 - `app/{config,db,models,schemas,main}.py`
 - own schema in the shared Postgres
 - helm subchart under `charts/capstone/charts/<service>/`

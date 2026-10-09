@@ -23,7 +23,7 @@ Before running anything, verify these four prerequisites:
 
 1. **Docker Engine** — running, with your user in the `docker` group
 2. **inotify limits** — raised above Fedora defaults
-3. **Tooling** — minikube >= 1.36, kubectl, helm, istioctl + full Istio
+3. **Tooling** — minikube >= 1.39.0, kubectl 1.36, helm, istioctl 1.31.1 + full Istio
    distribution (see [Required tooling](#required-tooling))
 4. **Bootstrap** — `./scripts/bootstrap-capstone.sh`
 
@@ -118,17 +118,24 @@ The profile setup script checks the engine and the inotify limits and prints the
 
 | Tool | Minimum version | Notes |
 |------|----------------|-------|
-| minikube | **1.36** | verified on 1.38.1 |
-| kubectl | (any recent) | |
+| minikube | **1.39.0** | the profile pins Kubernetes v1.36.5 (`KUBE_VERSION` overrides it) |
+| kubectl | 1.36.x | match the cluster's minor (v1.36.5) |
 | helm | 3.x | |
-| istioctl | 1.29.x | needs the full Istio distribution, not just the binary — `setup-kiali.sh` applies `samples/addons/kiali.yaml` from it |
+| istioctl | **1.31.1** | `setup-istio.sh` refuses any other client version; needs the full Istio distribution, not just the binary — `setup-kiali.sh` applies `samples/addons/kiali.yaml` from it |
+
+Every platform component is pinned to an exact release (newest stable as of
+2026-10-09, DRA-020): KEDA 2.21.0 + HTTP add-on 0.16.0, Strimzi 1.2.0 with
+Kafka 4.3.1, CloudNativePG chart 0.29.1 (operator 1.30.1) with
+`postgresql:18.6-standard-trixie`, Apicurio 3.3.3, OpenMetadata 2.0.5 with
+OpenSearch 3.4.0, and the prometheus 29.36.1 / grafana 13.4.0 / tempo 3.1.0
+charts. Services build on `ubi10/python-314-minimal`.
 
 **Installing the Istio distribution:**
 
 ```bash
-curl -fsSL https://github.com/istio/istio/releases/download/1.29.2/istio-1.29.2-linux-amd64.tar.gz \
+curl -fsSL https://github.com/istio/istio/releases/download/1.31.1/istio-1.31.1-linux-amd64.tar.gz \
     | tar xz -C ~/.local/share
-ln -sfn ~/.local/share/istio-1.29.2 ~/.local/share/istio-current
+ln -sfn ~/.local/share/istio-1.31.1 ~/.local/share/istio-current
 cp ~/.local/share/istio-current/bin/istioctl ~/.local/bin/
 ```
 

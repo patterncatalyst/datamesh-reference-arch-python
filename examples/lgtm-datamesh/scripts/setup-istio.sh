@@ -50,6 +50,24 @@ if ! command -v istioctl >/dev/null 2>&1; then
     exit 1
 fi
 
+# istioctl and ~/.local/share/istio-current are shared with other repos on the
+# host, so confirm the client matches the version this repo pins
+# (ISTIO_VERSION in the repo-root scripts/setup-istio.sh) instead of installing
+# whatever control plane the binary on PATH happens to carry.
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+PINNED_ISTIO_VERSION="${ISTIO_VERSION:-$(sed -n 's/^ISTIO_VERSION="${ISTIO_VERSION:-\([^}]*\)}"$/\1/p' "${REPO_ROOT}/scripts/setup-istio.sh")}"
+if [[ -z "$PINNED_ISTIO_VERSION" ]]; then
+    printf 'ERROR: cannot read ISTIO_VERSION from %s/scripts/setup-istio.sh.\n' "$REPO_ROOT" >&2
+    exit 1
+fi
+ISTIOCTL_VERSION="$(istioctl version --remote=false 2>/dev/null | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+[^ ]*' | head -1 || true)"
+if [[ "$ISTIOCTL_VERSION" != "$PINNED_ISTIO_VERSION" ]]; then
+    printf 'ERROR: istioctl %s does not match the pinned Istio %s.\n' "${ISTIOCTL_VERSION:-unknown}" "$PINNED_ISTIO_VERSION" >&2
+    printf 'Run the repo-root scripts/setup-istio.sh to install Istio %s (istioctl + ~/.local/share/istio-current).\n' "$PINNED_ISTIO_VERSION" >&2
+    exit 1
+fi
+printf '==> istioctl %s matches the pinned version\n' "$ISTIOCTL_VERSION"
+
 current_context="$(kubectl config current-context 2>/dev/null || echo "")"
 if [[ "$current_context" != "capstone" ]]; then
     printf 'WARNING: current kubectl context is "%s", not "capstone".\n' "$current_context" >&2

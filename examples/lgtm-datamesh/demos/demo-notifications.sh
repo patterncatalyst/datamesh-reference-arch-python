@@ -24,6 +24,7 @@ PROFILE="capstone"; NS="capstone"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
 source "${ROOT}/demos/lib/endpoints.sh"
 source "${ROOT}/demos/lib/images.sh"
+source "${ROOT}/demos/lib/keda.sh"
 PG_RELEASE="capstone-postgres"; PG_CHART="charts/capstone/charts/postgres"
 KAFKA_RELEASE="capstone-kafka"; KAFKA_CHART="charts/capstone/charts/kafka"; KAFKA_CR="capstone-kafka"
 APICURIO_RELEASE="apicurio"; APICURIO_CHART="charts/capstone/charts/apicurio"
@@ -51,9 +52,8 @@ fail() {
 check_received() {
     # $1 = order_id to look for in /received
     local recv
-    # The published NodePort needs no client-side process, but notification-service is KEDA-scaled-to-zero:
-    # until the event wakes it the NodePort has no endpoint and this curl fails —
-    # report "not yet" for this attempt.
+    # A failed curl (endpoint briefly unavailable, e.g. during a restart) means
+    # "not yet": keep polling.
     recv="$(curl -fsS "http://127.0.0.1:${LOCAL_NOTIF}/received" 2>/dev/null)" || return 1
     printf '%s' "$recv" | python3 -c "import sys,json; d=json.load(sys.stdin); sys.exit(0 if any(e.get('order_id')=='$1' for e in d) else 1)" 2>/dev/null
 }
@@ -89,7 +89,7 @@ kubectl get crd clusters.postgresql.cnpg.io >/dev/null 2>&1 || fail "CloudNative
 helm upgrade --install "$PG_RELEASE" "$PG_CHART" -n "$NS" --create-namespace >/dev/null || fail "postgres install failed"
 pg_ready=0
 for i in $(seq 1 60); do
-    if kubectl get pods -n "$NS" -l "cnpg.io/cluster=${PG_RELEASE},role=primary" \
+    if kubectl get pods -n "$NS" -l "cnpg.io/cluster=${PG_RELEASE},cnpg.io/instanceRole=primary" \
         -o jsonpath='{.items[0].status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"; then
         printf '    primary Ready after ~%ds\n' "$((i*5))"; pg_ready=1; break
     fi
@@ -107,7 +107,7 @@ printf '    ✓ notification-service rolled out — its `migrate` init container
 
 # ── confirm the table exists (migration really created it) ────────────────────
 step "Verifying the notifications table exists in Postgres"
-PG_PRIMARY="$(kubectl get pods -n "$NS" -l "cnpg.io/cluster=${PG_RELEASE},role=primary" -o jsonpath='{.items[0].metadata.name}')"
+PG_PRIMARY="$(kubectl get pods -n "$NS" -l "cnpg.io/cluster=${PG_RELEASE},cnpg.io/instanceRole=primary" -o jsonpath='{.items[0].metadata.name}')"
 TBL="$(kubectl exec -n "$NS" "$PG_PRIMARY" -c postgres -- psql -d capstone -tAqc \
     "select to_regclass('notifications.notifications')" 2>/dev/null || echo '')"
 [[ "$TBL" == "notifications.notifications" ]] || fail "notifications.notifications table not found (got: '${TBL}')"
@@ -116,6 +116,11 @@ printf '    ✓ table notifications.notifications present\n'
 # ── place an order ────────────────────────────────────────────────────────────
 step "Checking endpoints: order(${LOCAL_ORDER}) notification(${LOCAL_NOTIF})"
 ensure_endpoint order notification
+# KEDA scales notification-service to zero when there is no lag, and can do so
+# between this demo's steps. Hold it at one replica for the demo (released on
+# exit; demo-keda-kafka.sh is the demo that shows the zero → up → zero cycle).
+keda_hold_replicas notification-service-scaler 1 notification-service \
+    || fail "notification-service did not come up under the KEDA hold"
 wait_http "http://127.0.0.1:${LOCAL_ORDER}/" 20 || true
 
 step "Placing an in-stock order (WIDGET-001 x2)"
@@ -126,9 +131,8 @@ ORDER_ID="$(curl -fsS -X POST "http://127.0.0.1:${LOCAL_ORDER}/orders" -H 'Conte
 printf '    order id=%s\n' "$ORDER_ID"
 
 step "Waiting for the notification to be persisted (/received, DB-backed)"
-# ~180s window, not ~60s: when the bootstrap-applied KEDA ScaledObject has
-# notification-service scaled to zero, this very event is what wakes it —
-# KEDA's kafka lag poll + pod start + consumer-group join must fit here.
+# ~180s window: the consumer-group join after a fresh rollout can take a while
+# even with notification-service held at one replica (keda_hold_replicas above).
 seen=0
 for i in $(seq 1 90); do
     if check_received "$ORDER_ID"; then printf '    ✓ persisted after ~%ds\n' "$((i*2))"; seen=1; break; fi

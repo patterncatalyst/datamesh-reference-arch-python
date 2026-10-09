@@ -23,7 +23,7 @@
 #   - capstone profile running, kubectl context = capstone
 #   - scripts/setup-openmetadata.sh AND scripts/ingest-openmetadata.sh have run
 #
-# VERIFY-POINTS (OpenMetadata 1.12.8 API; confirm at build time):
+# VERIFY-POINTS (OpenMetadata 2.0.5 API; confirm at build time):
 #   - basic-auth login (see get_token.py), service/entity by-name endpoints,
 #     and the lineage-by-name response shape (nodes + upstreamEdges +
 #     downstreamEdges). These are the things most likely to need a tweak.
