@@ -42,6 +42,10 @@ set -euo pipefail
 ISTIO_SYSTEM="istio-system"
 OBS_NS="observability"
 ISTIO_DIR="${ISTIO_DIR:-${HOME}/.local/share/istio-current}"
+# The Istio 1.31.1 addon references the floating tag quay.io/kiali/kiali:v2.31.
+# Pin the exact release that tag resolves to (same digest), so a re-run never
+# picks up a different Kiali.
+KIALI_IMAGE="${KIALI_IMAGE:-quay.io/kiali/kiali:v2.31.0}"
 
 # capstone observability service endpoints (single-stack wiring targets)
 PROM_URL="http://prometheus-server.${OBS_NS}:80"
@@ -136,6 +140,9 @@ cfg = sys.argv[1]
 print(json.dumps({"data": {"config.yaml": cfg}}))
 PY
 kubectl patch configmap kiali -n "$ISTIO_SYSTEM" --type merge --patch-file "$PATCH_FILE"
+
+step "Pinning the Kiali image to ${KIALI_IMAGE}"
+kubectl set image deployment/kiali -n "$ISTIO_SYSTEM" kiali="$KIALI_IMAGE"
 
 step "Restarting Kiali to pick up the rewired config"
 kubectl rollout restart deployment/kiali -n "$ISTIO_SYSTEM"

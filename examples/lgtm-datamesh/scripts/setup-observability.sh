@@ -25,6 +25,11 @@
 set -euo pipefail
 
 NAMESPACE="observability"
+
+# Pinned chart versions (newest stable, checked against the repo indexes 2026-10-09).
+PROMETHEUS_CHART_VERSION="${PROMETHEUS_CHART_VERSION:-29.36.1}"   # prometheus-community/prometheus
+TEMPO_CHART_VERSION="${TEMPO_CHART_VERSION:-3.1.0}"               # grafana-community/tempo
+GRAFANA_CHART_VERSION="${GRAFANA_CHART_VERSION:-13.4.0}"          # grafana-community/grafana
 OBS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../observability" && pwd)"
 
 command -v kubectl >/dev/null 2>&1 || { printf 'ERROR: kubectl not in PATH.\n' >&2; exit 1; }
@@ -46,10 +51,11 @@ helm repo add grafana-community https://grafana-community.github.io/helm-charts 
 helm repo update prometheus-community grafana-community >/dev/null
 
 # ─── 2. Prometheus (+ kube-state-metrics) ────────────────────────────────────
-# Chart versions intentionally unpinned (latest from the repo) so this keeps
-# working as charts move; pin with --version for a reproducible build.
+# Chart versions are pinned above for a reproducible build; override with
+# PROMETHEUS_CHART_VERSION / TEMPO_CHART_VERSION / GRAFANA_CHART_VERSION.
 printf '==> Installing Prometheus into namespace %s\n' "$NAMESPACE"
 helm upgrade --install prometheus prometheus-community/prometheus \
+    --version "$PROMETHEUS_CHART_VERSION" \
     --namespace "$NAMESPACE" \
     --create-namespace \
     -f "$OBS_DIR/prometheus-values.yaml" \
@@ -60,6 +66,7 @@ helm upgrade --install prometheus prometheus-community/prometheus \
 # grafana/* charts moved there 2026-01-30), so no extra repo beyond Grafana.
 printf '==> Installing Tempo (trace backend) into namespace %s\n' "$NAMESPACE"
 helm upgrade --install tempo grafana-community/tempo \
+    --version "$TEMPO_CHART_VERSION" \
     --namespace "$NAMESPACE" \
     -f "$OBS_DIR/tempo-values.yaml" \
     --wait
@@ -77,6 +84,7 @@ kubectl patch svc tempo -n "$NAMESPACE" --type='json' \
 # ─── 4. Grafana ──────────────────────────────────────────────────────────────
 printf '==> Installing Grafana into namespace %s\n' "$NAMESPACE"
 helm upgrade --install grafana grafana-community/grafana \
+    --version "$GRAFANA_CHART_VERSION" \
     --namespace "$NAMESPACE" \
     -f "$OBS_DIR/grafana-values.yaml" \
     --wait

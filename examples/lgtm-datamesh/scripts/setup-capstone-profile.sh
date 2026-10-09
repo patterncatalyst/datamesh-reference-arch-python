@@ -16,6 +16,8 @@
 #   MINIKUBE_CPUS     node CPUs             (default 16)
 #   MINIKUBE_DISK     node disk size        (default 80g)
 #   MINIKUBE_PROFILE  profile name          (default capstone)
+#   KUBE_VERSION      Kubernetes version    (default v1.36.5, the newest minor
+#                     every platform component supports)
 # The docker driver ignores --disk-size: node data lives under the
 # engine's data root (/var/lib/docker by default), so keep about 100 GB free there.
 #
@@ -38,6 +40,7 @@ CPUS="${MINIKUBE_CPUS:-16}"
 DISK="${MINIKUBE_DISK:-80g}"
 RUNTIME="containerd"
 DRIVER="docker"
+KUBE_VERSION="${KUBE_VERSION:-v1.36.5}"   # pinned; minikube 1.39.0 supports it
 PROFILE_NAME="${MINIKUBE_PROFILE:-capstone}"   # same default as EP_PROFILE in endpoints.sh
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -163,16 +166,18 @@ if (( VM_ENGINE == 0 )); then
     fi
 fi
 
-# 8. minikube version floor (verified on 1.38.1).
+# 8. minikube version floor: 1.39.0 is the first release that supports the
+# pinned Kubernetes v1.36.5.
 mk_version="$(minikube version --short 2>/dev/null | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' || echo v0.0.0)"
-if [[ "$(printf '%s\n' "v1.36.0" "$mk_version" | sort -V | head -1)" != "v1.36.0" ]]; then
-    printf 'ERROR: minikube %s is too old (need >= 1.36; verified on 1.38.1, older releases are untested).\n' "$mk_version" >&2
+if [[ "$(printf '%s\n' "v1.39.0" "$mk_version" | sort -V | head -1)" != "v1.39.0" ]]; then
+    printf 'ERROR: minikube %s is too old (need >= 1.39.0 for Kubernetes %s).\n' "$mk_version" "$KUBE_VERSION" >&2
     printf 'Install a current minikube (e.g. to ~/.local/bin).\n' >&2
     exit 1
 fi
 printf '==> minikube version OK (%s)\n' "$mk_version"
 
-# 9. An existing profile must already use the docker driver and containerd.
+# 9. An existing profile must already use the docker driver, containerd and
+# the pinned Kubernetes version.
 if (( ! REPLACE )); then
     prof_mismatch="$(minikube profile list -o json 2>/dev/null \
         | python3 -c '
@@ -183,15 +188,17 @@ try:
         if p.get("Name") == sys.argv[1]:
             cfg = p.get("Config") or {}
             drv = cfg.get("Driver", "")
-            rt = (cfg.get("KubernetesConfig") or {}).get("ContainerRuntime", "")
-            if drv != "docker" or rt != "containerd":
-                print("%s/%s" % (drv or "?", rt or "?"))
+            kc = cfg.get("KubernetesConfig") or {}
+            rt = kc.get("ContainerRuntime", "")
+            kv = kc.get("KubernetesVersion", "")
+            if drv != "docker" or rt != "containerd" or kv != sys.argv[2]:
+                print("%s/%s/%s" % (drv or "?", rt or "?", kv or "?"))
 except Exception:
     pass
-' "$PROFILE_NAME" 2>/dev/null || true)"
+' "$PROFILE_NAME" "$KUBE_VERSION" 2>/dev/null || true)"
     if [[ -n "$prof_mismatch" ]]; then
-        printf 'ERROR: profile %s was created with %s; recreate it: ./scripts/setup-capstone-profile.sh --replace (or minikube delete -p %s)\n' \
-            "$PROFILE_NAME" "$prof_mismatch" "$PROFILE_NAME" >&2
+        printf 'ERROR: profile %s was created with %s (want docker/containerd/%s); recreate it: ./scripts/setup-capstone-profile.sh --replace (or minikube delete -p %s)\n' \
+            "$PROFILE_NAME" "$prof_mismatch" "$KUBE_VERSION" "$PROFILE_NAME" >&2
         exit 1
     fi
 fi
@@ -261,8 +268,8 @@ if (( REPLACE )); then
     minikube delete -p "$PROFILE_NAME"
 fi
 
-printf '==> Starting %s profile (%s RAM, %s CPUs, %s disk, %s driver, %s runtime)\n' \
-    "$PROFILE_NAME" "$MEMORY" "$CPUS" "$DISK" "$DRIVER" "$RUNTIME"
+printf '==> Starting %s profile (Kubernetes %s, %s RAM, %s CPUs, %s disk, %s driver, %s runtime)\n' \
+    "$PROFILE_NAME" "$KUBE_VERSION" "$MEMORY" "$CPUS" "$DISK" "$DRIVER" "$RUNTIME"
 
 printf '==> Publishing NodePorts on 127.0.0.1: %s\n' "$PORTS_ARG"
 
@@ -273,6 +280,7 @@ minikube start -p "$PROFILE_NAME" \
     --disk-size="$DISK" \
     --driver="$DRIVER" \
     --container-runtime="$RUNTIME" \
+    --kubernetes-version="$KUBE_VERSION" \
     --addons=metrics-server
 
 check_published_ports || {
