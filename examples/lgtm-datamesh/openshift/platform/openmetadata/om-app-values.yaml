@@ -1,6 +1,6 @@
 # om-app-values.yaml — OpenMetadata *server* config for the OpenShift
 # datamesh deploy. Override file merged by Helm onto the upstream
-# open-metadata/openmetadata chart defaults (chart 1.12.8).
+# open-metadata/openmetadata chart defaults (chart 2.0.5).
 #
 # Retargeted from examples/lgtm-datamesh/openmetadata/om-app-values.yaml.
 # Decisions carried over unchanged (CAP-022): no Airflow/pipeline-service
@@ -39,7 +39,7 @@ image:
   # on the host, pushed to the internal registry. On a cluster with egress, use
   # the upstream default repository (docker.getcollate.io/openmetadata/server).
   repository: image-registry.openshift-image-registry.svc:5000/datamesh/openmetadata-server
-  tag: "1.12.8"
+  tag: "2.0.5"
   pullPolicy: IfNotPresent
 
 openmetadata:

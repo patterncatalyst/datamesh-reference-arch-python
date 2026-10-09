@@ -29,7 +29,7 @@
 #
 # Admin login (admin@open-metadata.org / admin) is OpenMetadata's documented
 # default-install credential — same VERIFY-POINT the minikube source's
-# get_token.py flags: confirm this is still the live default for chart 1.12.8
+# get_token.py flags: confirm this is still the live default for chart 2.0.5
 # at install time, and change OM_ADMIN_PASSWORD if the install customized it.
 apiVersion: v1
 kind: ConfigMap
@@ -138,7 +138,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: ingest
-          image: docker.io/openmetadata/ingestion:1.12.8
+          image: docker.io/openmetadata/ingestion:2.0.5
           command:
             - /bin/bash
             - -c

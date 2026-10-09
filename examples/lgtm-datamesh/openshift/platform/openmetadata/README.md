@@ -59,7 +59,7 @@ helm repo add open-metadata https://helm.open-metadata.org/
 helm repo update open-metadata
 
 helm upgrade --install openmetadata-dependencies open-metadata/openmetadata-dependencies \
-  --namespace datamesh --version 1.12.8 \
+  --namespace datamesh --version 2.0.5 \
   --values om-deps-values.yaml --wait --timeout 10m
 
 # Wait for OpenSearch to actually come up healthy before installing the
@@ -70,7 +70,7 @@ oc exec -n datamesh openmetadata-dependencies-opensearch-0 -- \
   curl -s localhost:9200/_cluster/health | grep -E '"status":"(green|yellow)"'
 
 helm upgrade --install openmetadata open-metadata/openmetadata \
-  --namespace datamesh --version 1.12.8 \
+  --namespace datamesh --version 2.0.5 \
   --values om-app-values.yaml --wait --timeout 10m
 
 oc apply -f route.yaml

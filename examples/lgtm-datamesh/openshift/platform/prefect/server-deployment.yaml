@@ -18,10 +18,10 @@
 # the same container, including ones populated via secretKeyRef) — so the
 # credential itself never appears as a literal in this manifest.
 #
-# Image: prefecthq/prefect:3-latest is a floating tag (tracks the latest 3.x
-# release). Pin to a specific tag (e.g. prefecthq/prefect:3.1-python3.12) for
-# anything beyond a demo/tutorial cluster, since a floating tag can change
-# the Postgres schema-migration behavior out from under a running server.
+# Image: pinned to prefecthq/prefect:3.8.8-python3.14 (newest stable 3.x on the
+# newest Python runtime; was the floating 3-latest). A floating tag could change
+# the Postgres schema-migration behavior out from under a running server, so
+# bump this pin deliberately, server and worker together.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -43,7 +43,7 @@ spec:
     spec:
       containers:
         - name: prefect-server
-          image: docker.io/prefecthq/prefect:3-latest
+          image: docker.io/prefecthq/prefect:3.8.8-python3.14
           imagePullPolicy: IfNotPresent
           command: ["prefect", "server", "start", "--host", "0.0.0.0"]
           ports:

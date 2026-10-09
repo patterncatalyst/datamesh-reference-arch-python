@@ -30,7 +30,7 @@ spec:
     spec:
       containers:
         - name: prefect-worker
-          image: docker.io/prefecthq/prefect:3-latest
+          image: docker.io/prefecthq/prefect:3.8.8-python3.14
           imagePullPolicy: IfNotPresent
           command: ["prefect", "worker", "start", "--pool", "default-pool", "--type", "process"]
           env:
