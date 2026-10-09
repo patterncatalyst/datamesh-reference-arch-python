@@ -103,6 +103,20 @@ if [[ "${BUILD_IMAGE_NO_RESTART:-0}" != "1" ]]; then
         for dep in "${restarted[@]}"; do
             kubectl rollout status "deploy/${dep}" -n "$NS" --timeout=180s >/dev/null \
                 || printf '    WARN: deploy/%s did not finish rolling out within 180s\n' "$dep" >&2
+            # Then wait for the replaced pods to finish terminating: while an old
+            # pod drains, a request on the NodePort can still land on it and get
+            # a 503 from its sidecar.
+            sel="$(kubectl get deploy "$dep" -n "$NS" \
+                -o go-template='{{range $k, $v := .spec.selector.matchLabels}}{{$k}}={{$v}},{{end}}' 2>/dev/null)"
+            sel="${sel%,}"
+            if [[ -n "$sel" ]]; then
+                for _ in $(seq 1 60); do
+                    terminating="$(kubectl get pods -n "$NS" -l "$sel" \
+                        -o go-template='{{range .items}}{{if .metadata.deletionTimestamp}}x{{end}}{{end}}' 2>/dev/null)"
+                    [[ -z "$terminating" ]] && break
+                    sleep 2
+                done
+            fi
         done
     else
         printf '    no Deployments in %s reference %s\n' "$NS" "$IMAGE"
