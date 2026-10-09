@@ -41,6 +41,8 @@
 #      is still scanned). Kafka "Tumbling/Hopping/Sliding/Session/Time/Join/Grace
 #      Windows" and "Windows of N seconds" are removed before the capitalised
 #      Windows check; standalone Windows and Windows 11 still fail.
+#   7. a {{ ... | relative_url }} link wrapped in raw/endraw tags in Markdown or
+#      HTML: Jekyll never evaluates it, so the image or link breaks.
 #
 # A line that states the prohibition (or must mention a forbidden term) carries
 # the marker `forbidden-ok` in its text (a marker in the path does not count);
@@ -280,6 +282,13 @@ hits="$(gr -iE "$re5" | filter \
 # Scan 6: other-OS mentions.
 hits="$( { gr -iE "$re6i"; gr -E "$re6cs"; } | filter | sort -u | os_hits)"
 [[ -n "$hits" ]] && report "$msg6" "$hits"
+
+# Scan 7: a Liquid link wrapped in {% raw %} is never evaluated, so the page
+# ships the literal {{ ... | relative_url }} text and the image or link breaks
+# (kramdown even splits it at the | into table cells). Markdown and HTML only.
+re7='\{%-? *raw *-?%\}\{\{[^}]*relative_url'
+hits="$(gr -E "$re7" | filter | gq -E '^[^:]+\.(md|markdown|html):' || true)"
+[[ -n "$hits" ]] && report 'Liquid link wrapped in {% raw %} (renders as literal text; drop the raw tags)' "$hits"
 
 nl=$'\n'   # literal newline: portable sed replacement (no GNU-only \n)
 # Scan 4: slides, notes, layouts and masters inside pptx files.

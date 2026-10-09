@@ -38,7 +38,7 @@ those layers up on top of this same core as an **opt-in** addition — applied v
 install` — and reports what's actually verified live for each, rather than just
 documenting the OpenShift-native counterpart.
 
-![The chart's topology on CRC — app pods under restricted-v2, infra pods under nonroot-v2, the integrated registry, and two edge-TLS Routes]({% raw %}{{ '/assets/diagrams/18-crc-openshift-topology.svg' | relative_url }}{% endraw %})
+![The chart's topology on CRC — app pods under restricted-v2, infra pods under nonroot-v2, the integrated registry, and two edge-TLS Routes]({{ '/assets/diagrams/18-crc-openshift-topology.svg' | relative_url }})
 
 ## Prerequisites
 
@@ -360,7 +360,7 @@ Apicurio needs no such mirror: its image lives on `quay.io`
 (`quay.io/apicurio/apicurio-registry:3.3.3`), which CRC's networking reaches directly, so
 `apicurio.yaml`'s Deployment references it unmirrored.
 
-![Building and pushing: the host bridges the CRC VM's Docker Hub egress gap; Apicurio pulls from quay.io directly]({% raw %}{{ '/assets/diagrams/19-crc-image-delivery.svg' | relative_url }}{% endraw %})
+![Building and pushing: the host bridges the CRC VM's Docker Hub egress gap; Apicurio pulls from quay.io directly]({{ '/assets/diagrams/19-crc-image-delivery.svg' | relative_url }})
 
 ## Deploying, and watching it come up
 
