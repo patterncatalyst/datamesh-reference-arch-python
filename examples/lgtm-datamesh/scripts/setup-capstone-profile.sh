@@ -7,13 +7,19 @@
 # profile and §11's `istio` profile so the larger resource footprint
 # doesn't disturb earlier sections' state. Idempotent: safe to re-run.
 #
+# Host access: every host-facing NodePort (see demos/lib/endpoints.sh) is
+# published to 127.0.0.1 when the profile is created, via
+# `minikube start --ports=127.0.0.1:<hostPort>:<nodePort>,...`. The published
+# ports are fixed for the profile's life; to change them, recreate the profile
+# with --replace. Nothing else needs to run on the host for access.
+#
 # Usage:
 #   ./setup-capstone-profile.sh             # start (or do nothing if running)
 #   ./setup-capstone-profile.sh --replace   # delete first, then start fresh
 
 set -euo pipefail
 export MINIKUBE_ROOTLESS=true   # CAP-010: required so minikube uses rootless podman
-                                # for host ops (status/ssh/registry), not sudo podman
+                                # for host ops (status/registry), not sudo podman
 
 PROFILE_NAME="capstone"
 MEMORY="24g"
@@ -21,6 +27,10 @@ CPUS="16"
 DISK="80g"
 RUNTIME="containerd"
 DRIVER="podman"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../demos/lib/endpoints.sh
+source "${SCRIPT_DIR}/../demos/lib/endpoints.sh"
 
 REPLACE=0
 if [[ "${1:-}" == "--replace" ]]; then
@@ -155,24 +165,55 @@ fi
 
 # ─── Profile setup ───────────────────────────────────────────────────────────
 
-if minikube status -p "$PROFILE_NAME" >/dev/null 2>&1; then
-    if (( REPLACE )); then
-        printf '==> Deleting existing %s profile (--replace specified)\n' "$PROFILE_NAME"
-        minikube delete -p "$PROFILE_NAME"
-    else
+if podman container exists "$PROFILE_NAME" 2>/dev/null && (( ! REPLACE )); then
+    # Existing profile kept as-is: its published ports must already be right.
+    check_published_ports || exit 1
+    if minikube status -p "$PROFILE_NAME" >/dev/null 2>&1; then
         printf '==> Profile %s already exists and is running. Pass --replace to recreate.\n' "$PROFILE_NAME"
-        printf '==> Switching kubectl context to %s\n' "$PROFILE_NAME"
-        kubectl config use-context "$PROFILE_NAME"
-        printf '==> Done. Current nodes:\n'
-        kubectl get nodes
-        exit 0
+    else
+        printf '==> Profile %s exists but is stopped. Starting it.\n' "$PROFILE_NAME"
+        minikube start -p "$PROFILE_NAME"
+        check_published_ports || exit 1
     fi
+    printf '==> Switching kubectl context to %s\n' "$PROFILE_NAME"
+    kubectl config use-context "$PROFILE_NAME"
+    printf '==> Done. Current nodes:\n'
+    kubectl get nodes
+    exit 0
+fi
+
+# Create path (fresh or --replace). Pre-flight BEFORE any delete: every host
+# port must be free, except ports this same profile currently publishes
+# (a --replace frees those itself).
+if ! command -v ss >/dev/null 2>&1; then
+    printf 'ERROR: ss not in PATH (iproute2); needed to check host ports are free.\n' >&2
+    exit 1
+fi
+own_ports=" $(published_ports | awk '{print $2}' | tr '\n' ' ') "
+busy=0
+IFS=',' read -ra port_specs <<<"$(node_ports_arg)"
+for spec in "${port_specs[@]}"; do
+    hp="$(cut -d: -f2 <<<"$spec")"
+    [[ "$own_ports" == *" $hp "* ]] && continue
+    if [[ -n "$(ss -Htln "sport = :$hp" 2>/dev/null)" ]]; then
+        printf 'ERROR: host port %s is already in use: something else is listening; this workshop runs in isolation — stop other clusters/services.\n' "$hp" >&2
+        busy=1
+    fi
+done
+if (( busy )); then exit 1; fi
+
+if (( REPLACE )) && podman container exists "$PROFILE_NAME" 2>/dev/null; then
+    printf '==> Deleting existing %s profile (--replace specified)\n' "$PROFILE_NAME"
+    minikube delete -p "$PROFILE_NAME"
 fi
 
 printf '==> Starting %s profile (%s RAM, %s CPUs, %s disk, %s runtime)\n' \
     "$PROFILE_NAME" "$MEMORY" "$CPUS" "$DISK" "$RUNTIME"
 
+printf '==> Publishing NodePorts on 127.0.0.1: %s\n' "$(node_ports_arg)"
+
 minikube start -p "$PROFILE_NAME" \
+    --ports="$(node_ports_arg)" \
     --memory="$MEMORY" \
     --cpus="$CPUS" \
     --disk-size="$DISK" \
@@ -180,6 +221,11 @@ minikube start -p "$PROFILE_NAME" \
     --driver="$DRIVER" \
     --rootless=true \
     --addons=metrics-server
+
+check_published_ports || {
+    printf 'ERROR: the node did not publish the required NodePorts on 127.0.0.1 (loopback is required).\n' >&2
+    exit 1
+}
 
 printf '==> Switching kubectl context to %s\n' "$PROFILE_NAME"
 kubectl config use-context "$PROFILE_NAME"
@@ -196,7 +242,8 @@ minikube config set rootless true >/dev/null 2>&1 || true
 
 printf '==> Enabling the in-cluster registry addon (CAP-009)\n'
 minikube addons enable registry -p "$PROFILE_NAME"
-printf '    Host pushes to 127.0.0.1:<port> (see: podman port %s | grep 5000)\n' "$PROFILE_NAME"
+reg_port="$(registry_host_port)"
+printf '    Host pushes to 127.0.0.1:%s\n' "${reg_port:-<port>}"
 printf '    Cluster pulls from localhost:5000 — build-image.sh handles both.\n'
 
 printf '\n'

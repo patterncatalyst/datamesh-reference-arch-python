@@ -50,6 +50,13 @@ else
     ok "profile started"
 fi
 
+# Host access is NodePorts published on 127.0.0.1 at profile creation; verify.
+# shellcheck source=../demos/lib/endpoints.sh
+source "${SCRIPT_DIR}/../demos/lib/endpoints.sh"
+check_published_ports \
+    || fail "profile does not publish the required NodePorts on 127.0.0.1 — recreate it: ./scripts/setup-capstone-profile.sh --replace"
+ok "NodePorts published on 127.0.0.1"
+
 # ─── 2. Control-plane health, with auto-cycle on a wedge ─────────────────────
 cp_healthy() {
     kubectl get --raw='/readyz' >/dev/null 2>&1 || return 1
@@ -83,7 +90,7 @@ fi
 
 # ─── 3. Rebuild ONLY images missing from the registry ────────────────────────
 step "Checking the in-cluster registry for missing images"
-HOST_PORT="$(podman port "$PROFILE" 2>/dev/null | awk -F'[:]' '/5000\/tcp/ {print $NF; exit}')"
+HOST_PORT="$(registry_host_port)"
 [[ -n "$HOST_PORT" ]] || fail "could not find registry host port — is the registry addon enabled? (minikube addons enable registry -p $PROFILE)"
 HOST_REG="127.0.0.1:${HOST_PORT}"
 
@@ -137,7 +144,11 @@ else
     warn "some pods still settling after 4 min (the status report below has details)"
 fi
 
-# ─── 6. Final status report ──────────────────────────────────────────────────
+# ─── 6. Endpoints ────────────────────────────────────────────────────────────
+step "Endpoints"
+"${SCRIPT_DIR}/show-endpoints.sh" || warn "some endpoints are unpublished or unreachable (see above; services may still be starting)"
+
+# ─── 7. Final status report ──────────────────────────────────────────────────
 step "Status report"
 bash "${SCRIPT_DIR}/cluster-status.sh" || true
 

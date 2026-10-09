@@ -15,9 +15,6 @@ if [[ "${1:-}" == "--remove-profile" ]]; then
     REMOVE=1
 fi
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-"$SCRIPT_DIR/tunnel-services.sh" --stop 2>/dev/null || true
-
 if ! minikube status -p "$PROFILE_NAME" >/dev/null 2>&1; then
     printf '==> Profile %s is not present. Nothing to do.\n' "$PROFILE_NAME"
     exit 0

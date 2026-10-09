@@ -67,7 +67,8 @@ fi
 
 # ─── In-cluster registry: which images are missing? ──────────────────────────
 step "In-cluster registry images"
-HOST_PORT="$(podman port "$PROFILE" 2>/dev/null | awk -F'[:]' '/5000\/tcp/ {print $NF; exit}')"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../demos/lib/endpoints.sh"
+HOST_PORT="$(registry_host_port)"
 if [[ -z "$HOST_PORT" ]]; then
     warn "could not find the registry host port (is the registry addon enabled?)"
     note_problem
@@ -117,6 +118,14 @@ if [[ "$hso" == "True" ]]; then
     ok "KEDA HTTPScaledObject for graphql-gateway is Ready (gateway may be scaled to zero — expected)"
 else
     warn "KEDA HTTPScaledObject not reporting Ready (status: ${hso:-unknown})"
+fi
+
+# ─── Endpoints ───────────────────────────────────────────────────────────────
+step "Endpoints"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if ! "${SCRIPT_DIR}/show-endpoints.sh"; then
+    bad "endpoint check failed (unpublished port, non-loopback binding, or nodePort mismatch)"
+    note_problem
 fi
 
 # ─── Verdict ─────────────────────────────────────────────────────────────────
