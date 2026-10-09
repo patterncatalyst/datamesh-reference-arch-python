@@ -232,7 +232,9 @@ minikube start -p "$PROFILE_NAME" \
     --container-runtime="$RUNTIME" \
     --driver="$DRIVER" \
     --rootless=true \
-    --addons=metrics-server,registry   # registry here, not `addons enable`: its paused-check calls runc, absent under CRI-O + crun
+    --addons=metrics-server,registry,storage-provisioner-rancher
+# Addons are enabled at start, not with `minikube addons enable`: its paused-check
+# calls runc, which is absent under CRI-O + crun (DRA-018).
 
 check_published_ports || {
     printf 'ERROR: the node did not publish the required NodePorts on 127.0.0.1 (loopback is required).\n' >&2
@@ -244,6 +246,15 @@ ensure_node_forwarding
 
 printf '==> Switching kubectl context to %s\n' "$PROFILE_NAME"
 kubectl config use-context "$PROFILE_NAME"
+
+# minikube's hostpath provisioner creates volume directories 0755 root, so
+# non-root pods (CloudNativePG runs Postgres as uid 26) cannot write to them.
+# The local-path provisioner creates them 0777; make it the default class.
+printf '==> Making local-path the default StorageClass (writable by non-root pods)\n'
+kubectl patch storageclass standard \
+    -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}' >/dev/null
+kubectl patch storageclass local-path \
+    -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}' >/dev/null
 
 printf '==> Creating capstone namespace\n'
 kubectl create namespace capstone --dry-run=client -o yaml | kubectl apply -f -

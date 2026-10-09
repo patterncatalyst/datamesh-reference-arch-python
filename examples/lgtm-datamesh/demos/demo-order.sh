@@ -10,7 +10,7 @@
 # r21a changes:
 #   - builds + pushes via scripts/build-image.sh (host podman build →
 #     in-cluster registry), the proven path under rootless-podman +
-#     containerd (CAP-007/009). No more `minikube image load`.
+#     CRI-O (CAP-007/009). No more `minikube image load`.
 #   - on failure, LEAVES the failed resources in place and dumps a
 #     diagnostic bundle inline (pod status, describe events, logs) instead
 #     of tearing everything down — so a failed run hands you the evidence

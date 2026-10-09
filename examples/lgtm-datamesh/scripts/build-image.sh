@@ -4,10 +4,10 @@
 # minikube profile's in-cluster registry.
 #
 # WHY THE REGISTRY (CAP-007, revised in r21c): under the rootless-podman
-# driver with the containerd runtime, neither `minikube image build` nor
+# driver with a CRI runtime in the node, neither `minikube image build` nor
 # `minikube image load` reliably places an image where the kubelet can pull
 # it. We hit this hard in r21/r21a/r21b: builds succeeded but images never
-# landed in the profile's containerd store, leaving pods in ErrImagePull.
+# landed in the profile's image store, leaving pods in ErrImagePull.
 # The robust, scalable answer is minikube's built-in registry addon: build
 # on the host with podman, push to the registry, and have deployments pull
 # from it like any normal image.
