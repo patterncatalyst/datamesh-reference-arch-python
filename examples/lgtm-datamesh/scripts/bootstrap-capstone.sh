@@ -32,7 +32,6 @@ PG_RELEASE="capstone-postgres";  PG_CHART="charts/capstone/charts/postgres"
 KAFKA_RELEASE="capstone-kafka";  KAFKA_CHART="charts/capstone/charts/kafka"; KAFKA_CR="capstone-kafka"
 APICURIO_RELEASE="apicurio";     APICURIO_CHART="charts/capstone/charts/apicurio"
 KAFKAUI_RELEASE="kafka-ui";      KAFKAUI_CHART="charts/capstone/charts/kafka-ui"
-SERVICES=("${CAPSTONE_SERVICES[@]}")
 
 # Canonical host ports + helpers (ensure_endpoint, wait_http). Host access is a
 # published NodePort on 127.0.0.1, fixed when the profile is created.
@@ -40,6 +39,7 @@ source "${ROOT}/demos/lib/endpoints.sh"
 # Image helpers (image_in_profile, CAPSTONE_SERVICES). No registry: images are
 # built with docker and loaded into the profile.
 source "${ROOT}/demos/lib/images.sh"
+SERVICES=("${CAPSTONE_SERVICES[@]}")   # defined in images.sh; must follow the source
 
 step() { printf '\n\033[1m==> %s\033[0m\n' "$1"; }
 ok()   { printf '    \xe2\x9c\x93 %s\n' "$1"; }
