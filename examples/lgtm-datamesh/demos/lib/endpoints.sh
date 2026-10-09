@@ -241,7 +241,7 @@ ensure_endpoint() {
         out="$(kubectl --context "$EP_PROFILE" get svc -n "$ns" "$svc" \
                 -o jsonpath='{.spec.type} {.spec.ports[*].nodePort}' 2>/dev/null)" || out=""
         stype="${out%% *}"; nports="${out#* }"
-        if [[ "$stype" != "NodePort" ]] || ! grep -qw -- "$np" <<<"$nports"; then
+        if [[ "$stype" != "NodePort" && "$stype" != "LoadBalancer" ]] || ! grep -qw -- "$np" <<<"$nports"; then
             printf 'endpoints: %s: svc/%s in %s: expected NodePort %s, got "%s"\n' \
                 "$name" "$svc" "$ns" "$np" "${out:-<not found>}" >&2
             overall=1; continue

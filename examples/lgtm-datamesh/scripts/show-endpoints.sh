@@ -73,9 +73,10 @@ for name in "${ENDPOINT_NAMES[@]}"; do
         else
             sraw="cannot query the API server"; s="${RED}${sraw}${RST}"; fail=1; apierr=1
         fi
-    elif [[ "$stype" == "NodePort" ]] && grep -qw -- "$np" <<<"${out#* }"; then
+    # LoadBalancer Services (e.g. the Istio ingress gateway) also allocate nodePorts.
+    elif [[ "$stype" == "NodePort" || "$stype" == "LoadBalancer" ]] && grep -qw -- "$np" <<<"${out#* }"; then
         s="${GRN}ok${RST}"; sraw="ok"
-    elif [[ "$stype" != "NodePort" ]]; then
+    elif [[ "$stype" != "NodePort" && "$stype" != "LoadBalancer" ]]; then
         sraw="type ${stype:-<none>}, expected NodePort ${np}"; s="${RED}${sraw}${RST}"; fail=1; drift=1
     else
         sraw="expected ${np} got ${out#* }"; s="${RED}${sraw}${RST}"; fail=1; drift=1
