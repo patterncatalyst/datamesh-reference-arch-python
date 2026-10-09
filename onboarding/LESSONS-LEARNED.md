@@ -191,13 +191,6 @@ cycle the node. Prevention: don't run minikube clusters for weeks at a
 time, or check kube-proxy's state when surprising network behaviour
 appears.
 
-### PID ceiling on rootless podman nodes
-
-The default `pids_limit` for rootless podman is 2048, which is plenty for
-small workloads but gets eaten by the full data mesh once OpenMetadata
-and the observability stack are running. Memorialised as CAP-041. Raise
-it at node creation, not after.
-
 ### Migration tooling: init-containers beat `create_all`
 
 The skeleton used SQLAlchemy `create_all` for r21's first service —
@@ -217,44 +210,6 @@ not a regular container. "Is this pod meshed?" checks that inspect
 meshed pod still reports `2/2` because the sidecar's `Always`-restart
 init-container counts. Memorialised throughout the archive's recent
 CAPs.
-
-### A fresh rootless-podman node can drop all pod traffic
-
-On minikube v1.38.1, a new capstone profile came up Ready, yet CoreDNS timed out
-and the Istio ingress gateway never passed its readiness probe. A busybox pod
-could not ping, TCP-connect, or send UDP to any other pod. The cause was inside the
-node: the node image starts Docker once at first boot, and Docker 29 sets the
-iptables `FORWARD` policy to `DROP` when it enables IP forwarding. kindnet expects
-`ACCEPT`, so every forwarded packet was dropped (`iptables -L FORWARD -v` showed the
-policy counter climbing). Recreating the profile did not help; it reproduces on
-every fresh node. `ensure_node_forwarding` now resets the policy after each start
-(DRA-018). The lesson: when every pod-network path fails at once, read the node's
-`FORWARD` policy before blaming the CNI or DNS.
-
-### Pick one OCI runtime: podman driver means CRI-O and crun
-
-The podman driver runs the node container with crun. Pairing it with
-`--container-runtime=containerd` puts runc under the pods, so the stack used two
-OCI runtimes. The capstone now uses CRI-O, whose minikube default is crun (DRA-018).
-One side effect: `minikube addons enable` fails under CRI-O + crun because its
-paused-container check calls `runc list`; enable addons in `minikube start --addons=`
-instead.
-Another: minikube's hostpath provisioner creates volume directories `0755 root`, so
-non-root pods cannot write to them (CloudNativePG's `initdb`, running as uid 26, failed
-with `Permission denied`). The capstone makes the local-path provisioner, which
-creates them `0777`, the default StorageClass.
-
-### Rootless-podman minikube has its own image-distribution model
-
-You can't `docker push` to localhost and expect minikube to find it,
-because rootless podman's daemon isn't accessible from the cluster's
-node, and the in-node CRI runtime (CRI-O since 2026-10; containerd before) doesn't share an image cache
-with the host. The reference uses minikube's in-cluster registry as
-the distribution point (build → tag for the in-cluster registry →
-push → the node's runtime pulls from inside the cluster). Memorialised as
-CAP-007, CAP-009, CAP-010 — three CAPs because it took that many
-iterations to land. The lesson: rootless minikube has its own
-image-distribution shape and `docker push localhost:5000/img` is not it.
 
 ### A forwarded connection pins its pod, so host access moved to published NodePorts
 
@@ -313,16 +268,9 @@ system under test. The published Prometheus port is 9091 for this reason.
 
 ### Fresh-host bring-up finds the assumptions your dev machine hides
 
-Two bring-up blockers existed on a clean Fedora 44 host that no
+Bring-up blockers existed on a clean Fedora 44 host that no
 long-lived dev machine would surface:
 
-- **The CNI portmap plugin needs legacy `ip_tables`/`iptable_nat`
-  kernel modules, and a rootless node can't load them.** Fedora is
-  nftables-only out of the box; inside the rootless podman node,
-  `modprobe` gets `Operation not permitted`, and every hostPort pod
-  (starting with the registry proxy) fails sandbox creation. The host
-  must load the modules — persist them via `/etc/modules-load.d/` so a
-  reboot doesn't silently re-break the cluster.
 - **Pinned addon image digests rot.** minikube 1.35's registry addon
   pins a `kube-registry-proxy` digest that no longer exists on gcr.io;
   the addon can never come up on that minikube version regardless of
@@ -335,7 +283,75 @@ bootstrap also accumulates couplings to host state — loaded kernel
 modules, tool versions, listening ports — that a fresh profile on the
 same machine can't expose.
 
-### `imagePullPolicy: Always` for mutable tags during development
+### Pushing to a loopback registry only works on a native engine
+
+A push to a registry on the host's loopback port is made by the container engine's daemon, so the address is resolved from the daemon's network namespace. On a native Docker Engine that is the host. On a VM-based engine (Docker Desktop, Colima, Rancher Desktop) the daemon runs inside a VM whose `127.0.0.1` is not the host's, and the push fails with `dial tcp [::1]:5000: i/o timeout`. `minikube image load` hands the image to the profile directly and works with any engine, which is why the capstone uses it and runs no registry.
+
+### Local images: `imagePullPolicy: Never` plus a restart on rebuild
+
+Images loaded with `minikube image load` are tagged `capstone/<svc>:v1`, and the charts set `imagePullPolicy: Never`. A missing image then fails fast with `ErrImageNeverPull` instead of falling through to a Docker Hub lookup that can never succeed. The other half of the rule: a mutable `:v1` tag means running pods keep the old image after a rebuild, so `scripts/build-image.sh` restarts the Deployments that use the image it just loaded.
+
+---
+
+## Historical: the rootless-podman era (superseded by DRA-019) <!-- forbidden-ok -->
+
+These describe the earlier rootless-podman setup. They are kept for the reasoning, not as instructions; the current setup is Docker Engine + containerd (DRA-019). <!-- forbidden-ok -->
+
+### PID ceiling on rootless podman nodes (historical) <!-- forbidden-ok -->
+
+The default `pids_limit` for rootless podman is 2048, which is plenty for <!-- forbidden-ok -->
+small workloads but gets eaten by the full data mesh once OpenMetadata
+and the observability stack are running. Memorialised as CAP-041. Raise
+it at node creation, not after.
+
+### A fresh rootless-podman node can drop all pod traffic (historical) <!-- forbidden-ok -->
+
+On minikube v1.38.1, a new capstone profile came up Ready, yet CoreDNS timed out
+and the Istio ingress gateway never passed its readiness probe. A busybox pod
+could not ping, TCP-connect, or send UDP to any other pod. The cause was inside the
+node: the node image starts Docker once at first boot, and Docker 29 sets the
+iptables `FORWARD` policy to `DROP` when it enables IP forwarding. kindnet expects
+`ACCEPT`, so every forwarded packet was dropped (`iptables -L FORWARD -v` showed the
+policy counter climbing). Recreating the profile did not help; it reproduces on
+every fresh node. `ensure_node_forwarding` now resets the policy after each start
+(DRA-018), and the `ensure_node_forwarding` guard remains in the scripts under the current setup. The lesson: when every pod-network path fails at once, read the node's
+`FORWARD` policy before blaming the CNI or DNS.
+
+### Pick one OCI runtime: podman driver means CRI-O and crun (historical) <!-- forbidden-ok -->
+
+The podman driver runs the node container with crun. Pairing it with <!-- forbidden-ok -->
+`--container-runtime=containerd` puts runc under the pods, so the stack used two
+OCI runtimes. The capstone now uses CRI-O, whose minikube default is crun (DRA-018). <!-- forbidden-ok -->
+One side effect: `minikube addons enable` fails under CRI-O + crun because its <!-- forbidden-ok -->
+paused-container check calls `runc list`; enable addons in `minikube start --addons=`
+instead.
+Another: minikube's hostpath provisioner creates volume directories `0755 root`, so
+non-root pods cannot write to them (CloudNativePG's `initdb`, running as uid 26, failed
+with `Permission denied`). The capstone makes the local-path provisioner, which
+creates them `0777`, the default StorageClass.
+
+### Rootless-podman minikube has its own image-distribution model (historical) <!-- forbidden-ok -->
+
+You can't `docker push` to localhost and expect minikube to find it,
+because rootless podman's daemon isn't accessible from the cluster's <!-- forbidden-ok -->
+node, and the in-node CRI runtime (CRI-O since 2026-10; containerd before) doesn't share an image cache <!-- forbidden-ok -->
+with the host. The reference uses minikube's in-cluster registry as
+the distribution point (build → tag for the in-cluster registry →
+push → the node's runtime pulls from inside the cluster). Memorialised as
+CAP-007, CAP-009, CAP-010 — three CAPs because it took that many
+iterations to land. The lesson: rootless minikube has its own <!-- forbidden-ok -->
+image-distribution shape and `docker push localhost:5000/img` is not it. <!-- forbidden-ok -->
+
+### Kernel modules for the CNI portmap plugin (historical)
+
+The CNI portmap plugin needs legacy `ip_tables`/`iptable_nat` kernel modules,
+and a rootless node can't load them. Fedora is nftables-only out of the box; <!-- forbidden-ok -->
+inside the rootless podman node, `modprobe` gets `Operation not permitted`, <!-- forbidden-ok -->
+and every hostPort pod (starting with the registry proxy) fails sandbox
+creation. The host must load the modules — persist them via `/etc/modules-
+load.d/` so a reboot doesn't silently re-break the cluster.
+
+### `imagePullPolicy: Always` for mutable tags during development (historical)
 
 The reference uses `:v1` as a development tag (not for production, where
 content-addressable tags or proper semver belong). With a mutable tag,
@@ -356,8 +372,8 @@ single horizontal layer. The reference's r21 brought up *one* service
 (order-service) end-to-end: REST handler, database, schema, container,
 manifest, helm chart, smoke test, deployed. After that, the other four
 services followed a template (CAP-011) in roughly an iteration each;
-every horizontal-layer concern (the Postgres operator, the in-cluster
-registry, the chart structure) was already proven by the time it had
+every horizontal-layer concern (the Postgres operator, the image
+pipeline, the chart structure) was already proven by the time it had
 to scale to five services. Memorialised as CAP-006.
 
 The lesson generalises: vertical slices are debt-reducing; horizontal

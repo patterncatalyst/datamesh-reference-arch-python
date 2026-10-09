@@ -45,6 +45,8 @@ documenting the OpenShift-native counterpart.
 You don't need a paid subscription or a cloud account. **OpenShift Local** (CRC —
 "CodeReady Containers") runs a real, single-node OpenShift cluster in a local VM.
 
+- This appendix uses podman (and `oc`) on the host to build and push to the integrated registry; the minikube path uses Docker Engine. Podman is needed only here.
+
 1. **Create a free Red Hat Developer account.** Go to
    [developers.redhat.com](https://developers.redhat.com), register or log in. It's free
    and gives you access to OpenShift Local and the pull secret.

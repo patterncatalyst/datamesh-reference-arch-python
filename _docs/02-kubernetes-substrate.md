@@ -100,7 +100,9 @@ a laptop but also concentrates failure modes that a real multi-node cluster woul
 spread out. Where those single-node realities bite — resource ceilings, node-level
 decay, the operational care a long-lived single-node cluster needs — they're collected
 as operational gotchas rather than mixed into the conceptual material here, because
-they're particular to this deployment choice rather than to data mesh as a pattern.
+they're particular to this deployment choice rather than to data mesh as a pattern. The profile is a Docker container (the docker
+driver) running containerd with the runc runtime, sized by `MINIKUBE_MEMORY`,
+`MINIKUBE_CPUS` and `MINIKUBE_DISK`.
 
 Host access follows the same single-node logic. The capstone's UIs and service
 endpoints are NodePorts published on `127.0.0.1` when the minikube profile is created
