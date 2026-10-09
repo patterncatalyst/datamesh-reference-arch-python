@@ -59,7 +59,7 @@ dump_diagnostics() {
     printf '\n--- images loaded in the profile ---\n'
     minikube -p "$PROFILE" image ls 2>&1 | grep capstone/ || echo "(no capstone/ images loaded)"
     printf '\nResources left running. To clean up manually:\n'
-    printf '  helm uninstall %s -n %s\n' "$RELEASE_ORDER" "$NS"
+    printf '  helm uninstall %s inventory-service -n %s\n' "$RELEASE_ORDER" "$NS"
     printf '  helm uninstall %s -n %s   # also removes Postgres\n' "$RELEASE_PG" "$NS"
 }
 
@@ -70,7 +70,7 @@ fail() {
 }
 
 cleanup_on_success() {
-    helm uninstall "$RELEASE_ORDER" -n "$NS" 2>/dev/null || true
+    helm uninstall "$RELEASE_ORDER" inventory-service -n "$NS" 2>/dev/null || true
     if (( PURGE_DB )); then
         helm uninstall "$RELEASE_PG" -n "$NS" 2>/dev/null || true
     fi
@@ -122,6 +122,19 @@ for i in $(seq 1 60); do
     sleep 5
 done
 (( pg_ready )) || fail "Postgres primary did not become Ready within 300s"
+
+# ─── Deploy inventory-service ────────────────────────────────────────────────
+# POST /orders checks stock with inventory-service over gRPC (r23), so the
+# order spine needs it running; another demo's cleanup may have removed it.
+
+step "Building + loading inventory-service"
+./scripts/build-image.sh services/inventory-service inventory-service "$IMAGE_TAG" \
+    || fail "inventory-service build/load failed"
+step "Deploying inventory-service (seeds demo stock, including WIDGET-001)"
+helm upgrade --install inventory-service charts/capstone/charts/inventory-service -n "$NS" \
+    || fail "helm install of inventory-service chart failed"
+kubectl rollout status deployment/inventory-service -n "$NS" --timeout=120s \
+    || fail "inventory-service did not roll out"
 
 # ─── Deploy order-service ────────────────────────────────────────────────────
 

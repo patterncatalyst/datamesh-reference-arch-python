@@ -22,6 +22,7 @@ PROFILE="capstone"; NS="capstone"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
 source "${ROOT}/demos/lib/endpoints.sh"
 source "${ROOT}/demos/lib/images.sh"
+source "${ROOT}/demos/lib/keda.sh"
 PG_RELEASE="capstone-postgres"; PG_CHART="charts/capstone/charts/postgres"
 KAFKA_RELEASE="capstone-kafka"; KAFKA_CHART="charts/capstone/charts/kafka"; KAFKA_CR="capstone-kafka"
 APICURIO_RELEASE="apicurio"; APICURIO_CHART="charts/capstone/charts/apicurio"
@@ -99,6 +100,11 @@ done
 # ── 6. place an order (registers schema on producer startup, emits Avro) ──────
 step "Checking endpoints: order(${LOCAL_ORDER}) notification(${LOCAL_NOTIF}) apicurio(${LOCAL_APIC})"
 ensure_endpoint order notification apicurio
+# KEDA scales notification-service to zero when there is no lag, and can do so
+# between this demo's steps. Hold it at one replica for the demo (released on
+# exit; demo-keda-kafka.sh is the demo that shows the zero → up → zero cycle).
+keda_hold_replicas notification-service-scaler 1 notification-service \
+    || fail "notification-service did not come up under the KEDA hold"
 wait_http "http://127.0.0.1:${LOCAL_ORDER}/" 20 || true
 wait_http "http://127.0.0.1:${LOCAL_APIC}/" 20 || true
 
@@ -121,14 +127,12 @@ printf '    ✓ schema registered\n'
 
 # ── 7b. assert the event was consumed (proves Avro decode via registry) ───────
 step "Polling notification-service /received for the decoded order.placed event"
-# ~180s window, not ~60s: when the bootstrap-applied KEDA ScaledObject has
-# notification-service scaled to zero, this very event is what wakes it —
-# KEDA's kafka lag poll + pod start + consumer-group join must fit here.
+# ~180s window: the consumer-group join after a fresh rollout can take a while
+# even with notification-service held at one replica (keda_hold_replicas above).
 seen=0
 for i in $(seq 1 90); do
-    # The published NodePort needs no client-side process, but notification-service is KEDA-scaled-to-zero:
-    # until this event wakes it the NodePort has no endpoint and the curl fails —
-    # treat that as "not yet" and keep polling.
+    # A failed curl (endpoint briefly unavailable, e.g. during a restart) means
+    # "not yet": keep polling.
     if ! RECV="$(curl -fsS "http://127.0.0.1:${LOCAL_NOTIF}/received" 2>/dev/null)"; then
         RECV='[]'
     fi
