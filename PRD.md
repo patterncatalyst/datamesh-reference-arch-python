@@ -113,14 +113,14 @@ forks.
 - A reader who runs the example tree gets a working data mesh on their
   laptop: five services, contracts, catalog, canary, autoscaling,
   observability, all green within ~30 minutes of bootstrap on the
-  verified configuration.
+  target configuration.
 - A reader can demonstrate the cross-product behaviours that make a
   collection of services a *mesh*: a single GraphQL query producing a
   trace tree across three products, a contract canary shifting live
   traffic by weight without application code changes, a Kafka-lag
   scaler waking and quiescing an event consumer.
-- The runnable examples build and run end to end on a Fedora-on-rootless-podman
-  minikube setup with one bootstrap command. CAP-047 of the historical
+- The runnable examples build and run end to end on a Fedora 44 + Docker Engine + minikube
+  (docker driver, containerd) setup with one bootstrap command. CAP-047 of the historical
   decision log documents the one deferred component (the KEDA HTTP
   add-on's interceptor on the gateway scale-from-zero path) and the
   worked-around demo path that keeps the walkthrough 5-of-5 green.
@@ -147,11 +147,11 @@ forks.
   Snowflake vs. BigQuery vs. Databricks, dbt vs. SQLMesh, or warehouse
   shape. Those choices are downstream of the mesh; this reference stops
   at the boundary.
-- **Coverage of every Kubernetes runtime.** The verified configuration
+- **Coverage of every Kubernetes runtime.** The target configuration
   is minikube on Fedora 44. The reference is portable in principle to
   OpenShift (where the implementation deck pairs it explicitly), EKS,
   GKE, AKS, and vanilla K8s, but the bootstrap and chart values are
-  written for the verified runtime. Adapting to other runtimes is left
+  written for the target runtime. Adapting to other runtimes is left
   to readers as a known and welcome contribution path.
 - **Building a generic "data mesh framework."** This is a reference
   implementation, not a framework. There's no abstraction layer
@@ -262,8 +262,8 @@ diagrams that have changed.
 
 ### Verification metrics (project-controlled)
 
-- The presenter walkthrough runs 5-of-5 green on the verified runtime
-  (Fedora 44 + rootless podman + minikube), as documented in the
+- The presenter walkthrough runs 5-of-5 green on the target runtime
+  (Fedora 44 + Docker Engine + minikube (docker driver, containerd)), as documented in the
   reconciliation file at `_plans/reconciliation.md`.
 - All internal links resolve (`scripts/check-cross-references.sh` exits 0).
 - All `{{ }}` Liquid expressions in `_plans/*.md` are properly fenced
@@ -293,7 +293,7 @@ day-to-day decisions, but are useful as a long-range health check:
 - **Kubernetes is the substrate model.** Anything that contradicts
   upstream Kubernetes idioms (operators, CRDs, RBAC, service mesh) is
   out of scope.
-- **The verified runtime is minikube on Fedora 44 with rootless podman.**
+- **The target runtime is Fedora 44 + Docker Engine + minikube (docker driver, containerd).**
   Other runtimes are documented as portable in principle; verifying
   them is a contribution path.
 - **Vendor-neutral language.** Where multiple tools could fit a slot
