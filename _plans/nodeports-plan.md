@@ -13,7 +13,9 @@ Move this file to `_plans/archive/` once executed (its own text would fail the f
   `endpoint_port`).
 - `published_ports` checks that container port `<np>/tcp` is bound to HostIp 127.0.0.1 **and** HostPort == the mapped host port.
 - **Workshops run in isolation.** Before a live run, everything else is shut down (CRC, other minikube profiles,
-  Docker Desktop), so there are no host-port collisions with helm4dev. Keep the free-port pre-flight as a cheap guard.
+  any container engine VM not used by this workshop), so there are no host-port collisions with helm4dev.
+- **Host requirements are only** docker, docker compose, podman, podman compose, minikube and crc. Docs and
+  scripts must not assume Docker Desktop (or any other desktop app); this workshop needs only rootless podman + minikube. Keep the free-port pre-flight as a cheap guard.
 - Rootless podman minikube is proven on this host in other projects. The 127.0.0.1 binding check is a verification
   step, not an expected problem.
 - `EX/examples/17-capstone/`: delete vs convert is pending the user's answer.
@@ -188,7 +190,7 @@ excluded from the scanner and the Jekyll build, and they're never linked as curr
 ## Live re-check
 
 1. Stop CRC. Check that datamesh and helm4dev are stopped. If less than about 30 GB is available,
-   quit Docker Desktop. Remove leftover ssh forwards and `/tmp/capstone-tunnel.pids`.
+   stop any other container-engine VM. Remove leftover ssh forwards and `/tmp/capstone-tunnel.pids`.
 2. `MINIKUBE_ROOTLESS=true ./scripts/setup-capstone-profile.sh --replace`, then acceptance 9.
    Stop if this fails.
 3. `./scripts/bootstrap-capstone.sh`, then show-endpoints and acceptance 10.
@@ -210,4 +212,4 @@ excluded from the scanner and the Jekyll build, and they're never linked as curr
 - User URLs change (3000 to 30300, and so on), and the Kiali external Grafana link has to follow.
 - The pptx notes are hand-patched and drift from build-deck.js. Mitigation: the CI pptx scan.
 - The broad `tunnel` rule needs `forbidden-ok` on prohibition and lesson lines.
-- Memory: the profile needs 24 GB, so stop CRC and quit Docker Desktop if needed.
+- Memory: the profile needs 24 GB, so stop CRC and every other cluster/engine VM.
