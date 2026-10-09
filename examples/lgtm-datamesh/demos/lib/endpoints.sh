@@ -292,3 +292,17 @@ wake_gateway() {
     [[ "$wrc" == 0 || "$wrc" == 28 ]] || sleep 2   # connect-level failure: give the interceptor a moment
     kubectl wait -n "$ns" --for=condition=Available deploy/graphql-gateway --timeout=120s >/dev/null 2>&1
 }
+
+# ensure_node_forwarding — the node image starts Docker once at first boot
+# (minikube then masks it for the CRI-O runtime). That Docker sets the node's
+# iptables FORWARD policy to DROP, which silently drops all pod-to-pod and
+# pod-to-Service traffic under kindnet: CoreDNS times out and nothing becomes
+# Ready. Reset the policy to ACCEPT when it is DROP; no-op otherwise. The rule
+# lives in the node container's network namespace, not on the host.
+ensure_node_forwarding() {
+    local policy
+    policy="$(podman exec "$EP_PROFILE" iptables -S FORWARD 2>/dev/null | awk '$1 == "-P" { print $3 }')"
+    [[ "$policy" == "DROP" ]] || return 0
+    printf '    node FORWARD policy is DROP (left by the node image'"'"'s Docker); setting ACCEPT for pod traffic\n'
+    podman exec "$EP_PROFILE" iptables -P FORWARD ACCEPT
+}

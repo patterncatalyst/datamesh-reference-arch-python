@@ -27,7 +27,7 @@ PROFILE_NAME="${MINIKUBE_PROFILE:-capstone}"   # same default as EP_PROFILE in e
 MEMORY="24g"
 CPUS="16"
 DISK="80g"
-RUNTIME="containerd"
+RUNTIME="cri-o"     # crun inside the node, matching rootless podman (crun) on the host
 DRIVER="podman"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -181,6 +181,7 @@ if podman container exists "$PROFILE_NAME" 2>/dev/null && (( ! REPLACE )); then
         minikube start -p "$PROFILE_NAME"
         check_published_ports || exit 1
     fi
+    ensure_node_forwarding
     printf '==> Switching kubectl context to %s\n' "$PROFILE_NAME"
     kubectl config use-context "$PROFILE_NAME"
     printf '==> Done. Current nodes:\n'
@@ -231,12 +232,15 @@ minikube start -p "$PROFILE_NAME" \
     --container-runtime="$RUNTIME" \
     --driver="$DRIVER" \
     --rootless=true \
-    --addons=metrics-server
+    --addons=metrics-server,registry   # registry here, not `addons enable`: its paused-check calls runc, absent under CRI-O + crun
 
 check_published_ports || {
     printf 'ERROR: the node did not publish the required NodePorts on 127.0.0.1 (loopback is required).\n' >&2
     exit 1
 }
+
+printf '==> Checking node pod networking\n'
+ensure_node_forwarding
 
 printf '==> Switching kubectl context to %s\n' "$PROFILE_NAME"
 kubectl config use-context "$PROFILE_NAME"
@@ -251,8 +255,7 @@ kubectl get pods -n kube-system
 printf '==> Persisting rootless mode in minikube config (CAP-010)\n'
 minikube config set rootless true >/dev/null 2>&1 || true
 
-printf '==> Enabling the in-cluster registry addon (CAP-009)\n'
-minikube addons enable registry -p "$PROFILE_NAME"
+printf '==> In-cluster registry addon enabled at start (CAP-009)\n'
 reg_port="$(registry_host_port)"
 printf '    Host pushes to 127.0.0.1:%s\n' "${reg_port:-<port>}"
 printf '    Cluster pulls from localhost:5000 — build-image.sh handles both.\n'

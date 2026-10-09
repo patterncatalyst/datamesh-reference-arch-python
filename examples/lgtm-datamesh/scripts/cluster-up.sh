@@ -63,6 +63,7 @@ fi
 check_published_ports \
     || fail "profile does not publish the required NodePorts on 127.0.0.1 — recreate it with ./scripts/setup-capstone-profile.sh --replace (deletes the cluster; re-run ./scripts/bootstrap-capstone.sh afterwards)"
 ok "NodePorts published on 127.0.0.1"
+ensure_node_forwarding || fail "could not reset the node FORWARD policy (pod traffic would be dropped)"
 
 # ─── 2. Control-plane health, with auto-cycle on a wedge ─────────────────────
 cp_healthy() {
