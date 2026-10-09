@@ -8,7 +8,7 @@ replicas: 1
 
 image:
   repository: quay.io/apicurio/apicurio-registry
-  tag: "3.2.4"
+  tag: "3.3.3"
   pullPolicy: IfNotPresent
 
 # Exposed as NodePort 30084, published on 127.0.0.1:8084 at profile creation
