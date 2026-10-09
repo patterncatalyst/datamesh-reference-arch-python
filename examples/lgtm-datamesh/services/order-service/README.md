@@ -36,7 +36,7 @@ To run the service locally against a local Postgres container
 
 ```bash
 # In one terminal: a throwaway Postgres on 127.0.0.1:5432
-podman run --rm -p 127.0.0.1:5432:5432 \
+docker run --rm -p 127.0.0.1:5432:5432 \
   -e POSTGRES_USER=capstone_app -e POSTGRES_PASSWORD=changeme -e POSTGRES_DB=capstone \
   postgres:16
 

@@ -8,8 +8,8 @@
 #                                       async SQLAlchemy wired to its own
 #                                       Postgres schema, UBI 9 Containerfile
 #   - charts/capstone/charts/<name>-service/   helm subchart (Deployment +
-#                                       Service), image pulled from the
-#                                       in-cluster registry (CAP-009)
+#                                       Service), image loaded into the
+#                                       node (minikube image load)
 #
 # What it deliberately does NOT generate (added in later iterations):
 #   - domain tables / REST CRUD (r23+), gRPC (r23), GraphQL (r24),
@@ -169,7 +169,7 @@ cat > "${SVC_DIR}/app/config.py" <<'EOF'
 
 In-cluster, the Postgres connection comes from the CloudNativePG-generated
 Secret (`capstone-postgres-app`), surfaced as env vars by the helm subchart.
-Locally, the defaults allow running against a local Postgres (e.g. `podman run --rm -p 127.0.0.1:5432:5432 -e POSTGRES_USER=capstone_app -e POSTGRES_PASSWORD=changeme -e POSTGRES_DB=capstone postgres:16`).
+Locally, the defaults allow running against a local Postgres (e.g. `docker run --rm -p 127.0.0.1:5432:5432 -e POSTGRES_USER=capstone_app -e POSTGRES_PASSWORD=changeme -e POSTGRES_DB=capstone postgres:16`).
 """
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -386,15 +386,11 @@ cat > "${CHART_DIR}/values.yaml" <<'EOF'
 replicas: 1
 
 image:
-  # In-cluster registry address (CAP-009). build-image.sh pushes to
-  # 127.0.0.1:<port>; the kubelet pulls from localhost:5000.
-  repository: localhost:5000/__SERVICE__
+  # Image is loaded into the node by build-image.sh (minikube image load); no registry.
+  repository: capstone/__SERVICE__
   tag: v1
-  # Always: the :v1 tag is mutable during the dev loop, and the node caches
-  # images by tag — IfNotPresent would serve a stale cached :v1 after a
-  # rebuild. Local-registry pulls are cheap, so Always guarantees the pod
-  # runs what was just pushed (CAP-015).
-  pullPolicy: Always
+  # Never: images are loaded into the node by build-image.sh (minikube image load) and never pulled; build-image.sh restarts the Deployment so a rebuilt :v1 is used.
+  pullPolicy: Never
 
 service:
   port: 80
