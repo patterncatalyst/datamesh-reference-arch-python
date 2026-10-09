@@ -17,7 +17,8 @@
 # add a service, add one row to _endpoint_row, its name to ENDPOINT_NAMES, and
 # (if it's one of our charts) set its Service nodePort to the matching value.
 # Published ports are fixed at profile creation: changing the map requires
-# recreating the profile (./scripts/setup-capstone-profile.sh --replace).
+# recreating the profile (./scripts/setup-capstone-profile.sh --replace), which
+# deletes and recreates the cluster, so run ./scripts/bootstrap-capstone.sh again.
 #
 # Safe to `source` under `set -euo pipefail`: only definitions, no side effects.
 
@@ -83,37 +84,34 @@ endpoint_url() {
     echo "http://127.0.0.1:${p}"
 }
 
-# node_ports_arg → "127.0.0.1:<host>:<node>,..." for `minikube start --ports=`.
-# EXTRA_NODE_PORTS ("hp:np,hp:np" or bare "p" meaning p:p) is appended.
-node_ports_arg() {
-    local name row hp np out=() item
-    for name in "${ENDPOINT_NAMES[@]}"; do
-        row="$(_endpoint_row "$name")"
-        read -r hp np _ <<<"$row"
-        out+=("127.0.0.1:${hp}:${np}")
-    done
-    if [[ -n "${EXTRA_NODE_PORTS:-}" ]]; then
-        local IFS=','
-        local -a extra
-        read -ra extra <<<"$EXTRA_NODE_PORTS"
-        for item in "${extra[@]}"; do
-            [[ -z "$item" ]] && continue
-            if [[ "$item" == *:* ]]; then out+=("127.0.0.1:${item}"); else out+=("127.0.0.1:${item}:${item}"); fi
-        done
-    fi
-    local IFS=','
-    echo "${out[*]}"
-}
-
-# _extra_pairs → lines "<host> <node>" for EXTRA_NODE_PORTS
+# _extra_pairs → lines "<host> <node>" for EXTRA_NODE_PORTS. Items may be
+# "hp:np", "127.0.0.1:hp:np" (prefix stripped) or a bare "p" meaning p:p.
 _extra_pairs() {
     local item IFS=','
     local -a extra
     read -ra extra <<<"${EXTRA_NODE_PORTS:-}"
     for item in "${extra[@]}"; do
         [[ -z "$item" ]] && continue
+        item="${item#127.0.0.1:}"
         if [[ "$item" == *:* ]]; then echo "${item%%:*} ${item##*:}"; else echo "$item $item"; fi
     done
+}
+
+# node_ports_arg → "127.0.0.1:<host>:<node>,..." for `minikube start --ports=`.
+# EXTRA_NODE_PORTS ("hp:np,hp:np", "127.0.0.1:hp:np" or bare "p" meaning p:p)
+# is appended.
+node_ports_arg() {
+    local name row hp np out=() line
+    for name in "${ENDPOINT_NAMES[@]}"; do
+        row="$(_endpoint_row "$name")"
+        read -r hp np _ <<<"$row"
+        out+=("127.0.0.1:${hp}:${np}")
+    done
+    while IFS= read -r line; do
+        [[ -n "$line" ]] && out+=("127.0.0.1:${line% *}:${line#* }")
+    done < <(_extra_pairs)
+    local IFS=','
+    echo "${out[*]}"
 }
 
 # ─── Published-port inspection ───────────────────────────────────────────────
@@ -121,7 +119,7 @@ _extra_pairs() {
 # _port_bindings_json → PortBindings JSON of the profile container (empty on error)
 _port_bindings_json() {
     # The capstone profile is rootless podman (setup-capstone-profile.sh).
-    podman inspect --format '{{json .HostConfig.PortBindings}}' "$EP_PROFILE" 2>/dev/null || true
+    podman container inspect --format '{{json .HostConfig.PortBindings}}' "$EP_PROFILE" 2>/dev/null || true
 }
 
 # _parse_bindings <loopback|other> — reads PortBindings JSON on stdin.
@@ -155,10 +153,18 @@ nonloopback_ports() { _port_bindings_json | _parse_bindings other; return 0; }
 # registry_host_port → host port bound to container 5000/tcp (empty if none)
 registry_host_port() { published_ports | awk '$1 == 5000 { print $2; exit }'; return 0; }
 
+# _require_python → 0 if python3 exists, else prints why and returns 1
+_require_python() {
+    command -v python3 >/dev/null 2>&1 && return 0
+    printf 'endpoints: python3 is required to read port bindings\n' >&2
+    return 1
+}
+
 # check_published_ports — verify every required pair is published on loopback
 # and nothing is bound off-loopback. Returns 1 with a hint on any problem.
 check_published_ports() {
     local pub bad name row hp np msg="" line
+    _require_python || return 1
     pub="$(published_ports)"
     bad="$(nonloopback_ports)"
     local pairs=()
@@ -179,22 +185,31 @@ check_published_ports() {
         printf '%s' "$msg"
         printf 'Ports are fixed when the profile is created and cannot be added to a running one.\n'
         printf 'Recreate it with: ./scripts/setup-capstone-profile.sh --replace\n'
+        printf '(--replace deletes and recreates the cluster; run ./scripts/bootstrap-capstone.sh again afterwards.)\n'
     } >&2
     return 1
 }
 
 # ensure_endpoint <name>[ <name> ...] — verify named endpoints are usable.
-# Returns 0 ok, 1 on a missing port/Service mismatch/unreachable, 2 unknown name.
+# Checks every name (does not stop at the first failure). Returns 0 ok, 1 if any
+# port is unpublished or a Service does not match, 2 if a name is unknown (and
+# no earlier check failed otherwise). A published port whose Service matches but
+# does not answer yet is only a warning (stderr, rc 0): the pod may still be
+# rolling out and callers do their own wait_http.
+# Reach retries: EP_REACH_TRIES (default 5) attempts, EP_REACH_DELAY s apart.
 ensure_endpoint() {
-    local name row hp np ns svc label out rc stype nports
+    local name row hp np ns svc label out rc stype nports try overall=0
+    local tries="${EP_REACH_TRIES:-5}" delay="${EP_REACH_DELAY:-2}"
+    _require_python || return 1
     for name in "$@"; do
-        row="$(_endpoint_row "$name")" || { printf 'endpoints: unknown service "%s"\n' "$name" >&2; return 2; }
+        row="$(_endpoint_row "$name")" || { printf 'endpoints: unknown service "%s"\n' "$name" >&2; (( overall < 2 )) && overall=2; continue; }
         read -r hp np ns svc label <<<"$row"
         if ! published_ports | grep -qx "${np} ${hp}"; then
             printf 'endpoints: %s: 127.0.0.1:%s -> nodePort %s is not published by profile "%s"\n' \
                 "$name" "$hp" "$np" "$EP_PROFILE" >&2
             printf 'Recreate it with: ./scripts/setup-capstone-profile.sh --replace\n' >&2
-            return 1
+            printf '(--replace deletes and recreates the cluster; run ./scripts/bootstrap-capstone.sh again afterwards.)\n' >&2
+            overall=1; continue
         fi
         out="$(kubectl --context "$EP_PROFILE" get svc -n "$ns" "$svc" \
                 -o jsonpath='{.spec.type} {.spec.ports[*].nodePort}' 2>/dev/null)" || out=""
@@ -202,17 +217,22 @@ ensure_endpoint() {
         if [[ "$stype" != "NodePort" ]] || ! grep -qw -- "$np" <<<"$nports"; then
             printf 'endpoints: %s: svc/%s in %s: expected NodePort %s, got "%s"\n' \
                 "$name" "$svc" "$ns" "$np" "${out:-<not found>}" >&2
-            return 1
+            overall=1; continue
         fi
         [[ "$name" == "notification" ]] && continue   # scales to zero; nothing listens
         rc=0
-        curl -s -o /dev/null --max-time 3 "http://127.0.0.1:${hp}/" >/dev/null 2>&1 || rc=$?
+        for (( try=1; try<=tries; try++ )); do
+            rc=0
+            curl -s -o /dev/null --max-time 3 "http://127.0.0.1:${hp}/" >/dev/null 2>&1 || rc=$?
+            [[ "$rc" != 7 && "$rc" != 28 ]] && break
+            (( try < tries )) && sleep "$delay"
+        done
         if [[ "$rc" == 7 || "$rc" == 28 ]]; then
-            printf 'endpoints: %s: http://127.0.0.1:%s unreachable (curl exit %s)\n' "$name" "$hp" "$rc" >&2
-            return 1
+            printf 'endpoints: warning: %s: http://127.0.0.1:%s not answering after %s tries (curl exit %s); continuing\n' \
+                "$name" "$hp" "$tries" "$rc" >&2
         fi
     done
-    return 0
+    return "$overall"
 }
 
 # ─── Waiters ─────────────────────────────────────────────────────────────────
@@ -242,8 +262,12 @@ wake_gateway() {
     local ns="${1:-capstone}"
     ensure_endpoint gateway || return 1
     wait_http "http://127.0.0.1:${TP_GATEWAY}/" 15 || true
-    # Pre-warm: this request's job is to trigger scale-from-zero; response discarded.
+    # Pre-warm: this request's job is to trigger scale-from-zero; response and
+    # exit status (including curl 28, a slow interceptor) are discarded — the
+    # kubectl wait below is the real readiness check.
+    local wrc=0
     curl -s -o /dev/null --max-time 60 \
-        -H "Host: ${GATEWAY_HOST}" "http://127.0.0.1:${TP_GATEWAY}/health" >/dev/null 2>&1 || true
+        -H "Host: ${GATEWAY_HOST}" "http://127.0.0.1:${TP_GATEWAY}/health" >/dev/null 2>&1 || wrc=$?
+    [[ "$wrc" == 0 || "$wrc" == 28 ]] || sleep 2   # connect-level failure: give the interceptor a moment
     kubectl wait -n "$ns" --for=condition=Available deploy/graphql-gateway --timeout=120s >/dev/null 2>&1
 }

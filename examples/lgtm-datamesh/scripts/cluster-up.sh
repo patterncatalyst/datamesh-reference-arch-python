@@ -25,7 +25,7 @@
 set -uo pipefail
 export MINIKUBE_ROOTLESS=true   # CAP-010
 
-PROFILE="capstone"
+PROFILE="${MINIKUBE_PROFILE:-capstone}"
 TAG="v1"
 SERVICES=(graphql-gateway inventory-service notification-service order-service payment-service shipping-service)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -41,9 +41,18 @@ command -v podman   >/dev/null || fail "podman not in PATH"
 
 # ─── 1. Ensure the profile is running ────────────────────────────────────────
 step "Ensuring the '$PROFILE' profile is running"
+# shellcheck source=../demos/lib/endpoints.sh
+source "${SCRIPT_DIR}/../demos/lib/endpoints.sh"
+EP_PROFILE="$PROFILE"
 if minikube status -p "$PROFILE" >/dev/null 2>&1; then
     ok "profile already running"
 else
+    # A stopped profile keeps the ports it was created with: fail fast, before
+    # spending minutes starting a node that can never be reached from the host.
+    if podman container exists "$PROFILE" 2>/dev/null; then
+        check_published_ports \
+            || fail "stopped profile does not publish the required NodePorts on 127.0.0.1 — recreate it (deletes the cluster; re-run ./scripts/bootstrap-capstone.sh afterwards): ./scripts/setup-capstone-profile.sh --replace"
+    fi
     printf '    starting (this also clears a stopped/wedged node)...\n'
     minikube start -p "$PROFILE" >/dev/null 2>&1 \
         || fail "minikube start failed — run ./scripts/setup-capstone-profile.sh for first-time provisioning"
@@ -51,8 +60,6 @@ else
 fi
 
 # Host access is NodePorts published on 127.0.0.1 at profile creation; verify.
-# shellcheck source=../demos/lib/endpoints.sh
-source "${SCRIPT_DIR}/../demos/lib/endpoints.sh"
 check_published_ports \
     || fail "profile does not publish the required NodePorts on 127.0.0.1 — recreate it: ./scripts/setup-capstone-profile.sh --replace"
 ok "NodePorts published on 127.0.0.1"

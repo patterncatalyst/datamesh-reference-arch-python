@@ -189,6 +189,8 @@ cp ~/.local/share/istio-current/bin/istioctl ~/.local/bin/</code></pre>
             fixed at creation; an older profile without them is refused by
             <code>setup-capstone-profile.sh</code> and recreated with
             <code>./scripts/setup-capstone-profile.sh --replace</code>.
+            <code>--replace</code> deletes and recreates the cluster, so run
+            <code>./scripts/bootstrap-capstone.sh</code> again afterwards.
             Run the workshop in isolation: shut down CRC, other minikube
             profiles, and other workloads first so the host ports are free.
             To see which endpoints are published and reachable:

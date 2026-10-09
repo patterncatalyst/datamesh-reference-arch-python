@@ -8,7 +8,7 @@
 
 set -euo pipefail
 
-PROFILE_NAME="capstone"
+PROFILE_NAME="${MINIKUBE_PROFILE:-capstone}"
 
 REMOVE=0
 if [[ "${1:-}" == "--remove-profile" ]]; then

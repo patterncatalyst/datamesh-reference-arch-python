@@ -16,12 +16,14 @@
 # Usage:
 #   ./setup-capstone-profile.sh             # start (or do nothing if running)
 #   ./setup-capstone-profile.sh --replace   # delete first, then start fresh
+#                                           # (deletes and recreates the cluster:
+#                                           # run ./scripts/bootstrap-capstone.sh again)
 
 set -euo pipefail
 export MINIKUBE_ROOTLESS=true   # CAP-010: required so minikube uses rootless podman
                                 # for host ops (status/registry), not sudo podman
 
-PROFILE_NAME="capstone"
+PROFILE_NAME="${MINIKUBE_PROFILE:-capstone}"   # same default as EP_PROFILE in endpoints.sh
 MEMORY="24g"
 CPUS="16"
 DISK="80g"
@@ -31,6 +33,7 @@ DRIVER="podman"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../demos/lib/endpoints.sh
 source "${SCRIPT_DIR}/../demos/lib/endpoints.sh"
+EP_PROFILE="$PROFILE_NAME"   # endpoints.sh helpers inspect the same container
 
 REPLACE=0
 if [[ "${1:-}" == "--replace" ]]; then
@@ -183,13 +186,17 @@ if podman container exists "$PROFILE_NAME" 2>/dev/null && (( ! REPLACE )); then
 fi
 
 # Create path (fresh or --replace). Pre-flight BEFORE any delete: every host
-# port must be free, except ports this same profile currently publishes
-# (a --replace frees those itself).
+# port must be free, except ports this same profile currently publishes while
+# it is RUNNING (a --replace frees those itself). A stopped profile holds no
+# listeners, so every port must be free.
 if ! command -v ss >/dev/null 2>&1; then
     printf 'ERROR: ss not in PATH (iproute2); needed to check host ports are free.\n' >&2
     exit 1
 fi
-own_ports=" $(published_ports | awk '{print $2}' | tr '\n' ' ') "
+own_ports=" "
+if [[ "$(podman container inspect -f '{{.State.Running}}' "$PROFILE_NAME" 2>/dev/null || true)" == "true" ]]; then
+    own_ports=" $(published_ports | awk '{print $2}' | tr '\n' ' ') "
+fi
 busy=0
 IFS=',' read -ra port_specs <<<"$(node_ports_arg)"
 for spec in "${port_specs[@]}"; do
@@ -202,8 +209,9 @@ for spec in "${port_specs[@]}"; do
 done
 if (( busy )); then exit 1; fi
 
-if (( REPLACE )) && podman container exists "$PROFILE_NAME" 2>/dev/null; then
-    printf '==> Deleting existing %s profile (--replace specified)\n' "$PROFILE_NAME"
+if (( REPLACE )); then
+    # Idempotent: also clears minikube's own record when the container is gone.
+    printf '==> Deleting existing %s profile (--replace specified; run ./scripts/bootstrap-capstone.sh afterwards)\n' "$PROFILE_NAME"
     minikube delete -p "$PROFILE_NAME"
 fi
 

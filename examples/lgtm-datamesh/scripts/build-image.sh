@@ -30,7 +30,7 @@
 set -euo pipefail
 export MINIKUBE_ROOTLESS=true
 
-PROFILE="capstone"
+PROFILE="${MINIKUBE_PROFILE:-capstone}"
 CONTEXT="${1:?usage: build-image.sh <context-dir> <image-name> [tag]}"
 NAME="${2:?usage: build-image.sh <context-dir> <image-name> [tag]}"
 TAG="${3:-v1}"

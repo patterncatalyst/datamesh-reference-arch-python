@@ -208,7 +208,7 @@ minikube profile is created (`--ports=127.0.0.1:<hostPort>:<nodePort>`,
 built from `demos/lib/endpoints.sh`). Nothing runs in the background and
 nothing needs to be started per demo. Ports are fixed at creation, so an
 older profile without them is refused by `scripts/setup-capstone-profile.sh`;
-recreate it with `./scripts/setup-capstone-profile.sh --replace`. Run the
+recreate it with `./scripts/setup-capstone-profile.sh --replace`. `--replace` deletes and recreates the cluster, so run `./scripts/bootstrap-capstone.sh` again afterwards. Run the
 workshop in isolation: shut down CRC, other minikube profiles, and other
 workloads first so the host ports are free.
 

@@ -26,7 +26,7 @@ set -uo pipefail
 export MINIKUBE_ROOTLESS=true
 
 NS="capstone"
-PROFILE="capstone"
+PROFILE="${MINIKUBE_PROFILE:-capstone}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
 
 PG_RELEASE="capstone-postgres";  PG_CHART="charts/capstone/charts/postgres"

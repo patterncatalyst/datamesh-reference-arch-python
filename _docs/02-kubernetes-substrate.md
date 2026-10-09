@@ -106,7 +106,7 @@ Host access follows the same single-node logic. The capstone's UIs and service
 endpoints are NodePorts published on `127.0.0.1` when the minikube profile is created
 (`--ports=127.0.0.1:<hostPort>:<nodePort>`), never SSH tunnels or port-forwarding. <!-- forbidden-ok -->
 The ports are fixed at creation, so changing the set means recreating the profile with
-`./scripts/setup-capstone-profile.sh --replace`. Run the workshop in isolation: shut down
+`./scripts/setup-capstone-profile.sh --replace`. `--replace` deletes and recreates the cluster, so run `./scripts/bootstrap-capstone.sh` again afterwards. Run the workshop in isolation: shut down
 CRC, other minikube profiles, and other workloads first, so the host ports are free.
 `./scripts/show-endpoints.sh` prints what is published and reachable.
 

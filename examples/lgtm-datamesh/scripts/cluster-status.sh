@@ -19,7 +19,7 @@
 set -uo pipefail
 export MINIKUBE_ROOTLESS=true   # CAP-010
 
-PROFILE="capstone"
+PROFILE="${MINIKUBE_PROFILE:-capstone}"
 TAG="v1"
 # Services whose images live in the in-cluster registry (one per services/ dir).
 SERVICES=(graphql-gateway inventory-service notification-service order-service payment-service shipping-service)

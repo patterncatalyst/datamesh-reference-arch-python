@@ -80,7 +80,10 @@ if (( ${#targets[@]} )); then
         IFS=',' read -ra items <<<"$val"
         for it in "${items[@]}"; do
             [[ "$it" == *'$('* || "$it" == *'${'* || "$it" == '$'* ]] && continue
-            [[ "$it" == *:* && "$it" != 127.0.0.1:* ]] && bad=1
+            [[ "$it" == '"$'* ]] && continue
+            # only port-looking items: digits, or anything with a colon (prose ignored)
+            [[ "$it" =~ ^[0-9]+$ || "$it" == *:* ]] || continue
+            [[ "$it" != 127.0.0.1:* ]] && bad=1
         done
         (( bad )) && hits+="$line"$'\n'
     done <<<"$raw"
@@ -92,7 +95,9 @@ fi
 if [[ -d presentation ]]; then
     if command -v unzip >/dev/null 2>&1; then
         while IFS= read -r -d '' f; do
+            # Strip XML tags per paragraph so text split across <a:t> runs is rejoined.
             m="$(unzip -p "$f" 'ppt/slides/*.xml' 'ppt/notesSlides/*.xml' 2>/dev/null \
+                | sed -e 's#</a:p>#\n#g' -e 's/<[^>]*>//g' \
                 | grep -ioE ".{0,30}($re1).{0,30}" | sort | uniq -c | sed -E 's/^ +//' || true)"
             [[ -n "$m" ]] && report "pptx contains forbidden syntax: $f" "$m"
         done < <(find presentation -type f -name '*.pptx' -print0 | sort -z)
