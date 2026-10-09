@@ -26,7 +26,7 @@ set -uo pipefail   # NOT -e: failures are handled explicitly so we can diagnose
 export MINIKUBE_ROOTLESS=true   # CAP-010
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/lib/tunnels.sh"
+source "${SCRIPT_DIR}/lib/endpoints.sh"
 
 NS="capstone"
 PROFILE="capstone"
@@ -83,7 +83,7 @@ printf '    ✓ deployment available\n'
 # ─── Version API (proves booted + DB-backed) ─────────────────────────────────
 
 step "Querying the server version API (proves it booted and reached Postgres)"
-ensure_tunnel openmetadata
+ensure_endpoint openmetadata
 wait_http "http://127.0.0.1:${LOCAL_PORT}/" 20 || true
 
 VERSION_JSON="$(curl -fsS "http://127.0.0.1:${LOCAL_PORT}/api/v1/system/version" 2>/dev/null || echo '')"
@@ -120,6 +120,6 @@ SUCCESS=1
 step "SUCCESS"
 printf 'OpenMetadata %s is deployed, Postgres-backed, and serving its API.\n' "$EXPECTED_VERSION"
 printf 'Open the UI with:\n'
-printf '  ./scripts/tunnel-services.sh   # then open http://localhost:8585\n'
+printf '  ./scripts/show-endpoints.sh   # then open http://127.0.0.1:8585\n'
 printf '  http://127.0.0.1:8585  (admin@open-metadata.org / admin)\n'
 printf '\nNext (r27b): register Postgres + Kafka, ingest, and declare lineage.\n'

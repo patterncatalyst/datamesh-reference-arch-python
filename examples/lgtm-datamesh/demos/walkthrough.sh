@@ -23,7 +23,7 @@
 # v0.14.0 was fixed upstream; the KEDA HTTP add-on is now at v0.15.0
 # (setup-keda.sh). The trace act therefore wakes the gateway the real way — a
 # request through the interceptor (Host: graphql-gateway.capstone) over the
-# stable SSH tunnel, with no kubectl port-forward. It runs demo-trace-flow.sh.
+# published NodePort. It runs demo-trace-flow.sh.
 #
 # Usage:
 #   ./demos/walkthrough.sh                     # run all five acts
@@ -141,8 +141,8 @@ run_act() {
 }
 
 # ─── Cleanup ─────────────────────────────────────────────────────────────────
-# All host access is via the persistent SSH tunnels (scripts/tunnel-services.sh),
-# which survive this script — there is nothing act-local to tear down.
+# All host access is via NodePorts published on 127.0.0.1 at profile creation,
+# so there is nothing act-local to tear down.
 trap 'printf "\n%sinterrupted%s\n" "$RED" "$RST"; exit 130' INT
 
 # ─── Preflight ───────────────────────────────────────────────────────────────
@@ -190,12 +190,12 @@ preflight() {
               "./scripts/setup-observability.sh   (or: kubectl get pods -n $OBS_NS -l app.kubernetes.io/name=tempo)"
     fi
     if want_act trace; then
-        # trace bypasses the interceptor and port-forwards directly to the
-        # graphql-gateway Service — see CAP-046. Confirm the Deployment + Service
-        # are both there so the port-forward has something to attach to. Zero
-        # available replicas is fine here: bootstrap applies the KEDA
-        # HTTPScaledObject, which scales the gateway to zero when idle, and the
-        # trace act wakes it before port-forwarding.
+        # trace goes through the KEDA HTTP interceptor (published NodePort,
+        # host :8081) and wakes the gateway from zero — see CAP-046. Confirm the
+        # Deployment + Service are both there so the interceptor has a target to
+        # route to. Zero available replicas is fine here: bootstrap applies the
+        # KEDA HTTPScaledObject, which scales the gateway to zero when idle, and
+        # the request through the interceptor wakes it.
         check "graphql-gateway Deployment exists" \
               "kubectl -n $NS get deploy graphql-gateway >/dev/null 2>&1" \
               "helm upgrade --install graphql-gateway charts/capstone/charts/graphql-gateway -n $NS   (or re-run bootstrap-capstone.sh)"
@@ -261,9 +261,9 @@ INTRO
 
 (( PREFLIGHT == 1 )) && preflight
 
-# Start persistent SSH tunnels to NodePort services (Grafana, Prometheus, Kiali,
+# Show the published NodePort endpoints (Grafana, Prometheus, Kiali,
 # OpenMetadata) so the dashboards are available throughout the walkthrough.
-./scripts/tunnel-services.sh
+./scripts/show-endpoints.sh
 
 prompt_enter "press Enter to start"
 
@@ -272,7 +272,7 @@ prompt_enter "press Enter to start"
 # (graphql-gateway → order-service REST → inventory gRPC) lands in Tempo. The
 # gateway is KEDA-scaled-to-zero and woken the REAL way — a request routed
 # through the KEDA HTTP interceptor (Host: graphql-gateway.capstone) over the
-# stable SSH tunnel, no kubectl port-forward. This act IS demos/demo-trace-flow.sh.
+# published NodePort. This act IS demos/demo-trace-flow.sh.
 
 if want_act trace; then
     act_header "trace" "Trace across products" \
@@ -362,8 +362,8 @@ if want_act topology; then
     prompt_enter "press Enter to verify Kiali"
     run_act "topology (smoke)" ./demos/demo-kiali.sh || exit 1
 
-    narrate "Kiali is already tunneled (tunnel-services.sh)"
-    info "  http://localhost:20001/kiali   (Graph → namespace: capstone)"
+    narrate "Kiali is already published on 127.0.0.1 (./scripts/show-endpoints.sh)"
+    info "  http://127.0.0.1:20001/kiali   (Graph → namespace: capstone)"
 
     narrate "to make EDGES appear in the graph, generate some traffic:"
     info "  in another shell:  for i in {1..40}; do ./demos/demo-trace-flow.sh >/dev/null; done"
@@ -377,5 +377,4 @@ printf '\n%s%s══════════════════════
 printf '%s%s  walkthrough complete  ·  %d / %d acts run%s\n' "$BOLD" "$GRN" "$ACT_NUM" "$ACT_TOTAL" "$RST"
 printf '%s%s═══════════════════════════════════════════════════════════════════════%s\n\n' "$BOLD" "$GRN" "$RST"
 
-printf '%s  SSH tunnels remain active (Grafana :3000, Prometheus :9091, Tempo :3200, Kiali :20001, OpenMetadata :8585, Apicurio :8084, Kafka UI :8089)%s\n' "$DIM" "$RST"
-printf '%s  stop them with: ./scripts/tunnel-services.sh --stop%s\n' "$DIM" "$RST"
+printf '%s  Published endpoints on 127.0.0.1 (Grafana :3000, Prometheus :9091, Tempo :3200, Kiali :20001, OpenMetadata :8585, Apicurio :8084, Kafka UI :8089)%s\n' "$DIM" "$RST"

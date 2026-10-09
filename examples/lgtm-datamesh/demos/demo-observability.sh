@@ -15,12 +15,12 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/lib/tunnels.sh"
+source "${SCRIPT_DIR}/lib/endpoints.sh"
 
 NS="observability"
-# Canonical local tunnel ports (see demos/lib/tunnels.sh). NOT 9090/3000 for the
-# node-side collision reasons documented there: Prometheus is served locally on
-# 9091, Grafana on 3000, via the stable SSH tunnels.
+# Canonical host ports (see demos/lib/endpoints.sh). NOT 9090/3000 for the
+# node-side collision reasons documented there: Prometheus is published on
+# 9091, Grafana on 3000, as NodePorts bound to 127.0.0.1.
 PROM_PORT="$TP_PROM"
 GRAF_PORT="$TP_GRAFANA"
 
@@ -57,8 +57,8 @@ wait_ready grafana 180          || fail "grafana did not become Ready"
 printf '    ✓ prometheus-server and grafana are Ready\n'
 
 # ─── Prometheus is scraping ──────────────────────────────────────────────────
-step "Opening a tunnel to Prometheus ($PROM_PORT → prometheus-server)"
-ensure_tunnel prometheus
+step "Checking the Prometheus endpoint ($PROM_PORT → prometheus-server)"
+ensure_endpoint prometheus
 wait_http "http://127.0.0.1:${PROM_PORT}/-/ready" 15 || true
 
 step "Confirming kube-state-metrics gives us capstone workload replicas"
@@ -84,8 +84,8 @@ else
 fi
 
 # ─── Grafana is up with the dashboard provisioned ────────────────────────────
-step "Opening a tunnel to Grafana ($GRAF_PORT → grafana)"
-ensure_tunnel grafana
+step "Checking the Grafana endpoint ($GRAF_PORT → grafana)"
+ensure_endpoint grafana
 wait_http "http://127.0.0.1:${GRAF_PORT}/api/health" 15 || true
 
 step "Checking Grafana health and the provisioned dashboard"
@@ -104,5 +104,5 @@ printf '    ✓ Grafana healthy and the "Capstone — Scaling & Traffic" dashboa
 
 step "SUCCESS"
 printf 'Metrics stack verified. Open the dashboard and drive a demo to watch it move:\n'
-printf '  ./scripts/tunnel-services.sh   # then open http://localhost:3000\n'
+printf '  ./scripts/show-endpoints.sh   # then open http://127.0.0.1:3000\n'
 printf '  ./demos/demo-keda-http.sh   # graphql-gateway replicas 0→1→0\n'

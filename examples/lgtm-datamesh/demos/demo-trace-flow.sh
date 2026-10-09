@@ -17,7 +17,7 @@
 # Run from examples/lgtm-datamesh/:  ./demos/demo-trace-flow.sh
 
 set -uo pipefail
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/tunnels.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/endpoints.sh"
 
 NS="capstone"
 OBS_NS="observability"
@@ -48,8 +48,8 @@ kubectl get deploy graphql-gateway -n "$NS" \
 printf '    ✓ interceptor, Tempo, and OTEL-enabled gateway present\n'
 
 # ─── Drive a GraphQL query through the interceptor ───────────────────────────
-step "Opening the tunnel to the KEDA interceptor (local ${GQL_PORT} → ${PROXY_SVC}:8080)"
-ensure_tunnel gateway
+step "Checking the published KEDA interceptor endpoint (host ${GQL_PORT} → ${PROXY_SVC}:8080)"
+ensure_endpoint gateway
 wait_http "http://127.0.0.1:${GQL_PORT}/" 15 || true
 
 step "Sending a GraphQL query (wakes the gateway from zero, fans out to backends)"
@@ -94,8 +94,8 @@ printf '    ✓ gateway processed the query (HTTP 200) — a trace should now be
 GW_LOG="$(kubectl logs -n "$NS" -l app.kubernetes.io/name=graphql-gateway --tail=120 2>/dev/null)"
 
 # ─── Confirm the trace landed in Tempo ───────────────────────────────────────
-step "Opening the tunnel to Tempo (local ${TEMPO_PORT}) and searching for the trace"
-ensure_tunnel tempo
+step "Checking the Tempo endpoint (host ${TEMPO_PORT}) and searching for the trace"
+ensure_endpoint tempo
 wait_http "http://127.0.0.1:${TEMPO_PORT}/ready" 15 || true
 
 # BatchSpanProcessor flushes on a ~5s schedule, then Tempo indexes — retry.

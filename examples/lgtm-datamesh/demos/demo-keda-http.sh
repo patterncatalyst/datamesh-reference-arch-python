@@ -23,7 +23,7 @@ export MINIKUBE_ROOTLESS=true
 NS="capstone"
 PROFILE="capstone"
 KEDA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../keda" && pwd)"
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/tunnels.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/endpoints.sh"
 SEL="app.kubernetes.io/name=graphql-gateway"
 HOST="graphql-gateway.capstone"
 LOCAL_PORT="$TP_GATEWAY"
@@ -84,12 +84,12 @@ wait_until "0 replicas" 600 is_zero \
 printf '    ✓ scaled to ZERO (no traffic, costing nothing)\n'
 
 # ─── 2. Wake from zero through the interceptor ───────────────────────────────
-step "Opening the tunnel to the KEDA HTTP interceptor (local ${LOCAL_PORT} → proxy :8080)"
-# The interceptor proxy is pinned to nodePort 30081 (setup-keda.sh); the tunnel
-# forwards local ${LOCAL_PORT} to it. Traffic enters here with a Host header
+step "Checking the published KEDA HTTP interceptor endpoint (host ${LOCAL_PORT} → proxy :8080)"
+# The interceptor proxy is pinned to nodePort 30081 (setup-keda.sh); the host
+# port ${LOCAL_PORT} is published to it at profile creation. Traffic enters here with a Host header
 # matching the HTTPScaledObject.
-ensure_tunnel gateway
-# Wait for the tunnel socket to accept connections (not a routing check).
+ensure_endpoint gateway
+# Wait for the published port to accept connections (not a routing check).
 wait_http "http://127.0.0.1:${LOCAL_PORT}/" 15 || true
 
 step "Firing a cold-start request through the interceptor (Host: $HOST)"
@@ -126,9 +126,9 @@ LOAD_PIDS=()
 printf '    ✓ stayed up under load (peak %s replica(s))\n' "$MAXSEEN"
 
 # ─── 3. Traffic stops → scale back to zero ───────────────────────────────────
-# The HTTP add-on scales on in-flight `concurrency`. Unlike a held kubectl
-# port-forward (whose keep-alive connection reads as >=1 and stalls scale-down),
-# an idle SSH tunnel holds NO connection to the interceptor — so once the load
+# The HTTP add-on scales on in-flight `concurrency`. Unlike a client holding a
+# keep-alive connection open (which reads as >=1 and stalls scale-down),
+# an idle published NodePort holds NO connection to the interceptor — so once the load
 # loop's requests drain, concurrency reaches 0 and the gateway stands down in
 # ~30s (the HTTPScaledObject's scaledownPeriod), same ballpark as the Kafka
 # ScaledObject's cooldownPeriod: 30.
@@ -150,7 +150,7 @@ if [[ -n "$SAW_ZERO" ]]; then
 else
     printf '    ⚠ still >0 after %ss (desired=%s now) — NOT a failure.\n' "$ELAPSED" "$(desired)"
     printf '      Usually means something still holds a connection to the interceptor\n'
-    printf '      (a browser tab, another port-forward) keeping concurrency >0. Watch it:\n'
+    printf '      (a browser tab, another client) keeping concurrency >0. Watch it:\n'
     printf '        kubectl get deploy graphql-gateway -n %s -w\n' "$NS"
 fi
 

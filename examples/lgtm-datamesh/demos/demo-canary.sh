@@ -60,8 +60,7 @@ case "$cmd" in
 
     step "Canary is live. Observe the split:"
     cat <<EOF
-    ./scripts/tunnel-services.sh     # ensure the istio-ingress tunnel (local 8088) is up
-    for i in \$(seq 20); do curl -s localhost:8088/version; echo; done
+    for i in \$(seq 20); do curl -s http://127.0.0.1:8088/version; echo; done
     # ~${w2}% of responses report api_version=v2 and include "currency":"USD"
 
     Shift the canary forward:   ./demos/demo-canary.sh shift 50 50

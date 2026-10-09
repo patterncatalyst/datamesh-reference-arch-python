@@ -3,12 +3,13 @@
 # verify-grafana.sh — automated test that all Grafana dashboards, datasources,
 # and panels are provisioned correctly.
 #
-# Run from examples/lgtm-datamesh/ with SSH tunnels active:
+# Run from examples/lgtm-datamesh/ with the capstone profile's published
+# NodePorts available (Grafana on http://127.0.0.1:3000):
 #   ./demos/verify-grafana.sh
 
 set -uo pipefail
 
-GRAFANA="http://localhost:3000"
+GRAFANA="http://127.0.0.1:3000"
 PASS="capstone"
 AUTH="admin:${PASS}"
 

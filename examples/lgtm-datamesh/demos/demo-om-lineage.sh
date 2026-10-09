@@ -4,7 +4,7 @@
 # cross-product lineage declared (r27b).
 #
 # Does NOT run ingestion — that's scripts/ingest-openmetadata.sh. This proves
-# the result, over the server API (via a port-forward, the demo-openmetadata.sh
+# the result, over the server API (via the published NodePort, the demo-openmetadata.sh
 # pattern):
 #   * the Database Service  capstone-postgres  exists
 #   * the Messaging Service capstone-kafka      exists
@@ -32,7 +32,7 @@ set -uo pipefail   # NOT -e: failures are handled so we can diagnose
 export MINIKUBE_ROOTLESS=true   # CAP-010
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/lib/tunnels.sh"
+source "${SCRIPT_DIR}/lib/endpoints.sh"
 
 NS="capstone"
 PROFILE="capstone"
@@ -83,10 +83,10 @@ command -v python3 >/dev/null || fail "python3 not in PATH"
 kubectl get deployment openmetadata -n "$NS" >/dev/null 2>&1 \
     || fail "openmetadata not deployed — run scripts/setup-openmetadata.sh first"
 
-# ─── Port-forward + admin token ──────────────────────────────────────────────
+# ─── Endpoint + admin token ──────────────────────────────────────────────────
 
-step "Opening a tunnel to the server and obtaining an admin token"
-ensure_tunnel openmetadata
+step "Checking the OpenMetadata endpoint and obtaining an admin token"
+ensure_endpoint openmetadata
 wait_http "http://127.0.0.1:${LOCAL_PORT}/" 20 || true
 
 PW_B64="$(printf '%s' "$ADMIN_PASSWORD" | base64)"
@@ -146,5 +146,5 @@ step "SUCCESS"
 printf 'The catalog is populated and the lineage is declared:\n'
 printf '  orders (Postgres) -> order-placed (Kafka) -> notifications (Postgres)\n\n'
 printf 'Browse it:\n'
-printf '  ./scripts/tunnel-services.sh   # then open http://localhost:8585\n'
+printf '  ./scripts/show-endpoints.sh   # then open http://127.0.0.1:8585\n'
 printf '  http://127.0.0.1:8585  (admin@open-metadata.org / admin)\n'

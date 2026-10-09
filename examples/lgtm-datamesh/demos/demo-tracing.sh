@@ -18,7 +18,7 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/lib/tunnels.sh"
+source "${SCRIPT_DIR}/lib/endpoints.sh"
 
 NS="observability"
 TEMPO_PORT="$TP_TEMPO"
@@ -48,8 +48,8 @@ kubectl wait -n "$NS" --for=condition=Ready pod \
 printf '    ✓ tempo pod is Ready\n'
 
 # ─── Tempo answers its readiness probe ───────────────────────────────────────
-step "Opening a tunnel to Tempo ($TEMPO_PORT → tempo) and checking /ready"
-ensure_tunnel tempo
+step "Checking the Tempo endpoint ($TEMPO_PORT → tempo) and checking /ready"
+ensure_endpoint tempo
 wait_http "http://127.0.0.1:${TEMPO_PORT}/ready" 20 || true
 ok=""
 for _ in $(seq 1 20); do
@@ -61,8 +61,8 @@ done
 printf '    ✓ Tempo is ready to receive (OTLP :4317/:4318) and serve queries (:3200)\n'
 
 # ─── Grafana has the Tempo datasource and can reach it ───────────────────────
-step "Opening a tunnel to Grafana ($GRAF_PORT → grafana)"
-ensure_tunnel grafana
+step "Checking the Grafana endpoint ($GRAF_PORT → grafana)"
+ensure_endpoint grafana
 wait_http "http://127.0.0.1:${GRAF_PORT}/api/health" 15 || true
 
 step "Confirming the Tempo datasource is provisioned and healthy"
@@ -91,7 +91,7 @@ fi
 # if this roundtrip works, a "no traces" result later is the emitter's fault,
 # not the pipeline's.
 step "End-to-end: POST a synthetic span to OTLP :$OTLP_PORT and read it back"
-ensure_tunnel tempo-otlp
+ensure_endpoint tempo-otlp
 wait_http "http://127.0.0.1:${OTLP_PORT}/" 10 || true
 
 # OTLP/HTTP accepts JSON when Content-Type is application/json. Build a minimal
@@ -116,7 +116,7 @@ code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 6 \
     || fail "Tempo rejected the synthetic OTLP/HTTP span on :$OTLP_PORT (HTTP $code) — the OTLP receiver isn't ingesting; check tempo-values.yaml receivers.otlp.protocols.http"
 printf '    \xe2\x9c\x93 Tempo accepted the span (HTTP 200) on :%s/v1/traces\n' "$OTLP_PORT"
 
-# Read it back via TraceQL on :3200 (the tempo tunnel from the /ready check is still up).
+# Read it back via TraceQL on :3200 (same published endpoint as the /ready check).
 # Ingestion → searchable has a short lag; retry.
 found=""
 for _ in $(seq 1 12); do
