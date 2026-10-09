@@ -132,7 +132,7 @@ ingestion Job also assumes it, via `OM_ADMIN_PASSWORD`).
    ```
 
 3. **Postgres TLS mismatch.** `om-app-values.yaml` sets `sslmode=disable`
-   because this chart's plain `postgres:16-alpine` StatefulSet has no TLS
+   because this chart's plain `postgres:18.6-alpine` StatefulSet has no TLS
    listener (unlike the minikube source's CNPG cluster, which always presents
    a cert and needs `sslmode=require`). If the install uses a different
    Postgres than this chart's, re-check which is correct.

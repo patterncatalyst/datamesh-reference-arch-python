@@ -151,7 +151,7 @@ else
     echo "          bootstrap tier 9 (Kiali) will fail. Fix:"
     echo ""
     echo "          curl -fsSL https://github.com/istio/istio/releases/download/1.29.2/istio-1.29.2-linux-amd64.tar.gz | tar xz -C ~/.local/share"
-    echo "          ln -sfn ~/.local/share/istio-1.29.2 ~/.local/share/istio-current"
+    echo "          ln -sfn ~/.local/share/istio-1.31.1 ~/.local/share/istio-current"
 fi
 
 section "minikube minimum version (verified on 1.38.1; older releases are untested)"

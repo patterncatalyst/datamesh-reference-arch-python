@@ -857,3 +857,99 @@ status table of what is published and reachable.
 - Membership in the `docker` group is root-equivalent on the host.
 - CI gate scan 5 in `scripts/forbidden-syntax.sh` enforces the podman scope.
 - Live verification (2026-10-08/09): passed on Docker Engine 29.8.0 provided by Docker Desktop with the docker driver and containerd 2.2.1; see `_plans/reconciliation.md`. `ensure_node_forwarding` did not fire (the node's `FORWARD` policy was already `ACCEPT`). The live run also surfaced three fixes now in the scripts: bootstrap's service list ordering, endpoint checks accepting `LoadBalancer` Services, and `build-image.sh` waiting for its rollouts and for replaced pods to terminate. gRPC clients set `GRPC_DNS_RESOLVER=native`. A native (non-VM) Docker Engine run is still to do.
+
+---
+
+## DRA-020 — Newest stable platform on Kubernetes v1.36.5; UBI 10 + Python 3.14
+
+**Status:** decided 2026-10-09; offline-grounded (charts rendered, CRs validated
+against the operators' CRDs, all service images built). Live run pending.
+
+**Context.** User decision on 2026-10-09: every component on its newest stable
+release, checked upstream (GitHub releases excluding pre-releases, the Helm
+repo indexes, `skopeo` for image tags), with exact pins and no floating tags.
+Kubernetes is the newest minor every component supports. Istio 1.29 reaches
+end of life on 2026-10-12. The parent repo `minikube-on-fedora` made the same
+move and verified it live on 2026-10-09 (its CAP-048 to CAP-051); this entry
+ports what applies here.
+
+**Decision.**
+
+| Component | From | To |
+|---|---|---|
+| Kubernetes (`--kubernetes-version`, new pin) | minikube default | v1.36.5 |
+| minikube floor | 1.36 | 1.39.0 |
+| Istio (istioctl + addon) | 1.29.2 | 1.31.1 |
+| Kiali (Istio addon image, now pinned) | addon tag | v2.31.0 |
+| KEDA core chart | 2.19.0 | 2.21.0 |
+| KEDA HTTP add-on | 0.15.0 | 0.16.0 |
+| Strimzi operator | 0.51.0 | 1.2.0 (Kafka 4.3.1 set explicitly) |
+| CloudNativePG chart / operator | 0.23.0 | 0.29.1 / 1.30.1 |
+| PostgreSQL image (CNPG) | operator default | `ghcr.io/cloudnative-pg/postgresql:18.6-standard-trixie` |
+| Apicurio Registry | 3.2.4 | 3.3.3 |
+| Kafka UI (kafbat) | `latest` | v1.5.0 |
+| OpenMetadata chart, server, ingestion | 1.12.8 | 2.0.5 |
+| OpenSearch (OpenMetadata dependency) | chart default | 3.4.0 (held back, see below) |
+| prometheus / grafana / tempo charts | unpinned | 29.36.1 / 13.4.0 / 3.1.0 |
+| Service base image | `ubi9/python-312:latest` | `ubi10/python-314-minimal:10.2-1791464217` |
+| asyncpg | ^0.30.0 | ^0.32.0 (cp314 wheels) |
+| OpenTelemetry distro / OTLP exporter | unpinned | 0.66b1 / 1.45.1 |
+| CRC appendix: postgres, kafka, otel-lgtm, Prefect | `postgres:16-alpine`, `kafka:3.8.0`, `otel-lgtm:0.8.1`, `prefect:3-latest` | `postgres:18.6-alpine`, `kafka:4.3.1`, `otel-lgtm:0.36.0`, `prefect:3.8.8-python3.14` |
+
+- **Kubernetes.** `setup-capstone-profile.sh` passes `--kubernetes-version`
+  (override with `KUBE_VERSION`) and refuses an existing profile whose driver,
+  runtime or Kubernetes version differs; `--replace` recreates it.
+- **Istio.** The capstone `setup-istio.sh` checks that `istioctl` on PATH
+  matches `ISTIO_VERSION` in the repo-root `scripts/setup-istio.sh`, because
+  the binary and `~/.local/share/istio-current` are shared with other repos.
+- **KEDA HTTP.** `interceptor.readinessTimeout=180s` replaces the deprecated
+  `interceptor.replicas.waitTimeout`; since 0.14 a timeout is a 504, not a
+  502. `HTTPScaledObject` stays `http.keda.sh/v1alpha1` (`InterceptorRoute` is
+  its successor and is not adopted); 0.16 reports a standard `Ready` condition.
+- **Strimzi.** 1.x serves only `kafka.strimzi.io/v1`. The kafka subchart moves
+  to v1, drops the `strimzi.io/kraft` and `strimzi.io/node-pools` annotations,
+  and sets `spec.kafka.version` from its own `version` value. The unread
+  umbrella `strimziCluster.version` is removed.
+- **CloudNativePG.** Primary-pod selectors use `cnpg.io/instanceRole=primary`.
+- **OpenMetadata.** The 2.0.5 dependencies chart ships OpenSearch 3.5.0, which
+  rejects the server's UUID-format `X-Request-Id`, so every search-index write
+  (lineage included) fails with HTTP 500. OpenSearch is pinned to 3.4.0, the
+  newest release that works (found live in the parent repo).
+- **Services.** UBI 10 minimal has no compiler, so dependencies need cp314
+  wheels. The OpenTelemetry install runs under a pip constraint of the venv it
+  extends; unconstrained it upgraded protobuf to 7.x, past the `<6` pin the
+  committed gRPC stubs were generated for.
+- **Host ports.** Unchanged. This repo already publishes Prometheus on 9091
+  (Cockpit owns 9090 on Fedora Server and RHEL), so the parent repo's
+  9090 → 19090 move does not apply. The profile name stays `capstone`.
+- **Demos** (live-run fixes from the parent repo): the Kafka demos hold
+  notification-service at one replica with `autoscaling.keda.sh/paused-replicas`
+  (`demos/lib/keda.sh`) and release it on exit; `demo-order.sh` deploys
+  inventory-service before ordering. Already present here: `GRPC_DNS_RESOLVER=native`,
+  the walkthrough's OpenMetadata check in the `capstone` namespace, and an
+  in-stock SKU. The walkthrough's trace act enters through the interceptor, so
+  it needs no gateway hold. There is no Jaeger in this stack.
+- **CRC appendix.** Image pins move to the newest stable tags. Operator
+  Subscriptions (CSVs) and the OSSM3 Istio version are unchanged: they can't be
+  resolved without a cluster and are re-checked at the next CRC run.
+
+**Rejected alternatives.**
+
+- Kiali v2.33.0 (newest upstream): the Istio 1.31.1 addon ships v2.31; the
+  parent repo verified that pairing live.
+- OpenSearch 3.5.0 (chart default): breaks OpenMetadata 2.0.5 writes.
+- Adopting `InterceptorRoute`: `HTTPScaledObject` is still supported, and the
+  simpler shape is enough here.
+- Regenerating the gRPC stubs for protobuf 7: out of scope; the lock pins
+  protobuf 5.x and the constraint keeps it there.
+
+**Consequences.**
+
+- An existing `capstone` profile on another Kubernetes version must be
+  recreated: `./scripts/setup-capstone-profile.sh --replace`, then
+  `./scripts/bootstrap-capstone.sh`.
+- A CRC install on postgres 16 needs a fresh PVC; Postgres 18 can't open a 16
+  data directory.
+- OpenSearch is held one minor back until OpenMetadata or its dependencies
+  chart moves; re-check then.
+- Live verification is pending; `_plans/reconciliation.md` tracks it.

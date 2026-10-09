@@ -79,16 +79,16 @@ end to end, verified order-independent (see
 
 | Layer | Technology | Role |
 |---|---|---|
-| Services | Python 3.12, FastAPI, SQLAlchemy + Alembic, Poetry | Five domain services + GraphQL gateway; migrations via init-containers |
+| Services | Python 3.14 on UBI 10 (`ubi10/python-314-minimal`), FastAPI, SQLAlchemy + Alembic, Poetry | Five domain services + GraphQL gateway; migrations via init-containers |
 | Protocols | REST (OpenAPI), gRPC (Protobuf/buf), GraphQL (SDL), Kafka (Avro) | The deliberate protocol mix: cross-product APIs, hot paths, read surface, async spine |
 | Packaging | Helm (umbrella chart + per-service subcharts), Docker Engine | One chart tree for the whole system; images built on the host and loaded into the minikube node |
-| Substrate | Kubernetes v1.32 on minikube (Docker driver, containerd + runc) | The whole system on one 24 GB profile |
-| Database | CloudNativePG operator, PostgreSQL | One shared cluster, schema-per-service ownership |
-| Events | Strimzi operator, Apache Kafka | The asynchronous spine (`order-placed` topic) |
-| Contracts | Apicurio Registry | OpenAPI + Protobuf + GraphQL SDL (discovery) and Avro (runtime, Confluent-compatible API) |
-| Catalog | OpenMetadata (+ OpenSearch) | Service inventory, ownership, cross-product lineage |
-| Mesh | Istio | mTLS, traffic splitting for the v1→v2 contract canary |
-| Autoscaling | KEDA (core + HTTP add-on) | Consumer-lag scaling for event consumers, request-based scale-to-zero for the gateway |
+| Substrate | Kubernetes v1.36.5 on minikube 1.39 (Docker driver, containerd + runc) | The whole system on one 24 GB profile |
+| Database | CloudNativePG 1.30 operator, PostgreSQL 18 | One shared cluster, schema-per-service ownership |
+| Events | Strimzi 1.2 operator, Apache Kafka 4.3 (KRaft) | The asynchronous spine (`order-placed` topic) |
+| Contracts | Apicurio Registry 3.3 | OpenAPI + Protobuf + GraphQL SDL (discovery) and Avro (runtime, Confluent-compatible API) |
+| Catalog | OpenMetadata 2.0 (+ OpenSearch 3.4) | Service inventory, ownership, cross-product lineage |
+| Mesh | Istio 1.31 | mTLS, traffic splitting for the v1→v2 contract canary |
+| Autoscaling | KEDA 2.21 (core + HTTP add-on 0.16) | Consumer-lag scaling for event consumers, request-based scale-to-zero for the gateway |
 | Observability | Prometheus, Tempo, Grafana, Kiali, OpenTelemetry | Metrics, cross-product traces, dashboards, live mesh topology |
 | Site | Jekyll / GitHub Pages | The ten-page reading set with paired SVG + Excalidraw diagrams |
 
@@ -131,7 +131,9 @@ cd examples/lgtm-datamesh
 ```
 
 The verified configuration is Fedora 44 with Docker Engine, 64 GB RAM
-(24 GB for the minikube profile), and minikube ≥ 1.36.
+(24 GB for the minikube profile), and minikube ≥ 1.39.0, which runs the pinned
+Kubernetes v1.36.5. Exact component versions are pinned in the setup scripts
+and charts (see DRA-020 in `_plans/decisions.md`).
 
 An optional OpenShift Local (CRC) appendix uses podman. <!-- forbidden-ok -->
 
