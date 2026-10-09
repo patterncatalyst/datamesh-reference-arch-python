@@ -26,9 +26,9 @@
 # Usage:
 #   ./setup-openmetadata.sh
 #
-# After it completes, reach the UI over the stable SSH tunnel:
-#   ./scripts/tunnel-services.sh
-#   # then open http://localhost:8585  (default login admin@open-metadata.org / admin)
+# After it completes, reach the UI on NodePort 30585, published on
+# 127.0.0.1:8585 at profile creation (map: demos/lib/endpoints.sh):
+#   open http://127.0.0.1:8585  (default login admin@open-metadata.org / admin)
 
 set -euo pipefail
 
@@ -167,9 +167,9 @@ kubectl rollout status deployment/openmetadata -n "$NS" --timeout=10m
 printf '\n'
 printf '==> OpenMetadata is up (NodePort 30585).\n'
 printf '\n'
-printf 'Reach the UI (SSH tunnels provide stable access):\n'
-printf '  ./scripts/tunnel-services.sh          # start tunnels if not already running\n'
-printf '  open http://localhost:8585             (login: admin@open-metadata.org / admin)\n'
+printf 'Reach the UI (NodePort published on 127.0.0.1):\n'
+printf '  ./scripts/show-endpoints.sh           # list all endpoints\n'
+printf '  open http://127.0.0.1:8585             (login: admin@open-metadata.org / admin)\n'
 printf '\n'
 printf 'Verify end-to-end:\n'
 printf '  ./demos/demo-openmetadata.sh\n'

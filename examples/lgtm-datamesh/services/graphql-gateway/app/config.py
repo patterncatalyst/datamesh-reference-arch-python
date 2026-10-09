@@ -3,7 +3,7 @@
 The gateway is stateless — it owns no data. It federates reads by calling
 the existing services: order-service over REST, inventory-service over gRPC.
 Endpoints come from env (the helm chart injects in-cluster Service names);
-defaults target port-forwards for local runs.
+defaults target local services for local runs.
 """
 
 from pydantic_settings import BaseSettings, SettingsConfigDict

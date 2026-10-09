@@ -13,9 +13,9 @@ image:
   # runs what was just pushed (CAP-015).
   pullPolicy: Always
 
-# NodePort so demos reach it over the stable SSH tunnel (local 8083) instead of
-# kubectl port-forward. Scaled-to-zero by KEDA (Kafka lag): the NodePort has no
-# endpoint until KEDA wakes it. See demos/lib/tunnels.sh for the allocation map.
+# NodePort 30083, published on 127.0.0.1:8083 at profile creation
+# (map: demos/lib/endpoints.sh). Scaled-to-zero by KEDA (Kafka lag): the
+# NodePort has no endpoint until KEDA wakes it.
 service:
   type: NodePort
   port: 80

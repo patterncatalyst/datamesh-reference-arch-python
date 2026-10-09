@@ -50,8 +50,8 @@ openshift/
    and let the platform assign one. Postgres and Kafka *do* need specific
    UIDs (70 / 1000) their upstream images hardcode, so they run under a
    dedicated ServiceAccount (`datamesh-infra`) bound to the `nonroot-v2` SCC.
-3. **Routes, not NodePort/SSH tunnels.** `charts/capstone/` exposes services
-   via NodePort reached over a stable SSH tunnel (minikube has no router).
+3. **Routes, not NodePorts.** On minikube, `charts/capstone/` exposes services
+   via NodePorts published to 127.0.0.1 (minikube has no router).
    OpenShift has one: external access here is two `Route` objects
    (graphql-gateway, apicurio) served by the cluster's router.
 4. **The integrated registry.** Images are pushed to OpenShift's internal

@@ -13,8 +13,8 @@ image:
   # runs what was just pushed (CAP-015).
   pullPolicy: Always
 
-# NodePort so demos reach it over the stable SSH tunnel (local 8086) instead of
-# kubectl port-forward. See demos/lib/tunnels.sh for the allocation map.
+# NodePort 30086, published on 127.0.0.1:8086 at profile creation
+# (map: demos/lib/endpoints.sh).
 service:
   type: NodePort
   port: 80

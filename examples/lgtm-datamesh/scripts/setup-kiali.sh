@@ -35,8 +35,7 @@
 #
 # Then verify + view:
 #   ./demos/demo-kiali.sh
-#   ./scripts/tunnel-services.sh   # Kiali on http://localhost:20001/kiali
-#   open http://localhost:20001/kiali   (Graph → namespace: capstone)
+#   open http://127.0.0.1:20001/kiali   (Graph → namespace: capstone)
 
 set -euo pipefail
 
@@ -47,7 +46,7 @@ ISTIO_DIR="${ISTIO_DIR:-${HOME}/.local/share/istio-current}"
 # capstone observability service endpoints (single-stack wiring targets)
 PROM_URL="http://prometheus-server.${OBS_NS}:80"
 GRAFANA_IN_URL="http://grafana.${OBS_NS}:80"
-GRAFANA_EXT_URL="http://localhost:3000"          # what a browser uses (port-forward)
+GRAFANA_EXT_URL="http://127.0.0.1:3000"          # what a browser uses (published NodePort 30300)
 TEMPO_URL="http://tempo.${OBS_NS}:3100"
 
 step() { printf '\n==> %s\n' "$1"; }
@@ -143,7 +142,7 @@ kubectl rollout restart deployment/kiali -n "$ISTIO_SYSTEM"
 
 # ─── 3. Wait for Kiali to be Ready ───────────────────────────────────────────
 
-step "Patching Kiali Service to NodePort (stable access via SSH tunnel)"
+step "Patching Kiali Service to NodePort (NodePort 30201, published on 127.0.0.1:20001)"
 kubectl patch svc kiali -n "$ISTIO_SYSTEM" \
     --type merge -p '{"spec":{"type":"NodePort","ports":[{"name":"http","port":20001,"targetPort":20001,"nodePort":30201,"protocol":"TCP"}]}}' \
     2>/dev/null || true
@@ -154,9 +153,8 @@ kubectl rollout status deployment/kiali -n "$ISTIO_SYSTEM" --timeout=5m
 # ─── Done ────────────────────────────────────────────────────────────────────
 
 step "Kiali is installed and wired to the capstone observability stack."
-printf '\nView the mesh topology (SSH tunnels provide stable access):\n'
-printf '  ./scripts/tunnel-services.sh          # start tunnels if not already running\n'
-printf '  open http://localhost:20001/kiali      (Graph → namespace: capstone)\n'
+printf '\nView the mesh topology (NodePort published on 127.0.0.1):\n'
+printf '  open http://127.0.0.1:20001/kiali      (Graph → namespace: capstone)\n'
 printf '\nVerify:\n'
 printf '  ./demos/demo-kiali.sh\n'
 printf '\nNote: the live traffic graph only shows edges while traffic is flowing —\n'

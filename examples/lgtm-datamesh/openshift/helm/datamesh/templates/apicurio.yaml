@@ -1,6 +1,6 @@
 {{- $root := . -}}
 # Apicurio Registry 3 — schema/contract registry (CAP-018). Port of
-# charts/capstone/charts/apicurio/, dropping the minikube NodePort/tunnel
+# charts/capstone/charts/apicurio/, dropping the minikube NodePort
 # scheme for a ClusterIP Service + Route. No storage env: the apicurio-registry
 # 3.x image defaults to the in-memory variant (order-service re-registers the
 # order.placed Avro schema on each restart, which is harmless for a demo).

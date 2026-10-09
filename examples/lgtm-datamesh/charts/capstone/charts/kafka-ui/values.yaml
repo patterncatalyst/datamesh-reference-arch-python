@@ -1,8 +1,7 @@
 # Kafka UI (kafbat) — a data-mesh infrastructure console for browsing Kafka
-# topics, messages, consumer groups, and schemas. Exposed as NodePort so it is
-# reached over the stable SSH tunnel (local 8089) instead of kubectl port-forward.
-# See demos/lib/tunnels.sh for the allocation map (nodePort 30084 apicurio,
-# 30089 kafka-ui, …).
+# topics, messages, consumer groups, and schemas. Exposed as NodePort 30089,
+# published on 127.0.0.1:8089 at profile creation (map: demos/lib/endpoints.sh;
+# nodePort 30084 apicurio, 30089 kafka-ui, …).
 replicas: 1
 
 image:

@@ -7,8 +7,8 @@ image:
   tag: v1
   pullPolicy: Always
 
-# NodePort so demos reach it over the stable SSH tunnel (local 8080) instead of
-# kubectl port-forward. See demos/lib/tunnels.sh for the allocation map.
+# NodePort 30080, published on 127.0.0.1:8080 at profile creation
+# (map: demos/lib/endpoints.sh).
 service:
   type: NodePort
   port: 80

@@ -9,9 +9,8 @@ image:
   tag: v1
   pullPolicy: Always
 
-# http exposed as NodePort so demos reach it over the stable SSH tunnel
-# (local 8087) instead of kubectl port-forward; gRPC stays in-cluster only.
-# See demos/lib/tunnels.sh for the allocation map.
+# http exposed as NodePort 30087, published on 127.0.0.1:8087 at profile
+# creation (map: demos/lib/endpoints.sh); gRPC stays in-cluster only.
 service:
   type: NodePort
   port: 80

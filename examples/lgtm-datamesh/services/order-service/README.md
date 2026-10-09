@@ -31,18 +31,18 @@ poetry install            # creates the venv, installs deps
 poetry run pytest         # runs the unit tests (SQLite-backed, no Postgres needed)
 ```
 
-To run the service locally against a port-forwarded Postgres:
+To run the service locally against a local Postgres container
+(the in-cluster Postgres has no NodePort):
 
 ```bash
-# In one terminal: forward the in-cluster Postgres
-kubectl port-forward -n capstone svc/capstone-postgres-rw 5432:5432
+# In one terminal: a throwaway Postgres on 127.0.0.1:5432
+podman run --rm -p 127.0.0.1:5432:5432 \
+  -e POSTGRES_USER=capstone_app -e POSTGRES_PASSWORD=changeme -e POSTGRES_DB=capstone \
+  postgres:16
 
-# In another: run with connection env pointing at the forward
-PG_HOST=127.0.0.1 PG_PASSWORD=<from-secret> poetry run uvicorn app.main:app --port 8080
+# In another: run with the default connection settings (127.0.0.1:5432)
+poetry run uvicorn app.main:app --port 8080
 ```
-
-(Get the password from the CNPG secret:
-`kubectl get secret capstone-postgres-app -n capstone -o jsonpath='{.data.password}' | base64 -d`)
 
 ## Build
 
