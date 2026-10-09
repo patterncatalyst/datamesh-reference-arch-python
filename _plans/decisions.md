@@ -782,7 +782,8 @@ status table of what is published and reachable.
 
 - Published ports are fixed at creation. Adding a port means recreating the
   profile; `setup-capstone-profile.sh` refuses an older profile without the
-  ports, and `./scripts/setup-capstone-profile.sh --replace` recreates it.
+  ports, and `./scripts/setup-capstone-profile.sh --replace` recreates it
+  (`--replace` deletes the cluster; re-run `./scripts/bootstrap-capstone.sh` afterwards).
 - `scripts/forbidden-syntax.sh` runs in CI and fails on tunnel and <!-- forbidden-ok -->
   port-forward wording, the retired helper names, and `--ports` values without <!-- forbidden-ok -->
   a `127.0.0.1:` prefix. A line that must mention them (stating the

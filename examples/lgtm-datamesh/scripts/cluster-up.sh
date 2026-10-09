@@ -61,7 +61,7 @@ fi
 
 # Host access is NodePorts published on 127.0.0.1 at profile creation; verify.
 check_published_ports \
-    || fail "profile does not publish the required NodePorts on 127.0.0.1 — recreate it: ./scripts/setup-capstone-profile.sh --replace"
+    || fail "profile does not publish the required NodePorts on 127.0.0.1 — recreate it with ./scripts/setup-capstone-profile.sh --replace (deletes the cluster; re-run ./scripts/bootstrap-capstone.sh afterwards)"
 ok "NodePorts published on 127.0.0.1"
 
 # ─── 2. Control-plane health, with auto-cycle on a wedge ─────────────────────

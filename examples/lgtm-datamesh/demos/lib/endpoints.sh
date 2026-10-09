@@ -84,32 +84,48 @@ endpoint_url() {
     echo "http://127.0.0.1:${p}"
 }
 
-# _extra_pairs → lines "<host> <node>" for EXTRA_NODE_PORTS. Items may be
-# "hp:np", "127.0.0.1:hp:np" (prefix stripped) or a bare "p" meaning p:p.
+# _extra_pairs → lines "<host> <node>" for EXTRA_NODE_PORTS. Items (comma
+# separated, whitespace around items ignored) may be "p" (meaning p:p),
+# "hp:np" or "127.0.0.1:hp:np". Each port must be numeric 1-65535. Anything
+# else, including a 0.0.0.0: or other IP prefix, is an error: message on
+# stderr, return 1, nothing printed.
 _extra_pairs() {
-    local item IFS=','
+    local item hp np out="" IFS=','
     local -a extra
     read -ra extra <<<"${EXTRA_NODE_PORTS:-}"
     for item in "${extra[@]}"; do
+        item="${item#"${item%%[![:space:]]*}"}"; item="${item%"${item##*[![:space:]]}"}"
         [[ -z "$item" ]] && continue
-        item="${item#127.0.0.1:}"
-        if [[ "$item" == *:* ]]; then echo "${item%%:*} ${item##*:}"; else echo "$item $item"; fi
+        if [[ "$item" =~ ^([0-9]+)$ ]]; then hp="${BASH_REMATCH[1]}"; np="$hp"
+        elif [[ "$item" =~ ^([0-9]+):([0-9]+)$ ]]; then hp="${BASH_REMATCH[1]}"; np="${BASH_REMATCH[2]}"
+        elif [[ "$item" =~ ^127\.0\.0\.1:([0-9]+):([0-9]+)$ ]]; then hp="${BASH_REMATCH[1]}"; np="${BASH_REMATCH[2]}"
+        else
+            printf 'endpoints: invalid EXTRA_NODE_PORTS item "%s": use p, hp:np or 127.0.0.1:hp:np (loopback only)\n' "$item" >&2
+            return 1
+        fi
+        if (( 10#$hp < 1 || 10#$hp > 65535 || 10#$np < 1 || 10#$np > 65535 )); then
+            printf 'endpoints: invalid EXTRA_NODE_PORTS item "%s": ports must be 1-65535\n' "$item" >&2
+            return 1
+        fi
+        out+="$((10#$hp)) $((10#$np))"$'\n'
     done
+    printf '%s' "$out"
 }
 
 # node_ports_arg → "127.0.0.1:<host>:<node>,..." for `minikube start --ports=`.
-# EXTRA_NODE_PORTS ("hp:np,hp:np", "127.0.0.1:hp:np" or bare "p" meaning p:p)
-# is appended.
+# EXTRA_NODE_PORTS ("p", "hp:np" or "127.0.0.1:hp:np") is appended. Returns 1
+# (nothing on stdout) if EXTRA_NODE_PORTS is invalid.
 node_ports_arg() {
-    local name row hp np out=() line
+    local name row hp np out=() line extra
     for name in "${ENDPOINT_NAMES[@]}"; do
         row="$(_endpoint_row "$name")"
         read -r hp np _ <<<"$row"
         out+=("127.0.0.1:${hp}:${np}")
     done
+    extra="$(_extra_pairs)" || return 1
     while IFS= read -r line; do
         [[ -n "$line" ]] && out+=("127.0.0.1:${line% *}:${line#* }")
-    done < <(_extra_pairs)
+    done <<<"$extra"
     local IFS=','
     echo "${out[*]}"
 }
@@ -172,7 +188,9 @@ check_published_ports() {
         row="$(_endpoint_row "$name")"; read -r hp np _ <<<"$row"
         pairs+=("$hp $np")
     done
-    while IFS= read -r line; do [[ -n "$line" ]] && pairs+=("$line"); done < <(_extra_pairs)
+    local extra
+    extra="$(_extra_pairs)" || return 1
+    while IFS= read -r line; do [[ -n "$line" ]] && pairs+=("$line"); done <<<"$extra"
     local p
     for p in "${pairs[@]}"; do
         hp="${p%% *}"; np="${p##* }"
@@ -196,13 +214,16 @@ check_published_ports() {
 # no earlier check failed otherwise). A published port whose Service matches but
 # does not answer yet is only a warning (stderr, rc 0): the pod may still be
 # rolling out and callers do their own wait_http.
-# Reach retries: EP_REACH_TRIES (default 5) attempts, EP_REACH_DELAY s apart.
+# Reach retries: EP_REACH_TRIES (default 3) attempts, EP_REACH_DELAY (default 2)
+# s apart; non-positive-integer values fall back to the defaults.
 ensure_endpoint() {
     local name row hp np ns svc label out rc stype nports try overall=0
-    local tries="${EP_REACH_TRIES:-5}" delay="${EP_REACH_DELAY:-2}"
+    local tries="${EP_REACH_TRIES:-3}" delay="${EP_REACH_DELAY:-2}"
+    [[ "$tries" =~ ^[0-9]+$ ]] && (( 10#$tries > 0 )) && tries=$((10#$tries)) || tries=3
+    [[ "$delay" =~ ^[0-9]+$ ]] && (( 10#$delay > 0 )) && delay=$((10#$delay)) || delay=2
     _require_python || return 1
     for name in "$@"; do
-        row="$(_endpoint_row "$name")" || { printf 'endpoints: unknown service "%s"\n' "$name" >&2; (( overall < 2 )) && overall=2; continue; }
+        row="$(_endpoint_row "$name")" || { printf 'endpoints: unknown service "%s"\n' "$name" >&2; (( overall == 0 )) && overall=2; continue; }
         read -r hp np ns svc label <<<"$row"
         if ! published_ports | grep -qx "${np} ${hp}"; then
             printf 'endpoints: %s: 127.0.0.1:%s -> nodePort %s is not published by profile "%s"\n' \

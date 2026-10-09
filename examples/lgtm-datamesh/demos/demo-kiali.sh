@@ -82,7 +82,7 @@ step "Checking the Kiali endpoint and probing its API"
 ensure_endpoint kiali
 wait_http "http://127.0.0.1:${KIALI_PORT}${KIALI_WEBROOT}/healthz" 20 || true
 curl -fsS "http://127.0.0.1:${KIALI_PORT}${KIALI_WEBROOT}/healthz" >/dev/null 2>&1 \
-    || fail "Kiali /healthz did not respond on the published NodePort (run ./scripts/show-endpoints.sh; if the port is missing, ./scripts/setup-capstone-profile.sh --replace)"
+    || fail "Kiali /healthz did not respond on the published NodePort (run ./scripts/show-endpoints.sh; if the port is missing, ./scripts/setup-capstone-profile.sh --replace, which deletes the cluster; re-run ./scripts/bootstrap-capstone.sh afterwards)"
 printf '    ✓ Kiali /healthz responds\n'
 
 # ─── 4. Kiali can see the capstone namespace ─────────────────────────────────

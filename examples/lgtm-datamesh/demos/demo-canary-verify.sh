@@ -143,7 +143,7 @@ apply_weights 90 10
 step "Checking the published istio-ingressgateway endpoint (host ${LOCAL_PORT})"
 ensure_endpoint ingress
 wait_http "${GW}/version" 30 \
-    || fail "ingress gateway not reachable on ${GW} (run ./scripts/show-endpoints.sh; if the port is missing, ./scripts/setup-capstone-profile.sh --replace)"
+    || fail "ingress gateway not reachable on ${GW} (run ./scripts/show-endpoints.sh; if the port is missing, ./scripts/setup-capstone-profile.sh --replace, which deletes the cluster; re-run ./scripts/bootstrap-capstone.sh afterwards)"
 
 step "Driving ${REQUESTS} requests at the 90/10 split"
 measure_split "90/10" 1 30      # ~10 expected; generous band for 100 samples

@@ -9,7 +9,7 @@
 #
 # Exit codes:
 #   0  ok (warnings allowed: unreachable endpoint, Service not deployed)
-#   1  a port is unpublished, a binding is not loopback-only, a Service has the
+#   1  a port is unpublished, a binding is not loopback-only, the API server cannot be queried, a Service has the
 #      wrong type/nodePort, or the cluster is not running
 #   2  bad flag
 #
@@ -38,15 +38,21 @@ if ! command -v python3 >/dev/null 2>&1; then
 fi
 
 if ! { podman container exists "$EP_PROFILE" 2>/dev/null && \
-       [[ "$(podman inspect --format '{{.State.Running}}' "$EP_PROFILE" 2>/dev/null)" == "true" ]]; }; then
+       [[ "$(podman container inspect --format '{{.State.Running}}' "$EP_PROFILE" 2>/dev/null)" == "true" ]]; }; then
     printf '%sERROR:%s cluster "%s" is not running.\n' "$RED" "$RST" "$EP_PROFILE"
     printf 'Start it with: minikube start -p %s   (or ./scripts/setup-capstone-profile.sh)\n' "$EP_PROFILE"
     exit 1
 fi
 
+if ! kubectl --context "$EP_PROFILE" get --raw /readyz >/dev/null 2>&1; then
+    printf '%sERROR:%s cannot query the API server for context "%s" (is the cluster up and the context set?).\n' "$RED" "$RST" "$EP_PROFILE"
+    exit 1
+fi
+
 pub="$(published_ports)"
 bad="$(nonloopback_ports)"
-fail=0; warn=0; missing_port=0; drift=0
+fail=0; warn=0; missing_port=0; drift=0; apierr=0
+errf="$(mktemp)"; trap 'rm -f "$errf"' EXIT
 
 printf '%s%-14s %-28s %-10s %-24s %s%s\n' "$BOLD" NAME URL PUBLISHED "SVC NODEPORT" REACHABLE "$RST"
 for name in "${ENDPOINT_NAMES[@]}"; do
@@ -54,12 +60,21 @@ for name in "${ENDPOINT_NAMES[@]}"; do
 
     if grep -qx "${np} ${hp}" <<<"$pub"; then p="${GRN}ok${RST}"; else p="${RED}MISSING${RST}"; fail=1; missing_port=1; fi
 
+    kerr=""; krc=0
     out="$(kubectl --context "$EP_PROFILE" get svc -n "$ns" "$svc" \
-            -o jsonpath='{.spec.type} {.spec.ports[*].nodePort}' 2>/dev/null)" || out=""
-    if [[ -z "$out" ]]; then
-        sraw="not deployed"; s="${YEL}${sraw}${RST}"; warn=1
-    elif [[ "${out%% *}" == "NodePort" ]] && grep -qw -- "$np" <<<"${out#* }"; then
+            -o jsonpath='{.spec.type} {.spec.ports[*].nodePort}' 2>"${errf}")" || krc=$?
+    kerr="$(cat "$errf" 2>/dev/null)"
+    stype="${out%% *}"
+    if (( krc != 0 )); then
+        if [[ "$kerr" == *"Error from server (NotFound)"* ]]; then
+            sraw="not deployed"; s="${YEL}${sraw}${RST}"; warn=1
+        else
+            sraw="cannot query the API server"; s="${RED}${sraw}${RST}"; fail=1; apierr=1
+        fi
+    elif [[ "$stype" == "NodePort" ]] && grep -qw -- "$np" <<<"${out#* }"; then
         s="${GRN}ok${RST}"; sraw="ok"
+    elif [[ "$stype" != "NodePort" ]]; then
+        sraw="type ${stype:-<none>}, expected NodePort ${np}"; s="${RED}${sraw}${RST}"; fail=1; drift=1
     else
         sraw="expected ${np} got ${out#* }"; s="${RED}${sraw}${RST}"; fail=1; drift=1
     fi
@@ -89,6 +104,9 @@ if (( fail )); then
     if (( missing_port )); then
         printf '%sFAIL:%s ports are fixed at profile creation. Recreate with: ./scripts/setup-capstone-profile.sh --replace\n' "$RED" "$RST"
         printf '(--replace deletes and recreates the cluster; run ./scripts/bootstrap-capstone.sh again afterwards.)\n'
+    fi
+    if (( apierr )); then
+        printf '%sFAIL:%s cannot query the API server for some Services (see the SVC NODEPORT column).\n' "$RED" "$RST"
     fi
     if (( drift )); then
         printf '%sFAIL:%s a Service nodePort drifted from the map in demos/lib/endpoints.sh; re-run the relevant setup script or ./scripts/bootstrap-capstone.sh.\n' "$RED" "$RST"

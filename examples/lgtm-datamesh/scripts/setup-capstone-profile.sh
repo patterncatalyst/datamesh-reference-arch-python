@@ -40,6 +40,9 @@ if [[ "${1:-}" == "--replace" ]]; then
     REPLACE=1
 fi
 
+# Validate EXTRA_NODE_PORTS up front, before anything is deleted or started.
+PORTS_ARG="$(node_ports_arg)" || { printf 'ERROR: fix EXTRA_NODE_PORTS; nothing was changed.\n' >&2; exit 1; }
+
 # ─── Pre-flight ──────────────────────────────────────────────────────────────
 
 if ! command -v minikube >/dev/null 2>&1; then
@@ -172,7 +175,7 @@ if podman container exists "$PROFILE_NAME" 2>/dev/null && (( ! REPLACE )); then
     # Existing profile kept as-is: its published ports must already be right.
     check_published_ports || exit 1
     if minikube status -p "$PROFILE_NAME" >/dev/null 2>&1; then
-        printf '==> Profile %s already exists and is running. Pass --replace to recreate.\n' "$PROFILE_NAME"
+        printf '==> Profile %s already exists and is running. Pass --replace to recreate (deletes the cluster; re-run ./scripts/bootstrap-capstone.sh afterwards).\n' "$PROFILE_NAME"
     else
         printf '==> Profile %s exists but is stopped. Starting it.\n' "$PROFILE_NAME"
         minikube start -p "$PROFILE_NAME"
@@ -198,7 +201,7 @@ if [[ "$(podman container inspect -f '{{.State.Running}}' "$PROFILE_NAME" 2>/dev
     own_ports=" $(published_ports | awk '{print $2}' | tr '\n' ' ') "
 fi
 busy=0
-IFS=',' read -ra port_specs <<<"$(node_ports_arg)"
+IFS=',' read -ra port_specs <<<"$PORTS_ARG"
 for spec in "${port_specs[@]}"; do
     hp="$(cut -d: -f2 <<<"$spec")"
     [[ "$own_ports" == *" $hp "* ]] && continue
@@ -218,10 +221,10 @@ fi
 printf '==> Starting %s profile (%s RAM, %s CPUs, %s disk, %s runtime)\n' \
     "$PROFILE_NAME" "$MEMORY" "$CPUS" "$DISK" "$RUNTIME"
 
-printf '==> Publishing NodePorts on 127.0.0.1: %s\n' "$(node_ports_arg)"
+printf '==> Publishing NodePorts on 127.0.0.1: %s\n' "$PORTS_ARG"
 
 minikube start -p "$PROFILE_NAME" \
-    --ports="$(node_ports_arg)" \
+    --ports="$PORTS_ARG" \
     --memory="$MEMORY" \
     --cpus="$CPUS" \
     --disk-size="$DISK" \

@@ -72,18 +72,22 @@ if (( ${#targets[@]} )); then
     hits=""
     while IFS= read -r line; do
         [[ -z "$line" ]] && continue
-        val="${line#*--ports[= ]}"
-        val="${val#"${val%%[![:space:]]*}"}"       # trim leading space
-        val="${val#[\"\']}"                         # leading quote
-        val="${val%%[[:space:]\"\']*}"              # up to whitespace or quote
         bad=0
-        IFS=',' read -ra items <<<"$val"
-        for it in "${items[@]}"; do
-            [[ "$it" == *'$('* || "$it" == *'${'* || "$it" == '$'* ]] && continue
-            [[ "$it" == '"$'* ]] && continue
-            # only port-looking items: digits, or anything with a colon (prose ignored)
-            [[ "$it" =~ ^[0-9]+$ || "$it" == *:* ]] || continue
-            [[ "$it" != 127.0.0.1:* ]] && bad=1
+        # Check every --ports occurrence on the line, not only the first.
+        rest="$line"
+        while [[ "$rest" =~ --ports[=\ ](.*)$ ]]; do
+            rest="${BASH_REMATCH[1]}"
+            val="${rest#"${rest%%[![:space:]]*}"}"       # trim leading space
+            val="${val#[\"\']}"                         # leading quote
+            val="${val%%[[:space:]\"\']*}"              # up to whitespace or quote
+            IFS=',' read -ra items <<<"$val"
+            for it in "${items[@]}"; do
+                [[ "$it" == *'$('* || "$it" == *'${'* || "$it" == '$'* ]] && continue
+                [[ "$it" == '"$'* ]] && continue
+                # only port-looking items: digits, or anything with a colon (prose ignored)
+                [[ "$it" =~ ^[0-9]+$ || "$it" == *:* ]] || continue
+                [[ "$it" != 127.0.0.1:* ]] && bad=1
+            done
         done
         (( bad )) && hits+="$line"$'\n'
     done <<<"$raw"
@@ -91,13 +95,14 @@ if (( ${#targets[@]} )); then
     [[ -n "$hits" ]] && report '--ports value without 127.0.0.1: prefix (binds 0.0.0.0)' "$hits"
 fi
 
+nl=$'\n'   # literal newline: portable sed replacement (no GNU-only \n)
 # Scan 4: slides and speaker notes inside pptx files.
 if [[ -d presentation ]]; then
     if command -v unzip >/dev/null 2>&1; then
         while IFS= read -r -d '' f; do
             # Strip XML tags per paragraph so text split across <a:t> runs is rejoined.
             m="$(unzip -p "$f" 'ppt/slides/*.xml' 'ppt/notesSlides/*.xml' 2>/dev/null \
-                | sed -e 's#</a:p>#\n#g' -e 's/<[^>]*>//g' \
+                | sed -e "s#</a:p>#&\\${nl}#g" -e 's/<[^>]*>//g' \
                 | grep -ioE ".{0,30}($re1).{0,30}" | sort | uniq -c | sed -E 's/^ +//' || true)"
             [[ -n "$m" ]] && report "pptx contains forbidden syntax: $f" "$m"
         done < <(find presentation -type f -name '*.pptx' -print0 | sort -z)
