@@ -230,12 +230,12 @@ CAP-007, CAP-009, CAP-010 — three CAPs because it took that many
 iterations to land. The lesson: rootless minikube has its own
 image-distribution shape and `docker push localhost:5000/img` is not it.
 
-### A port-forward pins its pod — poll loops must re-attach under autoscalers
+### A forwarded connection pins its pod, so host access moved to published NodePorts
 
-`kubectl port-forward svc/x` picks one pod at connect time and stays
-bound to it. Under a scale-to-zero autoscaler that's a trap with several
-interlocking parts, discovered when three smokes failed against a
-healthy system:
+Early versions of the smokes reached the cluster with `kubectl port-forward svc/x`, <!-- forbidden-ok -->
+which picks one pod at connect time and stays bound to it. Under a
+scale-to-zero autoscaler that is a trap with several interlocking parts,
+discovered when three smokes failed against a healthy system:
 
 - **"Rolled out" is not "still running."** Helm sets `replicas: 1`, the
   rollout gate passes, and KEDA reconciles the deployment back to 0
@@ -247,31 +247,32 @@ healthy system:
 - **The tested event is what wakes the consumer.** With the consumer
   scaled to zero, the smoke's own order creates the lag that wakes a
   NEW pod — which consumes and persists the event while the smoke polls
-  the dead tunnel to the OLD pod.
-- **`curl ... || echo '[]'` turns a dead tunnel into "not consumed
+  the dead connection to the OLD pod.
+- **`curl ... || echo '[]'` turns a dead connection into "not consumed
   yet."** The fallback that made the poll loop robust to slow starts
   also made it blind to transport failure. The event was in Postgres
   the whole time; the smoke reported it missing.
 
-The fixes (commits `764aa3f`, `1093d78`, `e22b318`): on curl failure,
-kill and re-establish the port-forward against the Service, then treat
-that attempt as "not yet"; size poll windows for scale-from-zero
-(lag-poll + pod start + consumer-group join), not for a warm consumer;
-and for paths that go through the KEDA HTTP interceptor, retry transient
-non-200s (the 0.12.2 interceptor can 502 the first POSTs after a
-scale-from-zero — CAP-046's cold-start race).
+The interim fixes (commits `764aa3f`, `1093d78`, `e22b318`) re-established
+the connection against the Service on every curl failure, sized poll
+windows for scale-from-zero (lag-poll + pod start + consumer-group join)
+rather than a warm consumer, and retried transient non-200s on paths
+through the KEDA HTTP interceptor (the 0.12.2 interceptor can 502 the
+first POSTs after a scale-from-zero — CAP-046's cold-start race).
 
-The lesson generalises twice over. Any test that tunnels into a cluster
-managed by an autoscaler must treat the tunnel as unreliable — and any
-fallback that silently swallows transport errors in a poll loop should
-be treated as a smell. When a poll says the data never arrived, check
-the datastore directly before believing it.
+The durable fix was to remove the moving part. Host access now goes
+through NodePorts published on `127.0.0.1` when the profile is created
+(DRA-017): the Service, not a pod, is the endpoint, and no helper process
+exists to drop. Poll windows still need to be sized for scale-from-zero,
+and any fallback that silently swallows transport errors in a poll loop
+is still a smell. When a poll says the data never arrived, check the
+datastore directly before believing it.
 
 ### Well-known local ports are booby-trapped on the verified platform
 
-The observability smoke port-forwarded Prometheus to local 9090 — and
+The observability smoke forwarded Prometheus to local 9090 — and <!-- forbidden-ok -->
 Fedora, the reference's verified platform, ships Cockpit listening on
-host 9090 by default. The port-forward's bind failure was silenced by
+host 9090 by default. The forwarder's bind failure was silenced by
 `>/dev/null 2>&1`, the readiness probe's `curl` (without `-f`) was
 satisfied by Cockpit's 404, and the smoke then "queried Prometheus,"
 got nothing, and reported the metrics pipeline broken. Nothing was
@@ -282,7 +283,7 @@ tooling to well-known ports (9090, 3000, 8080) — pick high odd ones and
 make them env-overridable; always `-f` a readiness probe so a port
 squatter answering 404 can't satisfy it; and when a smoke contradicts
 what you can observe directly, suspect the smoke's transport before the
-system under test.
+system under test. The published Prometheus port is 9091 for this reason.
 
 ### Fresh-host bring-up finds the assumptions your dev machine hides
 
@@ -381,12 +382,12 @@ The second half of the lesson: a suite that has only ever passed in one
 order hasn't demonstrated order independence. The same 24 scripts were
 run in a deliberately shuffled order and one more latent race fell out —
 a smoke that had passed two full runs on lucky timing (demo-kafka's
-dead-tunnel poll, `e22b318`). Shuffling the order is the cheapest chaos
+dead-connection poll, `e22b318`). Shuffling the order is the cheapest chaos
 test a suite can get.
 
 And when a fix lands, verify it *under the conditions that failed* — the
 retry paths here were confirmed by watching them fire in the logs (two
-dead-tunnel attempts then success; one 502 then 200), not by a pass on a
+dead-connection attempts then success; one 502 then 200), not by a pass on a
 warm cluster that might never have exercised them.
 
 ### Decision log with rejected alternatives

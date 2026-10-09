@@ -203,25 +203,27 @@ kubectl context set to `capstone`.
 
 ### Observing the results
 
-Bootstrap and the walkthrough automatically start SSH tunnels to
-NodePort services via `scripts/tunnel-services.sh`. They survive script
-exit and stay up until you stop them — no more port-forward drops under
-load or idle timeouts.
+Host access uses NodePorts published on `127.0.0.1` when the `capstone`
+minikube profile is created (`--ports=127.0.0.1:<hostPort>:<nodePort>`,
+built from `demos/lib/endpoints.sh`). Nothing runs in the background and
+nothing needs to be started per demo. Ports are fixed at creation, so an
+older profile without them is refused by `scripts/setup-capstone-profile.sh`;
+recreate it with `./scripts/setup-capstone-profile.sh --replace`. Run the
+workshop in isolation: shut down CRC, other minikube profiles, and other
+workloads first so the host ports are free.
 
 | Tool | Local URL | Notes |
 |------|-----------|-------|
-| Grafana | `http://localhost:3000` | |
-| Prometheus | `http://localhost:9091` | Port 9091 avoids Fedora Cockpit on 9090 |
-| Tempo | `http://localhost:3200` | Trace query API; also accessible via Grafana Explore |
-| Kiali | `http://localhost:20001/kiali` | |
-| OpenMetadata | `http://localhost:8585` | |
-| Apicurio | `http://localhost:8084` | Schema registry UI + API (`/apis/registry/v3`) |
-| Kafka UI | `http://localhost:8089` | Browse Kafka topics, messages, consumer groups, schemas |
+| Grafana | `http://127.0.0.1:3000` | |
+| Prometheus | `http://127.0.0.1:9091` | Port 9091 avoids Fedora Cockpit on 9090 |
+| Tempo | `http://127.0.0.1:3200` | Trace query API; also accessible via Grafana Explore |
+| Kiali | `http://127.0.0.1:20001/kiali` | |
+| OpenMetadata | `http://127.0.0.1:8585` | |
+| Apicurio | `http://127.0.0.1:8084` | Schema registry UI + API (`/apis/registry/v3`) |
+| Kafka UI | `http://127.0.0.1:8089` | Browse Kafka topics, messages, consumer groups, schemas |
 
 ```bash
-./scripts/tunnel-services.sh --status   # check which tunnels are alive
-./scripts/tunnel-services.sh --stop     # tear them all down
-./scripts/tunnel-services.sh            # restart them
+./scripts/show-endpoints.sh   # status table: which endpoints are published and reachable
 ```
 
 Default credentials:

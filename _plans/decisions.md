@@ -160,9 +160,9 @@ admission.
 **Status:** decided; implemented at `templates/route.yaml`,
 `templates/apicurio.yaml` (Route block), and `openshift/build-and-push.sh`.
 
-**Context.** The minikube path reaches services over NodePort through a
-stable SSH tunnel, because minikube has no cluster-native router or
-easy-to-reach internal registry. OpenShift ships both: a Route object with a
+**Context.** The minikube path reaches services over NodePorts published
+to `127.0.0.1` at profile creation (DRA-017), because minikube has no
+cluster-native router or easy-to-reach internal registry. OpenShift ships both: a Route object with a
 real external hostname served by the cluster router, and an integrated image
 registry addressed in-cluster at
 `image-registry.openshift-image-registry.svc:5000`.
@@ -172,9 +172,9 @@ registry addressed in-cluster at
 integrated registry via `build-and-push.sh`, authenticated with an
 `oc whoami -t` token rather than any external registry account.
 
-**Rejected alternative.** Reproduce the minikube NodePort-plus-SSH-tunnel
+**Rejected alternative.** Reproduce the minikube published-NodePort
 pattern on OpenShift — rejected because it ignores two capabilities the
-platform already provides natively, adds a tunnel-keep-alive dependency
+platform already provides natively, adds a host-port publishing step
 OpenShift doesn't need, and would require readers to manage external registry
 credentials for images that never need to leave the cluster.
 
@@ -740,3 +740,54 @@ and admission was the extra hardening fields this decision removes.
   check before assuming it's harmless — the rendered YAML looks
   more secure with the extra fields, but the live SCC assignment is what
   actually determines whether Grafana can write its data directory.
+
+---
+
+## DRA-017 — Host access: NodePorts published on 127.0.0.1 at profile creation
+
+**Status:** decided; implemented in `examples/lgtm-datamesh/demos/lib/endpoints.sh`,
+`scripts/setup-capstone-profile.sh`, and `scripts/show-endpoints.sh`; enforced by
+`scripts/forbidden-syntax.sh`.
+
+**Context.** Host access to the capstone minikube cluster (profile `capstone`,
+rootless podman) used SSH tunnels and `kubectl port-forward`. <!-- forbidden-ok -->
+Both break or disconnect: a forwarded connection pins one pod and dies when it
+is replaced, and a tunnel process drops when the cluster idles or is under <!-- forbidden-ok -->
+load. The failures surfaced as flaky smokes and dead UIs, not as clear errors
+(see the lessons-learned entry on pinned pods).
+
+**Decision.** Every host-facing service is a fixed NodePort, and the profile
+publishes each one to the host when it is created:
+`minikube start -p capstone --ports=127.0.0.1:<hostPort>:<nodePort>,...`. The
+host:nodePort pairs come from the single map in
+`examples/lgtm-datamesh/demos/lib/endpoints.sh`. Host ports and URLs are
+unchanged (Grafana stays at `http://127.0.0.1:3000`). Every pair carries the
+`127.0.0.1:` prefix, because the bare form (`--ports=a:b`) binds `0.0.0.0` and <!-- forbidden-ok -->
+exposes the cluster to the network. `./scripts/show-endpoints.sh` prints a
+status table of what is published and reachable.
+
+**Rejected alternatives.**
+
+- Supervised SSH tunnels (a watchdog that restarts them) — rejected because it <!-- forbidden-ok -->
+  keeps the moving part and adds a supervisor to maintain. <!-- forbidden-ok -->
+- `kubectl port-forward` retry loops — rejected because they re-attach to one <!-- forbidden-ok -->
+  pod at a time and still lose the connection between retries.
+- `minikube tunnel` with `LoadBalancer` Services — rejected because it needs a <!-- forbidden-ok -->
+  privileged long-running process and does not fit rootless podman.
+- Bare `--ports=a:b` — rejected because it binds `0.0.0.0`. <!-- forbidden-ok -->
+- Renumbering host ports to match nodePorts — rejected because every URL in
+  the docs, site, deck, and demos would change for no gain.
+
+**Consequences.**
+
+- Published ports are fixed at creation. Adding a port means recreating the
+  profile; `setup-capstone-profile.sh` refuses an older profile without the
+  ports, and `./scripts/setup-capstone-profile.sh --replace` recreates it.
+- `scripts/forbidden-syntax.sh` runs in CI and fails on tunnel and <!-- forbidden-ok -->
+  port-forward wording, the retired helper names, and `--ports` values without <!-- forbidden-ok -->
+  a `127.0.0.1:` prefix. A line that must mention them (stating the
+  prohibition, or a historical lesson) carries the marker `forbidden-ok`.
+- Workshops run in isolation: shut down CRC, other minikube profiles, and
+  other workloads before starting, so the published host ports are free.
+- `_plans/archive/` and `*.archive.md` are the historical record. They are
+  unchanged, describe superseded host access, and are excluded from the gate.

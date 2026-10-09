@@ -89,7 +89,7 @@ What's verified to work end to end:
 - **Network:** outbound HTTPS to pull images, charts, and operators
 
 What probably works but isn't verified: other Fedora versions, RHEL,
-Ubuntu, macOS via Lima or Docker Desktop, and any host with enough RAM and
+Ubuntu, macOS with a podman machine or Lima, and any host with enough RAM and
 a rootless container runtime. If you're on one of those, the bootstrap may
 need small adaptations; read it before running it.
 

@@ -37,8 +37,8 @@ A couple of honest simplifications worth naming. v1 and v2 here run the *same im
 with an environment toggle and a different `version` label, rather than two images from
 two commits — that keeps the demo focused on the traffic-management mechanism rather
 than an image pipeline, and the Istio mechanics are identical either way. And traffic
-enters through the ingress gateway (reached over an SSH tunnel to its NodePort, under
-the rootless-podman setup from §11) rather than from a meshed client, so no client needs
+enters through the ingress gateway (reached on its NodePort, published to
+127.0.0.1:8088 under the rootless-podman setup from §11) rather than from a meshed client, so no client needs
 to join the mesh for the canary to work.
 
 This was verified end to end: with the split set to 90/10, a run of 100 requests landed

@@ -5,6 +5,12 @@ render_with_liquid: false
 
 # Archive — capstone-era plans
 
+> **Superseded host access.** Archived files describe host access through SSH
+> tunnels and `kubectl port-forward`, which this repo no longer uses. They are
+> kept unchanged as the historical record. Current guidance is DRA-017 in
+> `_plans/decisions.md`: NodePorts published on `127.0.0.1` at profile
+> creation. <!-- forbidden-ok -->
+
 These files are the historical decision log and reconciliation record from
 when the data-mesh reference architecture lived inside the `minikube-on-fedora`
 tutorial as its §17 capstone. They're preserved here for the audit trail —

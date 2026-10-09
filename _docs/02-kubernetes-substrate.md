@@ -102,5 +102,13 @@ decay, the operational care a long-lived single-node cluster needs — they're c
 as operational gotchas rather than mixed into the conceptual material here, because
 they're particular to this deployment choice rather than to data mesh as a pattern.
 
+Host access follows the same single-node logic. The capstone's UIs and service
+endpoints are NodePorts published on `127.0.0.1` when the minikube profile is created
+(`--ports=127.0.0.1:<hostPort>:<nodePort>`), never SSH tunnels or port-forwarding. <!-- forbidden-ok -->
+The ports are fixed at creation, so changing the set means recreating the profile with
+`./scripts/setup-capstone-profile.sh --replace`. Run the workshop in isolation: shut down
+CRC, other minikube profiles, and other workloads first, so the host ports are free.
+`./scripts/show-endpoints.sh` prints what is published and reachable.
+
 Next, the services themselves: what a data product looks like in this build, the
 order-service template the others follow, and how each one is packaged and shipped.
