@@ -33,18 +33,40 @@ echo "CPUs: $(nproc)"
 free -h
 df -h ~ /
 
-section "container engine: podman"
-maybe podman --version
-# Note: CgroupVersion field was removed from podman info template in
-# podman 5.x; dropped to keep output clean.
-maybe podman info --format \
-  '{{.Host.OS}} {{.Host.Arch}} rootless={{.Host.Security.Rootless}}'
-
-section "container engine: docker CLI (optional)"
+section "container engine: Docker Engine"
 maybe docker --version
+maybe docker compose version
+if command -v systemctl >/dev/null 2>&1; then
+    echo "  docker.service: $(systemctl is-active docker 2>&1 || true)"
+fi
+if command -v docker >/dev/null 2>&1; then
+    echo "  docker context: $(docker context show 2>&1 || echo '(failed)')"
+    DOCKER_INFO="$(docker info --format '{{.OperatingSystem}} {{.NCPU}} {{.MemTotal}}' 2>&1 || true)"
+    echo "  engine (OS NCPU MemTotal-bytes): ${DOCKER_INFO}"
+    if docker info --format '{{.SecurityOptions}}' 2>/dev/null | grep -q rootless; then
+        echo "  STATUS: ⚠ rootless Docker detected — not supported; use the"
+        echo "          rootful docker-ce engine (or Docker Desktop)."
+    else
+        echo "  rootless: no"
+    fi
+    if id -nG 2>/dev/null | tr ' ' '\n' | grep -qx docker; then
+        echo "  docker group: ✓ $(id -un) is a member"
+    else
+        echo "  docker group: ⚠ $(id -un) is not in the docker group"
+        echo "          (sudo usermod -aG docker \$USER, then log in again)"
+    fi
+else
+    echo "  STATUS: ⚠ docker not installed — required for the minikube capstone"
+fi
+
+section "Red Hat appendix (CRC) tools — optional"
+echo "  Needed only for the OpenShift/CRC appendix; absence is fine."
+maybe podman --version  # forbidden-ok
+maybe podman compose version  # forbidden-ok
+maybe crc version
 
 section "currently installed tutorial tools (PATH)"
-for tool in minikube kubectl helm istioctl stern kubectx kubens yq krew httpie hey gh; do
+for tool in docker minikube kubectl helm istioctl stern kubectx kubens yq krew httpie hey gh; do
     if command -v "$tool" >/dev/null 2>&1; then
         printf '  %-12s %s\n' "$tool" "$(command -v "$tool")"
     else
@@ -89,44 +111,34 @@ else
     echo "          sudo sysctl -p /etc/sysctl.d/99-kubernetes.conf"
 fi
 
-section "kernel modules (CNI portmap in a rootless node needs legacy iptables NAT)"
-MISSING_MODS=""
-for m in ip_tables iptable_nat ip6_tables; do
+section "kernel modules (informational)"
+for m in ip_tables iptable_nat ip6_tables br_netfilter overlay; do
     if [[ -d "/sys/module/${m}" ]]; then
-        printf '  %-12s loaded\n' "$m"
+        printf '  %-14s loaded\n' "$m"
     else
-        printf '  %-12s NOT LOADED\n' "$m"
-        MISSING_MODS="${MISSING_MODS} ${m}"
+        printf '  %-14s not loaded (informational; Docker/minikube load what they need)\n' "$m"
     fi
 done
-if [[ -z "$MISSING_MODS" ]]; then
-    echo "  STATUS: ✓ OK — hostPort pods (registry proxy) can start"
-else
-    echo "  STATUS: ⚠ the rootless minikube node cannot modprobe these itself;"
-    echo "          hostPort pods will fail sandbox creation. Fix:"
-    echo ""
-    echo "          sudo sh -c 'printf \"ip_tables\\niptable_nat\\nip6_tables\\n\" > /etc/modules-load.d/99-kubernetes-iptables.conf'"
-    echo "          sudo systemctl restart systemd-modules-load"
-fi
 
-section "podman pids_limit (capstone node runs ~2000+ tasks — CAP-040)"
-PIDS_LIMIT=$(
-    grep -hsE '^[[:space:]]*pids_limit[[:space:]]*=' \
-        "${HOME}/.config/containers/containers.conf" \
-        /etc/containers/containers.conf 2>/dev/null \
-        | tail -1 | grep -oE '[0-9]+' | tail -1 || true
-)
-PIDS_LIMIT="${PIDS_LIMIT:-2048}"
-echo "  effective pids_limit = ${PIDS_LIMIT} (0 = unlimited)"
-if [[ "$PIDS_LIMIT" == "0" ]] || (( PIDS_LIMIT >= 8192 )); then
+section "docker default-pids-limit (capstone node runs ~2000+ tasks — CAP-040)"
+DAEMON_JSON=/etc/docker/daemon.json
+PIDS_LIMIT=""
+if [[ -r "$DAEMON_JSON" ]]; then
+    PIDS_LIMIT=$(grep -oE '"default-pids-limit"[[:space:]]*:[[:space:]]*-?[0-9]+' "$DAEMON_JSON" \
+        | grep -oE -- '-?[0-9]+$' | tail -1 || true)
+fi
+if [[ -z "$PIDS_LIMIT" ]]; then
+    echo "  default-pids-limit not set in ${DAEMON_JSON} (Docker default applies: unlimited)"
     echo "  STATUS: ✓ OK for the full meshed capstone"
 else
-    echo "  STATUS: ⚠ the node would cap TOTAL processes across all pods at ${PIDS_LIMIT}"
-    echo "          and the last pods fail to fork (EAGAIN, runc exit 128). Fix"
-    echo "          BEFORE creating the node:"
-    echo ""
-    echo "          mkdir -p ~/.config/containers"
-    echo "          printf '[containers]\\npids_limit = 0\\n' >> ~/.config/containers/containers.conf"
+    echo "  default-pids-limit = ${PIDS_LIMIT} (0 or -1 = unlimited)"
+    if (( PIDS_LIMIT <= 0 || PIDS_LIMIT >= 8192 )); then
+        echo "  STATUS: ✓ OK for the full meshed capstone"
+    else
+        echo "  STATUS: ⚠ the node would cap TOTAL processes across all pods at ${PIDS_LIMIT}."
+        echo "          Raise it in ${DAEMON_JSON} (\"default-pids-limit\": -1) and"
+        echo "          restart docker BEFORE creating the node."
+    fi
 fi
 
 section "istio distribution (setup-kiali.sh needs samples/addons/kiali.yaml)"
