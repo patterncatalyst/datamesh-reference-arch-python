@@ -97,6 +97,13 @@ if [[ "${BUILD_IMAGE_NO_RESTART:-0}" != "1" ]]; then
     done < <(kubectl get deploy -n "$NS" -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.template.spec.containers[*].image} {.spec.template.spec.initContainers[*].image}{"\n"}{end}')
     if ((${#restarted[@]})); then
         printf '    restarted: %s\n' "${restarted[*]}"
+        # Wait for the restarted rollouts so callers never hit a pod that is
+        # still being replaced (the mesh answers 503 until the new pod is in
+        # the endpoints). A Deployment scaled to zero finishes immediately.
+        for dep in "${restarted[@]}"; do
+            kubectl rollout status "deploy/${dep}" -n "$NS" --timeout=180s >/dev/null \
+                || printf '    WARN: deploy/%s did not finish rolling out within 180s\n' "$dep" >&2
+        done
     else
         printf '    no Deployments in %s reference %s\n' "$NS" "$IMAGE"
     fi
