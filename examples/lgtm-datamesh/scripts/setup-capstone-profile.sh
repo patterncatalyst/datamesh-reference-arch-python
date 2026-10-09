@@ -142,7 +142,7 @@ elif [[ "$engine_os" =~ ([Dd]ocker[[:space:]]+[Dd]esktop|[Cc]olima|[Rr]ancher|[B
     VM_ENGINE=1
 fi
 if (( VM_ENGINE )); then
-    printf 'NOTE: %s (kernel %s) is a VM-based engine (such as Docker Desktop). The node runs inside its VM, so size the VM\n' "${engine_os:-the engine}" "${engine_kernel:-?}"
+    printf 'NOTE: %s (kernel %s) runs in a VM (engine kernel differs from the host). The node runs inside its VM, so size the VM\n' "${engine_os:-the engine}" "${engine_kernel:-?}"
     printf '      for the node and expect inotify limits to be checked inside the node.\n'
 fi
 
