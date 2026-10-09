@@ -283,6 +283,19 @@ bootstrap also accumulates couplings to host state — loaded kernel
 modules, tool versions, listening ports — that a fresh profile on the
 same machine can't expose.
 
+### gRPC's c-ares resolver can eat a 3-second deadline
+
+On the Docker-driver profile, every `POST /orders` failed with `503 inventory-service
+unreachable ... DEADLINE_EXCEEDED`, although inventory answered its own `CheckStock` in
+10 ms. Timing the call from the order pod isolated it: `inventory-service:50051` took
+3.01 s, while the fully qualified `inventory-service.capstone.svc.cluster.local:50051`
+took 0.01 s, and `getaddrinfo` resolved the short name instantly. gRPC Python resolves
+names with its bundled c-ares resolver, which walks the search list itself and waited
+about 3 s on one lookup, exactly the client's 3 s deadline. `GRPC_DNS_RESOLVER=native`
+(set in the order-service and graphql-gateway Containerfiles) makes gRPC use the system
+resolver like every other library in the pod. The lesson: when a gRPC deadline fails
+but the server is fast, time name resolution separately from the call.
+
 ### Pushing to a loopback registry only works on a native engine
 
 A push to a registry on the host's loopback port is made by the container engine's daemon, so the address is resolved from the daemon's network namespace. On a native Docker Engine that is the host. On a VM-based engine (Docker Desktop, Colima, Rancher Desktop) the daemon runs inside a VM whose `127.0.0.1` is not the host's, and the push fails with `dial tcp [::1]:5000: i/o timeout`. `minikube image load` hands the image to the profile directly and works with any engine, which is why the capstone uses it and runs no registry.
