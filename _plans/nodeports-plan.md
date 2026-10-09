@@ -3,6 +3,21 @@
 Branch `fix/nodeports-no-tunnels`. `EX/` = `examples/lgtm-datamesh/`. Planned 2026-10-08 (Opus).
 Move this file to `_plans/archive/` once executed (its own text would fail the forbidden-syntax gate).
 
+## Revision 2026-10-08 (user direction) — supersedes conflicting text below
+
+- **Host ports do not change.** Every URL stays the same (Grafana `127.0.0.1:3000`, order `:8080`, Kiali `:20001`, …).
+  Publish as `--ports=127.0.0.1:<hostPort>:<nodePort>` (e.g. `127.0.0.1:3000:30300`), and keep the existing
+  `TP_*` (host port) / `NP_*` (node port) pairs and values. Only the transport changes, so docs keep the same URLs.
+- **Keep the `TP_*` variable names** to minimise churn. Their comments now read "host port published on 127.0.0.1",
+  and the scanner does not flag `TP_`. `ensure_tunnel` / `tunnel_port_for` still get renamed (`ensure_endpoint` /
+  `endpoint_port`).
+- `published_ports` checks that container port `<np>/tcp` is bound to HostIp 127.0.0.1 **and** HostPort == the mapped host port.
+- **Workshops run in isolation.** Before a live run, everything else is shut down (CRC, other minikube profiles,
+  Docker Desktop), so there are no host-port collisions with helm4dev. Keep the free-port pre-flight as a cheap guard.
+- Rootless podman minikube is proven on this host in other projects. The 127.0.0.1 binding check is a verification
+  step, not an expected problem.
+- `EX/examples/17-capstone/`: delete vs convert is pending the user's answer.
+
 ## Approach
 
 All 14 host-facing services are already NodePorts, so only the transport changes. The
