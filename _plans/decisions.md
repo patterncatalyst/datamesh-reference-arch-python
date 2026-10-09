@@ -856,4 +856,4 @@ status table of what is published and reachable.
 - Profiles created with podman must be recreated: `./scripts/setup-capstone-profile.sh --replace`, then re-run `./scripts/bootstrap-capstone.sh`.
 - Membership in the `docker` group is root-equivalent on the host.
 - CI gate scan 5 in `scripts/forbidden-syntax.sh` enforces the podman scope.
-- Live verification: pending.
+- Live verification (2026-10-08/09): passed on Docker Engine 29.8.0 provided by Docker Desktop with the docker driver and containerd 2.2.1; see `_plans/reconciliation.md`. `ensure_node_forwarding` did not fire (the node's `FORWARD` policy was already `ACCEPT`). The live run also surfaced three fixes now in the scripts: bootstrap's service list ordering, endpoint checks accepting `LoadBalancer` Services, and `build-image.sh` waiting for its rollouts and for replaced pods to terminate. gRPC clients set `GRPC_DNS_RESOLVER=native`. A native (non-VM) Docker Engine run is still to do.

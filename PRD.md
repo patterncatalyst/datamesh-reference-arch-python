@@ -262,7 +262,7 @@ diagrams that have changed.
 
 ### Verification metrics (project-controlled)
 
-- The presenter walkthrough runs 5-of-5 green on the target runtime
+- The presenter walkthrough runs 5-of-5 green on the verified runtime
   (Fedora 44 + Docker Engine + minikube (docker driver, containerd)), as documented in the
   reconciliation file at `_plans/reconciliation.md`.
 - All internal links resolve (`scripts/check-cross-references.sh` exits 0).
@@ -293,7 +293,7 @@ day-to-day decisions, but are useful as a long-range health check:
 - **Kubernetes is the substrate model.** Anything that contradicts
   upstream Kubernetes idioms (operators, CRDs, RBAC, service mesh) is
   out of scope.
-- **The target runtime is Fedora 44 + Docker Engine + minikube (docker driver, containerd).**
+- **The verified runtime is Fedora 44 + Docker Engine + minikube (docker driver, containerd)** (2026-10-09, engine provided by Docker Desktop; see `_plans/reconciliation.md`).
   Other runtimes are documented as portable in principle; verifying
   them is a contribution path.
 - **Vendor-neutral language.** Where multiple tools could fit a slot
