@@ -134,8 +134,9 @@ node_ports_arg() {
 
 # _port_bindings_json → PortBindings JSON of the profile container (empty on error)
 _port_bindings_json() {
-    # The capstone profile is rootless podman (setup-capstone-profile.sh).
-    podman container inspect --format '{{json .HostConfig.PortBindings}}' "$EP_PROFILE" 2>/dev/null || true
+    # The capstone profile is a docker-driver container named after the profile
+    # (setup-capstone-profile.sh); its published ports live in HostConfig.
+    docker container inspect --format '{{json .HostConfig.PortBindings}}' "$EP_PROFILE" 2>/dev/null || true
 }
 
 # _parse_bindings <loopback|other> — reads PortBindings JSON on stdin.
@@ -166,8 +167,13 @@ published_ports() { _port_bindings_json | _parse_bindings loopback; return 0; }
 # nonloopback_ports → lines "<containerPort> <HostIp>:<HostPort>" not on 127.0.0.1
 nonloopback_ports() { _port_bindings_json | _parse_bindings other; return 0; }
 
-# registry_host_port → host port bound to container 5000/tcp (empty if none)
-registry_host_port() { published_ports | awk '$1 == 5000 { print $2; exit }'; return 0; }
+# profile_container_exists → 0 if the profile's node container exists
+profile_container_exists() { docker container inspect "$EP_PROFILE" >/dev/null 2>&1; }
+
+# profile_container_running → 0 if the profile's node container is running
+profile_container_running() {
+    [[ "$(docker container inspect -f '{{.State.Running}}' "$EP_PROFILE" 2>/dev/null)" == "true" ]]
+}
 
 # _require_python → 0 if python3 exists, else prints why and returns 1
 _require_python() {
@@ -293,16 +299,17 @@ wake_gateway() {
     kubectl wait -n "$ns" --for=condition=Available deploy/graphql-gateway --timeout=120s >/dev/null 2>&1
 }
 
-# ensure_node_forwarding — the node image starts Docker once at first boot
-# (minikube then masks it for the CRI-O runtime). That Docker sets the node's
-# iptables FORWARD policy to DROP, which silently drops all pod-to-pod and
-# pod-to-Service traffic under kindnet: CoreDNS times out and nothing becomes
-# Ready. Reset the policy to ACCEPT when it is DROP; no-op otherwise. The rule
-# lives in the node container's network namespace, not on the host.
+# ensure_node_forwarding — the node image starts Docker once at first boot,
+# before minikube masks it. That Docker can leave the node's iptables FORWARD
+# policy at DROP, which kindnet does not expect: pod-to-pod and pod-to-Service
+# traffic is silently dropped, CoreDNS times out and nothing becomes Ready.
+# This guard resets the policy to ACCEPT when it is DROP and is a no-op
+# otherwise. The rule lives in the node container's network namespace, not on
+# the host.
 ensure_node_forwarding() {
     local policy
-    policy="$(podman exec "$EP_PROFILE" iptables -S FORWARD 2>/dev/null | awk '$1 == "-P" { print $3 }')"
+    policy="$(docker exec "$EP_PROFILE" iptables -S FORWARD 2>/dev/null | awk '$1 == "-P" { print $3 }')"
     [[ "$policy" == "DROP" ]] || return 0
     printf '    node FORWARD policy is DROP (left by the node image'"'"'s Docker); setting ACCEPT for pod traffic\n'
-    podman exec "$EP_PROFILE" iptables -P FORWARD ACCEPT
+    docker exec "$EP_PROFILE" iptables -P FORWARD ACCEPT
 }
