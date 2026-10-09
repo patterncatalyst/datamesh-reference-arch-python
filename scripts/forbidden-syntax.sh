@@ -15,9 +15,14 @@
 #   3. --ports values lacking a 127.0.0.1: prefix (shell expansions are ignored,
 #      they come from node_ports_arg)
 #   4. the same patterns inside presentation/**/*.pptx slides and notes
+#   5. container runtime scope: podman / rootless / CRI-O / crun /
+#      MINIKUBE_ROOTLESS / the retired localhost:5000 registry name outside the
+#      CRC appendix allowlist (the minikube path is Docker Engine + containerd,
+#      DRA-019)
 #
 # A line that states the prohibition (or must mention a forbidden term) carries
-# the marker `forbidden-ok` (HTML comment in Markdown, trailing comment in
+# the marker `forbidden-ok`; so does a line that scopes podman to the CRC
+# appendix, or records a historical lesson (the rootless-podman era) (HTML comment in Markdown, trailing comment in
 # shell). Excluded: _plans/archive/, *.archive.md, node_modules, __pycache__,
 # .venv, _site, .git, lock files, binary files, and this script.
 # Exit 1 on any hit; otherwise print "forbidden-syntax: OK".
@@ -93,6 +98,22 @@ if (( ${#targets[@]} )); then
     done <<<"$raw"
     hits="${hits%$'\n'}"
     [[ -n "$hits" ]] && report '--ports value without 127.0.0.1: prefix (binds 0.0.0.0)' "$hits"
+fi
+
+# Scan 5: container runtime scope. Pattern is built from fragments so the script
+# never matches itself.
+pm="pod""man"
+re5="$pm|rootless|cri-o|\\bcrun\\b|MINIKUBE_ROOTLESS|localhost:5000"
+if (( ${#targets[@]} )); then
+    hits="$( (grep -rnIiE "${GREP_EXCL[@]}" -e "$re5" "${targets[@]}" 2>/dev/null || true) | filter \
+        | grep -v -e '^examples/lgtm-datamesh/openshift/' \
+                  -e '^_docs/11-running-on-openshift-crc\.md:' \
+                  -e '^_plans/decisions\.md:' \
+                  -e '^_plans/reconciliation\.md:' \
+                  -e '^_plans/openshift-crc-appendix-plan\.md:' \
+                  -e '^_plans/docker-migration-plan\.md:' \
+                  -e '^assets/diagrams/19-crc-image-delivery\.' || true)"
+    [[ -n "$hits" ]] && report 'podman/rootless/CRI-O or the retired registry name outside the CRC appendix (the minikube path is Docker Engine + containerd, DRA-019)' "$hits"
 fi
 
 nl=$'\n'   # literal newline: portable sed replacement (no GNU-only \n)

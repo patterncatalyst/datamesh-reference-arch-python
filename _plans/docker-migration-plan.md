@@ -1,6 +1,6 @@
 # Plan: minikube capstone on Docker Engine + containerd/runc (podman only in the CRC appendix)
 
-Branch `fix/nodeports-no-tunnels`. Planned 2026-10-08 (Opus). Move to `_plans/archive/` once executed.
+Planned 2026-10-08 (Opus). Move to `_plans/archive/` once executed.
 
 ## Decisions
 

@@ -43,11 +43,11 @@ if command -v docker >/dev/null 2>&1; then
     echo "  docker context: $(docker context show 2>&1 || echo '(failed)')"
     DOCKER_INFO="$(docker info --format '{{.OperatingSystem}} {{.NCPU}} {{.MemTotal}}' 2>&1 || true)"
     echo "  engine (OS NCPU MemTotal-bytes): ${DOCKER_INFO}"
-    if docker info --format '{{.SecurityOptions}}' 2>/dev/null | grep -q rootless; then
-        echo "  STATUS: ⚠ rootless Docker detected — not supported; use the"
+    if docker info --format '{{.SecurityOptions}}' 2>/dev/null | grep -q rootless; then  # forbidden-ok
+        echo "  STATUS: ⚠ rootless Docker detected — not supported; use the"  # forbidden-ok
         echo "          rootful docker-ce engine (or Docker Desktop)."
     else
-        echo "  rootless: no"
+        echo "  rootless: no"  # forbidden-ok
     fi
     if id -nG 2>/dev/null | tr ' ' '\n' | grep -qx docker; then
         echo "  docker group: ✓ $(id -un) is a member"

@@ -74,14 +74,14 @@ fi
 # 3. The engine must answer.
 docker_engine_ok || exit 1
 
-# 4. Rootless mode is not supported.
-if [[ "$(minikube config get rootless 2>/dev/null || true)" == "true" ]] || [[ -n "${MINIKUBE_ROOTLESS:-}" ]]; then
-    printf 'ERROR: minikube is configured for rootless mode, which this profile does not use.\n' >&2
-    printf 'run: minikube config unset rootless; unset MINIKUBE_ROOTLESS\n' >&2
+# 4. Rootless mode is not supported.  # forbidden-ok
+if [[ "$(minikube config get rootless 2>/dev/null || true)" == "true" ]] || [[ -n "${MINIKUBE_ROOTLESS:-}" ]]; then  # forbidden-ok
+    printf 'ERROR: minikube is configured for rootless mode, which this profile does not use.\n' >&2  # forbidden-ok
+    printf 'run: minikube config unset rootless; unset MINIKUBE_ROOTLESS\n' >&2  # forbidden-ok
     exit 1
 fi
-if [[ "$(docker info --format '{{.SecurityOptions}}' 2>/dev/null || true)" == *rootless* ]]; then
-    printf 'ERROR: rootless Docker is not supported; use the system Docker Engine.\n' >&2
+if [[ "$(docker info --format '{{.SecurityOptions}}' 2>/dev/null || true)" == *rootless* ]]; then  # forbidden-ok
+    printf 'ERROR: rootless Docker is not supported; use the system Docker Engine.\n' >&2  # forbidden-ok
     exit 1
 fi
 
