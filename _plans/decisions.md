@@ -803,11 +803,13 @@ status table of what is published and reachable.
 
 - The node image starts Docker once at first boot, before minikube masks it. Docker 29 enables IP forwarding in the node's network namespace and sets the iptables `FORWARD` policy to `DROP`. kindnet expects `ACCEPT`, so every pod-to-pod and pod-to-Service packet is dropped. CoreDNS times out and the Istio ingress gateway never becomes Ready.
 - Under CRI-O with crun, `minikube addons enable` fails its paused-container check, because that check calls `runc list` and `/run/runc` does not exist.
+- Under CRI-O, minikube's hostpath provisioner creates volume directories `0755 root`. CloudNativePG runs Postgres as uid 26, so `initdb` fails with `could not create directory ... Permission denied`.
 
 **Decision.**
 
 - One OCI runtime end to end: podman driver, CRI-O in the node, crun under both. minikube's CRI-O defaults to `default_runtime = "crun"`.
-- `setup-capstone-profile.sh` enables the registry addon in `minikube start --addons=metrics-server,registry`, not with `minikube addons enable`.
+- `setup-capstone-profile.sh` enables addons in `minikube start --addons=metrics-server,registry,storage-provisioner-rancher`, not with `minikube addons enable`.
+- `local-path` (the Rancher local-path provisioner, which creates volume directories `0777`) is the default StorageClass; `standard` stays available but is no longer the default.
 - `ensure_node_forwarding` (in `demos/lib/endpoints.sh`) resets the node's `FORWARD` policy to `ACCEPT` when it finds `DROP`. `setup-capstone-profile.sh` runs it after creating or starting the profile, and `cluster-up.sh` runs it after every start. The rule lives in the node container's network namespace, not on the host.
 
 **Rejected alternatives.**

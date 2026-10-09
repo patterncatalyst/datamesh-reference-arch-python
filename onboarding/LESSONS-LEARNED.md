@@ -239,6 +239,10 @@ OCI runtimes. The capstone now uses CRI-O, whose minikube default is crun (DRA-0
 One side effect: `minikube addons enable` fails under CRI-O + crun because its
 paused-container check calls `runc list`; enable addons in `minikube start --addons=`
 instead.
+Another: minikube's hostpath provisioner creates volume directories `0755 root`, so
+non-root pods cannot write to them (CloudNativePG's `initdb`, running as uid 26, failed
+with `Permission denied`). The capstone makes the local-path provisioner, which
+creates them `0777`, the default StorageClass.
 
 ### Rootless-podman minikube has its own image-distribution model
 
