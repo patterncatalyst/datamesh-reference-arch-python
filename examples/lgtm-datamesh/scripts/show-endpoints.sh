@@ -37,8 +37,10 @@ if ! command -v python3 >/dev/null 2>&1; then
     exit 1
 fi
 
-if ! { podman container exists "$EP_PROFILE" 2>/dev/null && \
-       [[ "$(podman container inspect --format '{{.State.Running}}' "$EP_PROFILE" 2>/dev/null)" == "true" ]]; }; then
+source "${SCRIPT_DIR}/../demos/lib/images.sh"
+docker_engine_ok || exit 1
+
+if ! { profile_container_exists && profile_container_running; }; then
     printf '%sERROR:%s cluster "%s" is not running.\n' "$RED" "$RST" "$EP_PROFILE"
     printf 'Start it with: minikube start -p %s   (or ./scripts/setup-capstone-profile.sh)\n' "$EP_PROFILE"
     exit 1

@@ -11,10 +11,10 @@
 # apply, kubectl wait, and build-only-if-missing, so re-running resumes safely.
 #
 # Tiers (each gated on health before the next):
-#   1. profile + registry        5. Kafka operator + cluster CR
+#   1. profile                   5. Kafka operator + cluster CR
 #   2. Istio                      6. KEDA
 #   3. CloudNativePG operator     7. OpenMetadata (needs Postgres) + observability
-#   4. Postgres cluster CR        8. images → apicurio → services → scalers → seed
+#   4. Postgres cluster CR        8. build+load images → apicurio → services → scalers → seed
 #
 # Catalog population (discovery contracts + OpenMetadata ingestion) is printed as
 # the final follow-on rather than run inline — those need a warm server
@@ -23,7 +23,6 @@
 # Run from examples/lgtm-datamesh/:  ./scripts/bootstrap-capstone.sh
 
 set -uo pipefail
-export MINIKUBE_ROOTLESS=true
 
 NS="capstone"
 PROFILE="${MINIKUBE_PROFILE:-capstone}"
@@ -33,11 +32,14 @@ PG_RELEASE="capstone-postgres";  PG_CHART="charts/capstone/charts/postgres"
 KAFKA_RELEASE="capstone-kafka";  KAFKA_CHART="charts/capstone/charts/kafka"; KAFKA_CR="capstone-kafka"
 APICURIO_RELEASE="apicurio";     APICURIO_CHART="charts/capstone/charts/apicurio"
 KAFKAUI_RELEASE="kafka-ui";      KAFKAUI_CHART="charts/capstone/charts/kafka-ui"
-SERVICES=(graphql-gateway inventory-service notification-service order-service payment-service shipping-service)
+SERVICES=("${CAPSTONE_SERVICES[@]}")
 
 # Canonical host ports + helpers (ensure_endpoint, wait_http). Host access is a
 # published NodePort on 127.0.0.1, fixed when the profile is created.
 source "${ROOT}/demos/lib/endpoints.sh"
+# Image helpers (image_in_profile, CAPSTONE_SERVICES). No registry: images are
+# built with docker and loaded into the profile.
+source "${ROOT}/demos/lib/images.sh"
 
 step() { printf '\n\033[1m==> %s\033[0m\n' "$1"; }
 ok()   { printf '    \xe2\x9c\x93 %s\n' "$1"; }
@@ -45,8 +47,8 @@ fail() { printf '\n\xe2\x9c\x97 %s\n' "$1" >&2; exit 1; }
 
 wait_rollout() { kubectl rollout status "$1" -n "$NS" --timeout="${2:-300s}"; }
 
-# ── Tier 1: profile + registry ───────────────────────────────────────────────
-step "1/10 Profile + in-cluster registry"
+# ── Tier 1: profile ──────────────────────────────────────────────────────────
+step "1/10 Profile"
 ./scripts/setup-capstone-profile.sh || fail "profile setup failed"
 [[ "$(kubectl config current-context 2>/dev/null)" == "$PROFILE" ]] || kubectl config use-context "$PROFILE"
 ok "profile up, context set"
@@ -118,17 +120,15 @@ ok "OpenMetadata rolled out"
 ./scripts/setup-observability.sh || fail "observability setup failed"
 ok "observability (Prometheus/Grafana/Tempo) installed"
 
-# ── Tier 8: images → apicurio → services → scalers → seed ────────────────────
+# ── Tier 8: build + load images → apicurio → services → scalers → seed ────────────────────
 step "8/10 Workloads: images, apicurio, services, scalers"
-HOST_PORT="$(registry_host_port)"
-[[ -n "$HOST_PORT" ]] || fail "registry host port not found"
 for svc in "${SERVICES[@]}"; do
-    if curl -fsS --max-time 4 "http://127.0.0.1:${HOST_PORT}/v2/${svc}/tags/list" 2>/dev/null | grep -q '"v1"'; then
+    if image_in_profile "$svc" v1; then
         ok "image ${svc}:v1 present"
     else
-        printf '    building %s...\n' "$svc"
-        ./scripts/build-image.sh "services/${svc}" "$svc" v1 >/dev/null || fail "build of $svc failed"
-        ok "built ${svc}:v1"
+        printf '    Building + loading %s...\n' "$svc"
+        ./scripts/build-image.sh "services/${svc}" "$svc" v1 >/dev/null || fail "build/load of $svc failed"
+        ok "built + loaded ${svc}:v1"
     fi
 done
 

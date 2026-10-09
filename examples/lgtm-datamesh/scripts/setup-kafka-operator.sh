@@ -11,7 +11,6 @@
 # Idempotent: re-running upgrades the operator in place.
 
 set -euo pipefail
-export MINIKUBE_ROOTLESS=true   # CAP-010
 
 NS="capstone"
 STRIMZI_VERSION="0.51.0"
