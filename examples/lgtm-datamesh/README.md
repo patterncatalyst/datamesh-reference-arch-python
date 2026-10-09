@@ -19,15 +19,13 @@ arriving via the minikube tutorial).
 
 ## Quick-start checklist
 
-Before running anything, verify these five prerequisites:
+Before running anything, verify these four prerequisites:
 
-1. **Kernel modules** — iptables modules loaded and persisted (see
-   [Kernel & container tuning](#kernel--container-tuning))
+1. **Docker Engine** — running, with your user in the `docker` group
 2. **inotify limits** — raised above Fedora defaults
-3. **Podman pids_limit** — set to unlimited *before* creating the profile
-4. **Tooling** — minikube >= 1.36, kubectl, helm, istioctl + full Istio
+3. **Tooling** — minikube >= 1.36, kubectl, helm, istioctl + full Istio
    distribution (see [Required tooling](#required-tooling))
-5. **Bootstrap** — `./scripts/bootstrap-capstone.sh`
+4. **Bootstrap** — `./scripts/bootstrap-capstone.sh`
 
 Once that's green, the presenter walkthrough exercises end-to-end
 behavior across five acts (trace, scale, canary, lineage, topology):
@@ -74,22 +72,24 @@ RAM-constrained.
 
 | Requirement | Minimum | Notes |
 |-------------|---------|-------|
-| OS | Fedora 44 | rootless podman as the container runtime |
+| OS | Fedora 44 | Docker Engine (docker-ce) as the container runtime |
 | RAM | 64 GB | the `capstone` minikube profile uses 24 GB; rest is host headroom |
 | Disk | 1 TB | ≥30 GB free for image cache + PVs |
 | CPU | 16 vCPU recommended | not strictly required but the stack is heavy |
 
-### Kernel & container tuning
+### Container engine & host tuning
 
-**Legacy iptables modules.** Fedora is nftables-only out of the box, and
-the rootless minikube node cannot `modprobe` them itself — without them
-the CNI portmap plugin fails and hostPort pods (the registry proxy first)
-never start:
+The capstone runs on **Docker Engine** (native docker-ce on Linux; Docker
+Desktop, Colima and Rancher Desktop work on macOS/Windows but are never
+requirements). Start flags: `--driver=docker --container-runtime=containerd
+--addons=metrics-server`. Docker group membership is root-equivalent on the
+host.
+Podman: used only by the optional OpenShift (CRC) appendix. <!-- forbidden-ok -->
+
+Profile sizing defaults can be overridden before bootstrap:
 
 ```bash
-sudo sh -c 'printf "ip_tables\niptable_nat\nip6_tables\n" \
-    > /etc/modules-load.d/99-kubernetes-iptables.conf'
-sudo systemctl restart systemd-modules-load
+MINIKUBE_CPUS=16 MINIKUBE_MEMORY=24g MINIKUBE_DISK=80g ./scripts/bootstrap-capstone.sh
 ```
 
 **inotify limits.** The capstone runs many controllers; Fedora's default
@@ -101,22 +101,13 @@ sudo sh -c 'printf "fs.inotify.max_user_instances = 512\nfs.inotify.max_user_wat
 sudo sysctl -p /etc/sysctl.d/99-kubernetes.conf
 ```
 
-**Podman pids_limit.** The fully-meshed stack runs ~2000+ tasks on the
-node and saturates podman's default 2048 (CAP-040). Must be set
-**before** the minikube profile is created:
-
-```bash
-mkdir -p ~/.config/containers
-printf '[containers]\npids_limit = 0\n' >> ~/.config/containers/containers.conf
-```
-
-The profile setup script checks both of these and prints the same fixes.
+The profile setup script checks the engine and the inotify limits and prints the same fixes.
 
 ### Required tooling
 
 | Tool | Minimum version | Notes |
 |------|----------------|-------|
-| minikube | **1.36** | 1.35's registry addon pins a `kube-registry-proxy` image digest that no longer exists on gcr.io |
+| minikube | **1.36** | verified on 1.38.1 |
 | kubectl | (any recent) | |
 | helm | 3.x | |
 | istioctl | 1.29.x | needs the full Istio distribution, not just the binary — `setup-kiali.sh` applies `samples/addons/kiali.yaml` from it |
@@ -140,8 +131,8 @@ Bring the whole system up on a fresh minikube profile:
 ./scripts/bootstrap-capstone.sh
 ```
 
-Bootstrap runs 10 tiers: minikube profile + in-cluster registry, Istio
-control plane, CloudNativePG operator, Postgres cluster, Kafka (Strimzi),
+Bootstrap runs 10 tiers: minikube profile (images are then built and loaded with
+`minikube image load`), Istio control plane, CloudNativePG operator, Postgres cluster, Kafka (Strimzi),
 KEDA + HTTP add-on, OpenMetadata + observability, all services + scalers
 + seed data, Kiali, and catalog ingestion + lineage.
 

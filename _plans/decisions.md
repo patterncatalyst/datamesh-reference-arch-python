@@ -773,7 +773,7 @@ status table of what is published and reachable.
 - `kubectl port-forward` retry loops — rejected because they re-attach to one <!-- forbidden-ok -->
   pod at a time and still lose the connection between retries.
 - `minikube tunnel` with `LoadBalancer` Services — rejected because it needs a <!-- forbidden-ok -->
-  privileged long-running process and does not fit rootless podman.
+  privileged long-running process.
 - Bare `--ports=a:b` — rejected because it binds `0.0.0.0`. <!-- forbidden-ok -->
 - Renumbering host ports to match nodePorts — rejected because every URL in
   the docs, site, deck, and demos would change for no gain.
@@ -797,7 +797,7 @@ status table of what is published and reachable.
 
 ## DRA-018 — In-node runtime: CRI-O with crun on the rootless-podman driver
 
-**Status:** decided 2026-10-08; recorded in `examples/lgtm-datamesh/scripts/setup-capstone-profile.sh` (`RUNTIME="cri-o"`).
+**Status:** Superseded by DRA-019 (2026-10-08): the minikube capstone moved to Docker Engine + containerd.
 
 **Context.** The capstone profile ran `--driver=podman --container-runtime=containerd`. That mixes OCI runtimes: rootless podman runs the node container with crun, while containerd inside the node runs pods with runc. A fresh profile on minikube v1.38.1 also showed two node-image problems, independent of the runtime choice:
 
@@ -823,3 +823,37 @@ status table of what is published and reachable.
 - Existing profiles created with containerd must be recreated: `./scripts/setup-capstone-profile.sh --replace` (deletes the cluster; re-run `./scripts/bootstrap-capstone.sh` afterwards).
 - If a future node image stops starting Docker at boot, `ensure_node_forwarding` becomes a no-op.
 - Any script that enables an addon later must pass it at start, or will hit the paused-check failure.
+
+---
+
+## DRA-019 — minikube on Docker Engine + containerd (runc); image load, no registry; podman only for the CRC appendix
+
+**Status:** decided 2026-10-08.
+
+**Context.** User decision on 2026-10-08. The rootless-podman path (DRA-018) needed five host-side workarounds: the node `FORWARD` DROP policy, the runc paused-check under CRI-O, `0755` hostpath directories under CRI-O, `MINIKUBE_ROOTLESS`, and pids-limit / kernel-module pre-flights. The Quarkus sibling repo runs docker + containerd cleanly. Docker Desktop must not be a requirement.
+
+**Decision.**
+
+- Start flags: `--driver=docker --container-runtime=containerd --addons=metrics-server`, with sizing from `MINIKUBE_MEMORY` (24g), `MINIKUBE_CPUS` (16) and `MINIKUBE_DISK` (80g). One OCI runtime, runc, end to end.
+- Docker Engine is required: native docker-ce on Linux; Docker Desktop, Colima and Rancher Desktop are options on macOS/Windows, never requirements. The setup pre-flight rejects rootless Docker, `MINIKUBE_ROOTLESS`, and profiles created with another driver or runtime.
+- Images are built with Docker Engine and loaded with `minikube image load` via `scripts/build-image.sh`. No registry. Names are `capstone/<svc>:v1` with `imagePullPolicy: Never`, not `IfNotPresent`, so a missing image fails fast instead of falling through to `docker.io/capstone/*`. `build-image.sh` restarts the Deployments that use a rebuilt image.
+- `ensure_node_forwarding` stays as a guard, with a runtime-neutral comment; it is a no-op if the `FORWARD` policy is already `ACCEPT`.
+- The default `standard` StorageClass is used. If CloudNativePG `initdb` reports `Permission denied`, the fallback is local-path (`storage-provisioner-rancher`).
+- Podman is scoped to the optional CRC appendix: per-command `--tls-verify`, host DNS for `*.apps-crc.testing`, and Red Hat tooling.
+- Host access is unchanged (DRA-017); only the inspection backend moves to `docker container inspect`.
+
+**Rejected alternatives.**
+
+- Keep rootless podman with CRI-O or containerd: needs the five workarounds above.
+- Require Docker Desktop: not available or wanted on Linux; Docker Engine is enough.
+- Keep the registry addon: it is non-persistent, and VM-based engines cannot push to a loopback registry.
+- `minikube docker-env`: works only with the docker runtime, not containerd.
+- `imagePullPolicy: IfNotPresent`: a missing image would fall through to `docker.io/capstone/*`.
+- Docker for the CRC push: the appendix follows Red Hat's podman tooling.
+
+**Consequences.**
+
+- Profiles created with podman must be recreated: `./scripts/setup-capstone-profile.sh --replace`, then re-run `./scripts/bootstrap-capstone.sh`.
+- Membership in the `docker` group is root-equivalent on the host.
+- CI gate scan 5 in `scripts/forbidden-syntax.sh` enforces the podman scope.
+- Live verification: pending.

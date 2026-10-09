@@ -7,7 +7,9 @@
 # Mirrors the modernizing-enterprise-applications openshift/README.md build
 # loop, adapted to this repo's services/<svc>/Containerfile layout
 # (services/graphql-gateway, services/inventory-service, etc. — see
-# scripts/build-image.sh for the equivalent minikube-registry build).
+# scripts/build-image.sh for the minikube path (docker build + minikube image load)).
+#
+# Podman is used only for this OpenShift/CRC path.
 #
 # Prerequisites (not performed by this script):
 #   - `oc login` to the target cluster, logged into project/namespace NS (see -n)
