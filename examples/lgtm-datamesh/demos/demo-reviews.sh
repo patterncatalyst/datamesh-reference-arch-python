@@ -15,7 +15,7 @@
 
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/lib/tunnels.sh"
+source "${SCRIPT_DIR}/lib/endpoints.sh"
 export MINIKUBE_ROOTLESS=true
 
 NS="capstone"
@@ -72,9 +72,9 @@ kubectl wait -n "$NS" --for=condition=Ready pod \
     || fail "review-service pod did not become Ready"
 printf '    ✓ review-service Ready\n'
 
-# ─── Tunnel + assert the REST surface ────────────────────────────────────────
-step "Opening a tunnel to review-service ($PORT → svc:80)"
-ensure_tunnel review
+# ─── Endpoint + assert the REST surface ────────────────────────────────────────
+step "Checking endpoint 127.0.0.1:$PORT (review-service, published NodePort)"
+ensure_endpoint review
 wait_http "http://127.0.0.1:${PORT}/health" 15 || true
 
 base="http://127.0.0.1:${PORT}"

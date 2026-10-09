@@ -9,7 +9,7 @@
 # feedstock OpenMetadata ingests later.
 #
 # Flow: ensure Strimzi+Kafka+Apicurio+Postgres → deploy inventory/order/gateway
-#       → port-forward → publish discovery contracts → assert each artifact is
+#       → published NodePorts → publish discovery contracts → assert each artifact is
 #       retrievable from Apicurio's v3 API (and the Avro subject from ccompat)
 #       → cleanup on success.
 #
@@ -20,7 +20,7 @@ export MINIKUBE_ROOTLESS=true   # CAP-010
 
 PROFILE="capstone"; NS="capstone"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
-source "${ROOT}/demos/lib/tunnels.sh"
+source "${ROOT}/demos/lib/endpoints.sh"
 PG_RELEASE="capstone-postgres"; PG_CHART="charts/capstone/charts/postgres"
 KAFKA_RELEASE="capstone-kafka"; KAFKA_CHART="charts/capstone/charts/kafka"; KAFKA_CR="capstone-kafka"
 APICURIO_RELEASE="apicurio"; APICURIO_CHART="charts/capstone/charts/apicurio"
@@ -95,9 +95,9 @@ done
 step "Waking graphql-gateway through the KEDA interceptor for the SDL fetch"
 wake_gateway "$NS" || fail "graphql-gateway did not wake through the interceptor"
 
-# ── tunnels ────────────────────────────────────────────────────────────────────
-step "Bringing up tunnels: order(${LOCAL_ORDER}) gateway-via-interceptor(${LOCAL_GW}) apicurio(${LOCAL_APIC})"
-ensure_tunnel order apicurio   # gateway tunnel was ensured by wake_gateway above
+# ── endpoints ────────────────────────────────────────────────────────────────────
+step "Checking endpoints: order(${LOCAL_ORDER}) gateway-via-interceptor(${LOCAL_GW}) apicurio(${LOCAL_APIC})"
+ensure_endpoint order apicurio   # gateway endpoint was ensured by wake_gateway above
 wait_http "http://127.0.0.1:${LOCAL_ORDER}/" 20 || true
 wait_http "http://127.0.0.1:${LOCAL_APIC}/" 20 || true
 

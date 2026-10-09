@@ -19,7 +19,7 @@
 
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/lib/tunnels.sh"
+source "${SCRIPT_DIR}/lib/endpoints.sh"
 export MINIKUBE_ROOTLESS=true   # CAP-010
 
 PROFILE="capstone"; NS="capstone"
@@ -93,8 +93,8 @@ helm upgrade --install order-service "$ORD_CHART" -n "$NS" || fail "order instal
 kubectl rollout status deployment/order-service -n "$NS" --timeout=120s || fail "order rollout failed"
 
 # ── 5. exercise the cross-service call via order-service REST ─────────────────
-step "Opening a tunnel to order-service (127.0.0.1:${LOCAL_PORT})"
-ensure_tunnel order
+step "Checking endpoint 127.0.0.1:${LOCAL_PORT} (order-service, published NodePort)"
+ensure_endpoint order
 wait_http "http://127.0.0.1:${LOCAL_PORT}/" 20 || true
 
 post_order() {  # sku quantity → prints HTTP status code

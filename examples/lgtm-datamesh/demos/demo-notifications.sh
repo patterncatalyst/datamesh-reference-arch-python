@@ -23,7 +23,7 @@ export MINIKUBE_ROOTLESS=true   # CAP-010
 
 PROFILE="capstone"; NS="capstone"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
-source "${ROOT}/demos/lib/tunnels.sh"
+source "${ROOT}/demos/lib/endpoints.sh"
 PG_RELEASE="capstone-postgres"; PG_CHART="charts/capstone/charts/postgres"
 KAFKA_RELEASE="capstone-kafka"; KAFKA_CHART="charts/capstone/charts/kafka"; KAFKA_CR="capstone-kafka"
 APICURIO_RELEASE="apicurio"; APICURIO_CHART="charts/capstone/charts/apicurio"
@@ -51,7 +51,7 @@ fail() {
 check_received() {
     # $1 = order_id to look for in /received
     local recv
-    # The SSH tunnel is stable, but notification-service is KEDA-scaled-to-zero:
+    # The published NodePort needs no client-side process, but notification-service is KEDA-scaled-to-zero:
     # until the event wakes it the NodePort has no endpoint and this curl fails —
     # report "not yet" for this attempt.
     recv="$(curl -fsS "http://127.0.0.1:${LOCAL_NOTIF}/received" 2>/dev/null)" || return 1
@@ -114,8 +114,8 @@ TBL="$(kubectl exec -n "$NS" "$PG_PRIMARY" -c postgres -- psql -d capstone -tAqc
 printf '    ✓ table notifications.notifications present\n'
 
 # ── place an order ────────────────────────────────────────────────────────────
-step "Bringing up tunnels: order(${LOCAL_ORDER}) notification(${LOCAL_NOTIF})"
-ensure_tunnel order notification
+step "Checking endpoints: order(${LOCAL_ORDER}) notification(${LOCAL_NOTIF})"
+ensure_endpoint order notification
 wait_http "http://127.0.0.1:${LOCAL_ORDER}/" 20 || true
 
 step "Placing an in-stock order (WIDGET-001 x2)"
@@ -140,7 +140,7 @@ done
 step "Restarting notification-service to prove durability (in-memory would lose it)"
 kubectl rollout restart deployment/notification-service -n "$NS" >/dev/null
 kubectl rollout status deployment/notification-service -n "$NS" --timeout=150s || fail "restart rollout failed"
-# The SSH tunnel is stable across the restart; check_received retries below.
+# The published NodePort survives the restart; check_received retries below.
 survived=0
 for i in $(seq 1 15); do
     if check_received "$ORDER_ID"; then printf '    ✓ event still present after restart (~%ds)\n' "$((i*2))"; survived=1; break; fi

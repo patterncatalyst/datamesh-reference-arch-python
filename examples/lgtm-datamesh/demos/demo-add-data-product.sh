@@ -21,7 +21,7 @@
 
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/lib/tunnels.sh"
+source "${SCRIPT_DIR}/lib/endpoints.sh"
 export MINIKUBE_ROOTLESS=true
 
 NS="capstone"
@@ -42,13 +42,13 @@ ok()   { printf '    \xe2\x9c\x93 %s\n' "$1"; }
 warn() { printf '    \xe2\x9a\xa0 %s\n' "$1"; }
 fail() { printf '\n\xe2\x9c\x97 FAILED: %s\n' "$1" >&2; exit 1; }
 
-pf() {  # pf <local> <svc> <remote> ; opens a stable tunnel, waits for it
+ep() {  # ep <local> <svc> <remote> ; verifies the published NodePort endpoint
     local name="${2%-service}"
-    ensure_tunnel "$name"
+    ensure_endpoint "$name"
     wait_http "http://127.0.0.1:$1/" 20 || true
 }
 
-om_token() {  # echoes an admin bearer token from the tunneled server
+om_token() {  # echoes an admin bearer token from the published endpoint
     OM_HOST="http://127.0.0.1:${L_OM}" python3 openmetadata/ingestion/get_token.py
 }
 
@@ -76,8 +76,8 @@ if [[ "$MODE" == "up" ]]; then
 
     # ── 2. Publish the OpenAPI contract to Apicurio ──────────────────────────
     step "Publishing the OpenAPI contract to Apicurio"
-    pf "$L_REVIEW" review-service 80
-    pf "$L_APIC" apicurio 8080
+    ep "$L_REVIEW" review-service 80
+    ep "$L_APIC" apicurio 8080
     python3 - "$ARTIFACT_ID" "$GROUP" "http://127.0.0.1:${L_REVIEW}" "http://127.0.0.1:${L_APIC}" <<'PY' || fail "publish to Apicurio failed"
 import json, sys, urllib.request, urllib.error
 artifact_id, group, review_url, apicurio = sys.argv[1:5]
@@ -101,7 +101,7 @@ PY
 
     # ── 4. Declare reviews -> products lineage ───────────────────────────────
     step "Declaring lineage (inventory.stock -> reviews.reviews)"
-    pf "$L_OM" openmetadata 8585
+    ep "$L_OM" openmetadata 8585
     TOKEN="$(om_token)"; [[ -n "$TOKEN" ]] || fail "could not get an OpenMetadata token"
     OM_HOST="http://127.0.0.1:${L_OM}" OM_JWT="$TOKEN" \
         python3 openmetadata/ingestion/reviews_lineage.py up || fail "lineage declaration failed"
@@ -118,7 +118,8 @@ PY
     # ── Ways in ──────────────────────────────────────────────────────────────
     step "The data product is live. Ways to retrieve it and discover its metadata:"
     cat <<EOF
-    Open the stable tunnels:  ./scripts/tunnel-services.sh
+    Published endpoints (127.0.0.1):  order :${TP_ORDER}  review :${TP_REVIEW}  apicurio :${TP_APICURIO}  openmetadata :${TP_OM}
+    Status table:  ./scripts/show-endpoints.sh
 
     Retrieve the data (REST):
       curl -s localhost:${TP_REVIEW}/reviews?sku=SKU-ABC-42 | jq
@@ -138,7 +139,7 @@ else
     step "Backing out the review-service data product"
 
     # 1. lineage edge + 2. catalog entry (best-effort; OM API verify-points)
-    pf "$L_OM" openmetadata 8585
+    ep "$L_OM" openmetadata 8585
     TOKEN="$(om_token || true)"
     if [[ -n "$TOKEN" ]]; then
         OM_HOST="http://127.0.0.1:${L_OM}" OM_JWT="$TOKEN" \
@@ -154,7 +155,7 @@ else
 
     # 3. Apicurio artifact
     step "Deleting the Apicurio artifact"
-    pf "$L_APIC" apicurio 8080
+    ep "$L_APIC" apicurio 8080
     c="$(curl -s -o /dev/null -w '%{http_code}' -X DELETE \
         "http://127.0.0.1:${L_APIC}/apis/registry/v3/groups/${GROUP}/artifacts/${ARTIFACT_ID}")"
     [[ "$c" =~ ^20 || "$c" == "404" ]] && ok "Apicurio artifact removed" || warn "artifact delete returned HTTP $c"

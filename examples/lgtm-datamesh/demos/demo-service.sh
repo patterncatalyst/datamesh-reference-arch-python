@@ -18,7 +18,7 @@
 
 set -uo pipefail   # NOT -e: we manage failures explicitly so we can diagnose
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/lib/tunnels.sh"
+source "${SCRIPT_DIR}/lib/endpoints.sh"
 export MINIKUBE_ROOTLESS=true   # CAP-010: mandatory for rootless-podman host ops
 
 BASE="${1:?usage: demo-service.sh <name> [--purge-db]}"
@@ -35,8 +35,8 @@ SVC_DIR="services/${SERVICE}"
 CHART="charts/capstone/charts/${SERVICE}"
 PG_RELEASE="capstone-postgres"
 PG_CHART="charts/capstone/charts/postgres"   # the Cluster CR chart (r21)
-# The tunnel name is the short service name ($BASE), e.g. "order", "review".
-LOCAL_PORT="$(tunnel_port_for "$BASE")" || { echo "no tunnel mapping for $BASE"; exit 1; }
+# The endpoint name is the short service name ($BASE), e.g. "order", "review".
+LOCAL_PORT="$(endpoint_port "$BASE")" || { echo "no endpoint mapping for $BASE"; exit 1; }
 
 step() { printf '\n==> %s\n' "$1"; }
 fail() {
@@ -102,8 +102,8 @@ step "Deploying ${SERVICE}"
 helm upgrade --install "$SERVICE" "$CHART" -n "$NS" || fail "helm install failed"
 kubectl rollout status "deployment/${SERVICE}" -n "$NS" --timeout=120s || fail "rollout did not complete"
 
-step "Opening a tunnel to ${SERVICE} (127.0.0.1:${LOCAL_PORT})"
-ensure_tunnel "$BASE"
+step "Checking endpoint 127.0.0.1:${LOCAL_PORT} (${SERVICE}, published NodePort)"
+ensure_endpoint "$BASE"
 wait_http "http://127.0.0.1:${LOCAL_PORT}/" 20 || true
 
 step "Assert GET /health returns ok"

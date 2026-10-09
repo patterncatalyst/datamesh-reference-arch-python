@@ -21,7 +21,7 @@ export MINIKUBE_ROOTLESS=true   # CAP-010
 
 PROFILE="capstone"; NS="capstone"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
-source "${ROOT}/demos/lib/tunnels.sh"
+source "${ROOT}/demos/lib/endpoints.sh"
 PG_RELEASE="capstone-postgres"; PG_CHART="charts/capstone/charts/postgres"
 LOCAL_ORDER=$TP_ORDER; LOCAL_GQL=$TP_GATEWAY   # 8080 order-service, 8081 gateway via KEDA interceptor
 PURGE_DB=0; [[ "${1:-}" == "--purge-db" ]] && PURGE_DB=1
@@ -87,11 +87,11 @@ for svc in inventory-service order-service graphql-gateway; do
 done
 
 # ── 5. seed an order via order-service REST ───────────────────────────────────
-step "Bringing up tunnels: order-service (${LOCAL_ORDER}) + gateway via the KEDA interceptor (${LOCAL_GQL})"
-ensure_tunnel order
+step "Checking endpoints: order-service (${LOCAL_ORDER}) + gateway via the KEDA interceptor (${LOCAL_GQL})"
+ensure_endpoint order
 wait_http "http://127.0.0.1:${LOCAL_ORDER}/" 20 || true
 # graphql-gateway is KEDA-scaled-to-zero; wake it the real way — a request driven
-# through the HTTP interceptor (Host: graphql-gateway.capstone) — not port-forward.
+# through the HTTP interceptor (Host: graphql-gateway.capstone) — not a client-side forward.
 wake_gateway "$NS" || printf '    ⚠ gateway not Available yet — will retry on the query\n'
 
 step "Placing an in-stock order (WIDGET-001 x2) via order-service REST"

@@ -20,7 +20,7 @@ export MINIKUBE_ROOTLESS=true   # CAP-010
 
 PROFILE="capstone"; NS="capstone"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
-source "${ROOT}/demos/lib/tunnels.sh"
+source "${ROOT}/demos/lib/endpoints.sh"
 PG_RELEASE="capstone-postgres"; PG_CHART="charts/capstone/charts/postgres"
 KAFKA_RELEASE="capstone-kafka"; KAFKA_CHART="charts/capstone/charts/kafka"
 KAFKA_CR="capstone-kafka"
@@ -99,10 +99,10 @@ for svc in "${APP_SERVICES[@]}"; do
 done
 
 # ── 6. place an order (emits order.placed) ────────────────────────────────────
-step "Bringing up tunnels: order-service (${LOCAL_ORDER}) and notification-service (${LOCAL_NOTIF})"
-ensure_tunnel order notification
+step "Checking endpoints: order-service (${LOCAL_ORDER}) and notification-service (${LOCAL_NOTIF})"
+ensure_endpoint order notification
 wait_http "http://127.0.0.1:${LOCAL_ORDER}/" 20 || true
-# notification-service is KEDA-scaled-to-zero; its tunnel has no endpoint until
+# notification-service is KEDA-scaled-to-zero; its Service has no ready endpoint until
 # the order.placed event below wakes it — the poll loop tolerates that.
 
 step "Placing an in-stock order (WIDGET-001 x2) via order-service REST"
@@ -121,7 +121,7 @@ step "Polling notification-service /received for the order.placed event"
 # KEDA's kafka lag poll + pod start + consumer-group join must fit here.
 seen=0
 for i in $(seq 1 90); do
-    # The SSH tunnel is stable, but notification-service is KEDA-scaled-to-zero:
+    # The published NodePort needs no client-side process, but notification-service is KEDA-scaled-to-zero:
     # until the order.placed event wakes it the NodePort has no endpoint and the
     # curl fails — treat that as "not yet" and keep polling.
     if ! RECV="$(curl -fsS "http://127.0.0.1:${LOCAL_NOTIF}/received" 2>/dev/null)"; then

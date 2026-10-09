@@ -26,7 +26,7 @@
 
 set -uo pipefail   # NOT -e: we manage failures explicitly so we can diagnose
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/lib/tunnels.sh"
+source "${SCRIPT_DIR}/lib/endpoints.sh"
 export MINIKUBE_ROOTLESS=true   # CAP-010: mandatory for rootless-podman host ops
 
 NS="capstone"
@@ -136,9 +136,9 @@ kubectl rollout status deployment/order-service -n "$NS" --timeout=180s \
 
 # ─── Exercise the REST surface ───────────────────────────────────────────────
 
-step "Opening a tunnel to order-service"
+step "Checking endpoint 127.0.0.1:${TP_ORDER} (order-service, published NodePort)"
 LOCAL_ORDER=$TP_ORDER
-ensure_tunnel order
+ensure_endpoint order
 wait_http "http://127.0.0.1:${LOCAL_ORDER}/" 20 || true
 
 BASE="http://127.0.0.1:${LOCAL_ORDER}"
