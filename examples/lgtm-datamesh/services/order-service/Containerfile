@@ -1,7 +1,7 @@
-# order-service Containerfile — UBI 9 multi-stage build (CAP-005).
+# order-service Containerfile — UBI 10 multi-stage build, Python 3.14 (CAP-005).
 # r23: also copies committed gRPC client stubs (gen/) — CAP-013.
 #
-# r21b fix: the UBI 9 python-312 image's default user is 1001, which cannot
+# r21b fix: the UBI python image's default user is 1001, which cannot
 # write to /opt/venv (/opt is root-owned). The r21/r21a build failed with
 # "Permission denied: '/opt/venv'".
 #
@@ -10,11 +10,11 @@
 # RUNTIME stage enforces the non-root user (1001:0), and it merely reads and
 # executes the copied venv (with --chown to make ownership unambiguous).
 #
-# Per CONTRIBUTING.md: UBI 9 base, runtime as USER 1001:0, no
+# Per CONTRIBUTING.md: UBI 10 python-314-minimal base (fallback ubi9/python-314), runtime as USER 1001:0, no
 # subscription-manager needed.
 
 # ─── Builder (runs as root; image discarded) ─────────────────────────────────
-FROM registry.access.redhat.com/ubi9/python-312:latest AS builder
+FROM registry.access.redhat.com/ubi10/python-314-minimal:10.2-1791464217 AS builder
 
 USER 0
 WORKDIR /build
@@ -33,13 +33,17 @@ RUN poetry export --without-hashes --only main -f requirements.txt -o requiremen
     && /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
 
 # OpenTelemetry auto-instrumentation (same pattern as graphql-gateway r29c).
-RUN /opt/venv/bin/pip install --no-cache-dir \
-        "opentelemetry-distro" \
-        "opentelemetry-exporter-otlp" \
-    && /opt/venv/bin/opentelemetry-bootstrap -a install
+# PIP_CONSTRAINT holds every package already in the venv (installed from
+# poetry.lock above) at its locked version, so the OpenTelemetry install cannot
+# move one; without it pip upgraded protobuf past the project's <6 pin.
+RUN /opt/venv/bin/pip freeze > /build/constraints.txt \
+    && PIP_CONSTRAINT=/build/constraints.txt /opt/venv/bin/pip install --no-cache-dir \
+        "opentelemetry-distro==0.66b1" \
+        "opentelemetry-exporter-otlp==1.45.1" \
+    && PIP_CONSTRAINT=/build/constraints.txt /opt/venv/bin/opentelemetry-bootstrap -a install
 
 # ─── Runtime (non-root) ──────────────────────────────────────────────────────
-FROM registry.access.redhat.com/ubi9/python-312:latest AS runtime
+FROM registry.access.redhat.com/ubi10/python-314-minimal:10.2-1791464217 AS runtime
 
 WORKDIR /opt/app-root/src
 
@@ -59,7 +63,8 @@ ENV PATH="/opt/venv/bin:$PATH" \
 
 # gRPC clients resolve names with the system resolver (getaddrinfo), like every
 # other library here. gRPC's bundled c-ares resolver took ~3 s for short
-# Service names on minikube, which equals the 3 s CheckStock deadline.
+# Service names on minikube, which equals the 3 s CheckStock deadline (see
+# onboarding/LESSONS-LEARNED.md).
 ENV GRPC_DNS_RESOLVER=native
 
 # Run as the UBI default non-root user (1001), group 0 (OpenShift restricted
