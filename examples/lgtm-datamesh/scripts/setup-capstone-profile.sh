@@ -232,6 +232,8 @@ if profile_container_exists && (( ! REPLACE )); then
         printf '==> Profile %s already exists and is running. Pass --replace to recreate (deletes the cluster; re-run ./scripts/bootstrap-capstone.sh afterwards).\n' "$PROFILE_NAME"
     else
         printf '==> Profile %s exists but is stopped. Starting it.\n' "$PROFILE_NAME"
+        # A stopped profile holds no listeners: every host port must be free.
+        assert_host_ports_free "" || exit 1
         minikube start -p "$PROFILE_NAME"
         check_published_ports || exit 1
     fi
@@ -247,25 +249,11 @@ fi
 # port must be free, except ports this same profile currently publishes while
 # it is RUNNING (a --replace frees those itself). A stopped profile holds no
 # listeners, so every port must be free.
-if ! command -v ss >/dev/null 2>&1; then
-    printf 'ERROR: ss not in PATH (iproute2); needed to check host ports are free.\n' >&2
-    exit 1
-fi
-own_ports=" "
+own_ports=""
 if profile_container_running; then
-    own_ports=" $(published_ports | awk '{print $2}' | tr '\n' ' ') "
+    own_ports="$(published_ports | awk '{print $2}' | tr '\n' ' ')"
 fi
-busy=0
-IFS=',' read -ra port_specs <<<"$PORTS_ARG"
-for spec in "${port_specs[@]}"; do
-    hp="$(cut -d: -f2 <<<"$spec")"
-    [[ "$own_ports" == *" $hp "* ]] && continue
-    if [[ -n "$(ss -Htln "sport = :$hp" 2>/dev/null)" ]]; then
-        printf 'ERROR: host port %s is already in use: something else is listening; this workshop runs in isolation — stop other clusters/services.\n' "$hp" >&2
-        busy=1
-    fi
-done
-if (( busy )); then exit 1; fi
+assert_host_ports_free "$own_ports" || exit 1
 
 if (( REPLACE )); then
     # Idempotent: also clears minikube's own record when the container is gone.

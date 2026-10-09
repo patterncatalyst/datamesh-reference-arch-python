@@ -200,7 +200,7 @@ Strawberry code on top of the trusted base — the domain owns its
 application; the platform owns the base.
 
 On other runtimes, the supply-chain shape is the same: a curated base
-image (Distroless, Chainguard, Alpine, plain Debian — choose by your
+image (Distroless, Chainguard, or a minimal distro base — choose by your
 trust model), language dependencies from controlled channels, signed
 images, an SBOM at build time, and admission policies that verify both.
 The reference's bootstrap uses UBI because the implementation deck
