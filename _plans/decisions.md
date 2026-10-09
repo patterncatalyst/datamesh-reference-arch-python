@@ -835,7 +835,7 @@ status table of what is published and reachable.
 **Decision.**
 
 - Start flags: `--driver=docker --container-runtime=containerd --addons=metrics-server`, with sizing from `MINIKUBE_MEMORY` (24g), `MINIKUBE_CPUS` (16) and `MINIKUBE_DISK` (80g). One OCI runtime, runc, end to end.
-- Docker Engine is required: native docker-ce on Linux; Docker Desktop, Colima and Rancher Desktop are options on macOS/Windows, never requirements. The setup pre-flight rejects rootless Docker, `MINIKUBE_ROOTLESS`, and profiles created with another driver or runtime.
+- Docker Engine is required: native docker-ce on Linux; the scripts are supported on Fedora and RHEL hosts (bare metal or VM), and a VM-based engine such as Docker Desktop is an option, never a requirement. The setup pre-flight rejects rootless Docker, `MINIKUBE_ROOTLESS`, and profiles created with another driver or runtime.
 - Images are built with Docker Engine and loaded with `minikube image load` via `scripts/build-image.sh`. No registry. Names are `capstone/<svc>:v1` with `imagePullPolicy: Never`, not `IfNotPresent`, so a missing image fails fast instead of falling through to `docker.io/capstone/*`. `build-image.sh` restarts the Deployments that use a rebuilt image.
 - `ensure_node_forwarding` stays as a guard, with a runtime-neutral comment; it is a no-op if the `FORWARD` policy is already `ACCEPT`.
 - The default `standard` StorageClass is used. If CloudNativePG `initdb` reports `Permission denied`, the fallback is local-path (`storage-provisioner-rancher`).

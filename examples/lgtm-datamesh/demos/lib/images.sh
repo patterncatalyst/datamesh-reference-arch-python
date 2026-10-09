@@ -38,7 +38,7 @@ docker_engine_ok() {
     docker info >/dev/null 2>&1 && return 0
     local ctx
     ctx="$(docker context show 2>/dev/null || true)"
-    printf 'Docker Engine is not reachable (context: %s). On Linux: sudo systemctl start docker; make sure your user is in the docker group (sudo usermod -aG docker $USER, then log in again); docker context use default. On macOS/Windows: start your Docker Engine provider.\n' "${ctx:-unknown}" >&2
+    printf 'Docker Engine is not reachable (context: %s). Run: sudo systemctl start docker; make sure your user is in the docker group (sudo usermod -aG docker $USER, then log in again); docker context use default.\n' "${ctx:-unknown}" >&2
     return 1
 }
 

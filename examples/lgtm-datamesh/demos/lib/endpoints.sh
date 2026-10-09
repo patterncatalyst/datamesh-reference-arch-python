@@ -307,9 +307,15 @@ wake_gateway() {
 # otherwise. The rule lives in the node container's network namespace, not on
 # the host.
 ensure_node_forwarding() {
-    local policy
-    policy="$(docker exec "$EP_PROFILE" iptables -S FORWARD 2>/dev/null | awk '$1 == "-P" { print $3 }')"
+    local rules policy
+    rules="$(docker exec "$EP_PROFILE" iptables -S FORWARD 2>/dev/null)" || true
+    if [[ -z "$rules" ]]; then
+        printf 'WARNING: could not read the FORWARD policy inside node %s (docker exec failed); skipping the guard.\n' "$EP_PROFILE" >&2
+        return 0
+    fi
+    policy="$(awk '$1 == "-P" { print $3 }' <<<"$rules")"
     [[ "$policy" == "DROP" ]] || return 0
     printf '    node FORWARD policy is DROP (left by the node image'"'"'s Docker); setting ACCEPT for pod traffic\n'
-    docker exec "$EP_PROFILE" iptables -P FORWARD ACCEPT
+    docker exec "$EP_PROFILE" iptables -P FORWARD ACCEPT \
+        || printf 'WARNING: could not set the FORWARD policy to ACCEPT in node %s.\n' "$EP_PROFILE" >&2
 }

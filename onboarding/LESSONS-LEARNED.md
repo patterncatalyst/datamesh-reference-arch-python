@@ -271,11 +271,13 @@ system under test. The published Prometheus port is 9091 for this reason.
 Bring-up blockers existed on a clean Fedora 44 host that no
 long-lived dev machine would surface:
 
-- **Pinned addon image digests rot.** minikube 1.35's registry addon
-  pins a `kube-registry-proxy` digest that no longer exists on gcr.io;
-  the addon can never come up on that minikube version regardless of
-  configuration. The fix was upgrading minikube, not debugging the
-  cluster.
+- **Pinned addon image digests rot.** In the earlier setup, minikube 1.35's
+  registry addon pinned a `kube-registry-proxy` digest that no longer existed
+  on gcr.io, so the addon could never come up on that minikube version
+  regardless of configuration. The fix then was upgrading minikube, not
+  debugging the cluster. The capstone no longer uses the registry addon (images
+  are loaded with `minikube image load`), but the lesson stands for any addon
+  that pins an image by digest.
 
 The lesson is CAP-044's ("test the bootstrap on a fresh profile") taken
 one level further: test on a fresh *host* occasionally, because the
@@ -298,11 +300,28 @@ but the server is fast, time name resolution separately from the call.
 
 ### Pushing to a loopback registry only works on a native engine
 
-A push to a registry on the host's loopback port is made by the container engine's daemon, so the address is resolved from the daemon's network namespace. On a native Docker Engine that is the host. On a VM-based engine (Docker Desktop, Colima, Rancher Desktop) the daemon runs inside a VM whose `127.0.0.1` is not the host's, and the push fails with `dial tcp [::1]:5000: i/o timeout`. `minikube image load` hands the image to the profile directly and works with any engine, which is why the capstone uses it and runs no registry.
+A push to a registry on the host's loopback port is made by the container engine's daemon, so the address is resolved from the daemon's network namespace. On a native Docker Engine that is the host. On a VM-based engine (Docker Desktop) the daemon runs inside a VM whose `127.0.0.1` is not the host's, and the push fails with `dial tcp [::1]:5000: i/o timeout`. `minikube image load` hands the image to the profile directly and works with any engine, which is why the capstone uses it and runs no registry.
 
 ### Local images: `imagePullPolicy: Never` plus a restart on rebuild
 
 Images loaded with `minikube image load` are tagged `capstone/<svc>:v1`, and the charts set `imagePullPolicy: Never`. A missing image then fails fast with `ErrImageNeverPull` instead of falling through to a Docker Hub lookup that can never succeed. The other half of the rule: a mutable `:v1` tag means running pods keep the old image after a rebuild, so `scripts/build-image.sh` restarts the Deployments that use the image it just loaded.
+
+### A fresh node can drop all pod traffic: reset the `FORWARD` policy
+
+On minikube v1.38.1, a new capstone profile came up Ready, yet CoreDNS timed out
+and the Istio ingress gateway never passed its readiness probe. A busybox pod
+could not ping, TCP-connect, or send UDP to any other pod. The cause was inside the
+node: the node image starts Docker once at first boot, and Docker 29 sets the
+iptables `FORWARD` policy to `DROP` when it enables IP forwarding. kindnet expects
+`ACCEPT`, so every forwarded packet was dropped (`iptables -L FORWARD -v` showed the
+policy counter climbing). Recreating the profile did not help; it reproduced on
+every fresh node. The cause is the node image's Docker, so it does not depend on the
+driver. It was seen on rootless podman, <!-- forbidden-ok -->
+and `ensure_node_forwarding` guards every driver: it resets the policy to `ACCEPT`
+after each start and does nothing when the policy is already `ACCEPT`. It was not
+seen on the docker driver in the 2026-10-09 run, and the guard stays in place because
+the node image can change. The lesson: when every pod-network path fails at once, read
+the node's `FORWARD` policy before blaming the CNI or DNS.
 
 ---
 
@@ -319,7 +338,7 @@ Quarkus reference ran the same platform on the docker driver with none of them:
 
 | Problem | Symptom | Workaround it needed |
 |---|---|---|
-| Node `FORWARD` policy `DROP` | Fresh node Ready, but CoreDNS timed out, the Istio ingress gateway never became Ready, and pods could not reach each other (ping, TCP and UDP all failed) | Reset the policy to `ACCEPT` inside the node after every start |
+| Node `FORWARD` policy `DROP` | Fresh node Ready, but CoreDNS timed out, the Istio ingress gateway never became Ready, and pods could not reach each other (ping, TCP and UDP all failed) | Reset the policy to `ACCEPT` inside the node after every start (still guarded on all drivers; see "A fresh node can drop all pod traffic" under the mechanical lessons) |
 | `minikube addons enable` under CRI-O + crun <!-- forbidden-ok --> | `check paused: list paused: runc: sudo runc list -f json` failed with `open /run/runc: no such file or directory` | Enable addons only through `minikube start --addons=` |
 | Hostpath volumes created `0755 root` under CRI-O <!-- forbidden-ok --> | CloudNativePG `initdb` (uid 26): `could not create directory ".../pgdata": Permission denied` | Switch the default StorageClass to local-path |
 | Mixed OCI runtimes <!-- forbidden-ok --> | Podman ran the node with crun while containerd ran pods with runc <!-- forbidden-ok --> | Switch the in-node runtime to CRI-O, which caused the two rows above <!-- forbidden-ok --> |
@@ -337,23 +356,10 @@ against a known-good sibling setup early instead of stacking fixes.
 
 ### PID ceiling on rootless podman nodes (historical) <!-- forbidden-ok -->
 
-The default `pids_limit` for rootless podman is 2048, which is plenty for <!-- forbidden-ok -->
-small workloads but gets eaten by the full data mesh once OpenMetadata
-and the observability stack are running. Memorialised as CAP-041. Raise
-it at node creation, not after.
-
-### A fresh rootless-podman node can drop all pod traffic (historical) <!-- forbidden-ok -->
-
-On minikube v1.38.1, a new capstone profile came up Ready, yet CoreDNS timed out
-and the Istio ingress gateway never passed its readiness probe. A busybox pod
-could not ping, TCP-connect, or send UDP to any other pod. The cause was inside the
-node: the node image starts Docker once at first boot, and Docker 29 sets the
-iptables `FORWARD` policy to `DROP` when it enables IP forwarding. kindnet expects
-`ACCEPT`, so every forwarded packet was dropped (`iptables -L FORWARD -v` showed the
-policy counter climbing). Recreating the profile did not help; it reproduces on
-every fresh node. `ensure_node_forwarding` now resets the policy after each start
-(DRA-018), and the `ensure_node_forwarding` guard remains in the scripts under the current setup. The lesson: when every pod-network path fails at once, read the node's
-`FORWARD` policy before blaming the CNI or DNS.
+The default `pids_limit` for rootless podman was 2048, which was plenty for <!-- forbidden-ok -->
+small workloads but got eaten by the full data mesh once OpenMetadata
+and the observability stack are running. Memorialised as CAP-041. It had to be raised
+at node creation, not after.
 
 ### Pick one OCI runtime: podman driver means CRI-O and crun (historical) <!-- forbidden-ok -->
 
@@ -365,38 +371,39 @@ paused-container check calls `runc list`; enable addons in `minikube start --add
 instead.
 Another: minikube's hostpath provisioner creates volume directories `0755 root`, so
 non-root pods cannot write to them (CloudNativePG's `initdb`, running as uid 26, failed
-with `Permission denied`). The capstone makes the local-path provisioner, which
+with `Permission denied`). The capstone made the local-path provisioner, which
 creates them `0777`, the default StorageClass.
 
 ### Rootless-podman minikube has its own image-distribution model (historical) <!-- forbidden-ok -->
 
-You can't `docker push` to localhost and expect minikube to find it,
-because rootless podman's daemon isn't accessible from the cluster's <!-- forbidden-ok -->
-node, and the in-node CRI runtime (CRI-O since 2026-10; containerd before) doesn't share an image cache <!-- forbidden-ok -->
-with the host. The reference uses minikube's in-cluster registry as
+You couldn't `docker push` to localhost and expect minikube to find it,
+because rootless podman's daemon wasn't accessible from the cluster's <!-- forbidden-ok -->
+node, and the in-node CRI runtime (CRI-O since 2026-10; containerd before) didn't share an image cache <!-- forbidden-ok -->
+with the host. The reference used minikube's in-cluster registry as
 the distribution point (build → tag for the in-cluster registry →
-push → the node's runtime pulls from inside the cluster). Memorialised as
+push → the node's runtime pulled from inside the cluster). Memorialised as
 CAP-007, CAP-009, CAP-010 — three CAPs because it took that many
-iterations to land. The lesson: rootless minikube has its own <!-- forbidden-ok -->
-image-distribution shape and `docker push localhost:5000/img` is not it. <!-- forbidden-ok -->
+iterations to land. The lesson then: rootless minikube had its own <!-- forbidden-ok -->
+image-distribution shape and `docker push localhost:5000/img` was not it. <!-- forbidden-ok -->
 
 ### Kernel modules for the CNI portmap plugin (historical)
 
-The CNI portmap plugin needs legacy `ip_tables`/`iptable_nat` kernel modules,
-and a rootless node can't load them. Fedora is nftables-only out of the box; <!-- forbidden-ok -->
-inside the rootless podman node, `modprobe` gets `Operation not permitted`, <!-- forbidden-ok -->
-and every hostPort pod (starting with the registry proxy) fails sandbox
-creation. The host must load the modules — persist them via `/etc/modules-
-load.d/` so a reboot doesn't silently re-break the cluster.
+The CNI portmap plugin needed legacy `ip_tables`/`iptable_nat` kernel modules,
+and a rootless node couldn't load them. Fedora is nftables-only out of the box; <!-- forbidden-ok -->
+inside the rootless podman node, `modprobe` got `Operation not permitted`, <!-- forbidden-ok -->
+and every hostPort pod (starting with the registry proxy) failed sandbox
+creation. The host had to load the modules — persisted via `/etc/modules-
+load.d/` so a reboot didn't silently re-break the cluster.
 
 ### `imagePullPolicy: Always` for mutable tags during development (historical)
 
-The reference uses `:v1` as a development tag (not for production, where
+The reference used `:v1` as a development tag (not for production, where
 content-addressable tags or proper semver belong). With a mutable tag,
-kubelet's default `IfNotPresent` policy means it never re-pulls; you push
-a new image and nothing changes in the cluster until you delete the pod
-and let it re-roll. Set `imagePullPolicy: Always` on development services
-to make every pod restart fetch the latest image. Memorialised as CAP-015.
+kubelet's default `IfNotPresent` policy meant it never re-pulled; you pushed
+a new image and nothing changed in the cluster until you deleted the pod
+and let it re-roll. The reference used `Always` (now `Never` with image load,
+see the current lesson "Local images: `imagePullPolicy: Never` plus a restart
+on rebuild") so every pod restart fetched the latest image. Memorialised as CAP-015.
 
 ---
 

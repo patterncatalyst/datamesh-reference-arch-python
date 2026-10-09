@@ -4,8 +4,8 @@
 # profile sized for the full §17 stack.
 #
 # Toolchain: Docker Engine with `--driver=docker --container-runtime=containerd`
-# (runc inside the node). Docker Desktop and other VM-based engines work but are
-# optional, never required.
+# (runc inside the node). Supported on Fedora and RHEL hosts (bare metal or VM). A VM-based engine
+# (for example Docker Desktop) works if its VM is sized for the node.
 #
 # The capstone profile is intentionally separate from §3's `minikube` profile
 # and §11's `istio` profile so the larger resource footprint doesn't disturb
@@ -16,7 +16,7 @@
 #   MINIKUBE_CPUS     node CPUs             (default 16)
 #   MINIKUBE_DISK     node disk size        (default 80g)
 #   MINIKUBE_PROFILE  profile name          (default capstone)
-# On Linux the docker driver ignores --disk-size: node data lives under the
+# The docker driver ignores --disk-size: node data lives under the
 # engine's data root (/var/lib/docker by default), so keep about 100 GB free there.
 #
 # Host access: every host-facing NodePort (see demos/lib/endpoints.sh) is
@@ -54,6 +54,18 @@ fi
 
 # ─── Pre-flight ──────────────────────────────────────────────────────────────
 
+# 0. Supported hosts: Fedora and RHEL (bare metal or VM). The scripts use ss,
+# GNU coreutils and Linux sysctls.
+if [[ "$(uname -s)" != "Linux" ]]; then
+    printf 'ERROR: the capstone scripts are supported on Fedora and RHEL hosts (bare metal or VM).\n' >&2
+    exit 1
+fi
+host_id="$( . /etc/os-release 2>/dev/null && printf '%s %s' "${ID:-}" "${ID_LIKE:-}" )" || host_id=""
+case " $host_id " in
+    *" fedora "*|*" rhel "*) ;;
+    *) printf 'WARNING: the capstone scripts are supported on Fedora and RHEL hosts (bare metal or VM); continuing anyway.\n' >&2 ;;
+esac
+
 # 1. Validate EXTRA_NODE_PORTS up front, before anything is deleted or started.
 PORTS_ARG="$(node_ports_arg)" || { printf 'ERROR: fix EXTRA_NODE_PORTS; nothing was changed.\n' >&2; exit 1; }
 
@@ -77,7 +89,9 @@ docker_engine_ok || exit 1
 # 4. Rootless mode is not supported.  # forbidden-ok
 if [[ "$(minikube config get rootless 2>/dev/null || true)" == "true" ]] || [[ -n "${MINIKUBE_ROOTLESS:-}" ]]; then  # forbidden-ok
     printf 'ERROR: minikube is configured for rootless mode, which this profile does not use.\n' >&2  # forbidden-ok
-    printf 'run: minikube config unset rootless; unset MINIKUBE_ROOTLESS\n' >&2  # forbidden-ok
+    printf 'Upgrading from an earlier (rootless podman) profile: delete the old profile first,\n' >&2  # forbidden-ok
+    printf '  MINIKUBE_ROOTLESS=true minikube delete -p %s\n' "$PROFILE_NAME" >&2  # forbidden-ok
+    printf 'then: minikube config unset rootless; unset MINIKUBE_ROOTLESS; and re-run this script.\n' >&2  # forbidden-ok
     exit 1
 fi
 if [[ "$(docker info --format '{{.SecurityOptions}}' 2>/dev/null || true)" == *rootless* ]]; then  # forbidden-ok
@@ -88,25 +102,29 @@ fi
 # 5. Engine capacity: the node cannot be larger than the engine (or its VM).
 read -r engine_cpus engine_mem <<<"$(docker info --format '{{.NCPU}} {{.MemTotal}}' 2>/dev/null || true)"
 mem_bytes=""
-if [[ "$MEMORY" =~ ^([0-9]+)[gG]$ ]]; then
-    mem_bytes=$(( ${BASH_REMATCH[1]} * 1024 * 1024 * 1024 ))
-elif [[ "$MEMORY" =~ ^([0-9]+)[mM]$ ]]; then
-    mem_bytes=$(( ${BASH_REMATCH[1]} * 1024 * 1024 ))
-elif [[ "$MEMORY" =~ ^[0-9]+$ ]]; then
-    mem_bytes=$(( MEMORY * 1024 * 1024 ))   # plain number means MB
+mem_lc="$(printf '%s' "$MEMORY" | tr '[:upper:]' '[:lower:]')"
+if [[ "$mem_lc" =~ ^([0-9]+)(g|gb|gi)$ ]]; then
+    mem_bytes=$(( 10#${BASH_REMATCH[1]} * 1024 * 1024 * 1024 ))
+elif [[ "$mem_lc" =~ ^([0-9]+)(m|mb|mi)$ ]]; then
+    mem_bytes=$(( 10#${BASH_REMATCH[1]} * 1024 * 1024 ))
+elif [[ "$mem_lc" =~ ^[0-9]+$ ]]; then
+    mem_bytes=$(( 10#$mem_lc * 1024 * 1024 ))   # plain number means MB
+else
+    printf 'ERROR: cannot parse MINIKUBE_MEMORY=%s (use for example 24g, 24GB, 24Gi, 24576m or 24576).\n' "$MEMORY" >&2
+    exit 1
 fi
 capacity_bad=0
 if [[ "${engine_cpus:-}" =~ ^[0-9]+$ && "$CPUS" =~ ^[0-9]+$ ]] && (( CPUS > engine_cpus )); then
     printf 'ERROR: MINIKUBE_CPUS=%s exceeds the %s CPUs the Docker engine reports.\n' "$CPUS" "$engine_cpus" >&2
     capacity_bad=1
 fi
-if [[ -n "$mem_bytes" && "${engine_mem:-}" =~ ^[0-9]+$ ]] && (( mem_bytes > engine_mem )); then
+if [[ "${engine_mem:-}" =~ ^[0-9]+$ ]] && (( mem_bytes > engine_mem )); then
     printf 'ERROR: MINIKUBE_MEMORY=%s exceeds the %d MiB the Docker engine reports.\n' "$MEMORY" "$(( engine_mem / 1024 / 1024 ))" >&2
     capacity_bad=1
 fi
 if (( capacity_bad )); then
     printf 'Lower MINIKUBE_CPUS / MINIKUBE_MEMORY to fit. VM-based engines (for example\n' >&2
-    printf 'Docker Desktop, Colima) need their VM sized larger than the node.\n' >&2
+    printf 'Docker Desktop) need their VM sized larger than the node.\n' >&2
     exit 1
 fi
 printf '==> Docker engine capacity OK (%s CPUs, %s MiB; node wants %s CPUs, %s)\n' \
@@ -115,9 +133,16 @@ printf '==> Docker engine capacity OK (%s CPUs, %s MiB; node wants %s CPUs, %s)\
 # 6. VM-based engines keep the node inside a VM: host sysctls do not apply.
 VM_ENGINE=0
 engine_os="$(docker info --format '{{.OperatingSystem}}' 2>/dev/null || true)"
-if [[ "$engine_os" =~ ([Dd]ocker[[:space:]]+[Dd]esktop|[Cc]olima|[Rr]ancher|[Bb]oot2[Dd]ocker) ]]; then
+engine_kernel="$(docker info --format '{{.KernelVersion}}' 2>/dev/null || true)"
+# Primary signal: the engine's kernel differs from the host kernel, so the node
+# runs inside a VM. Secondary: the engine names a known VM-based product.
+if [[ -n "$engine_kernel" && "$engine_kernel" != "$(uname -r)" ]]; then
     VM_ENGINE=1
-    printf 'NOTE: %s is a VM-based engine. The node runs inside its VM, so size the VM\n' "$engine_os"
+elif [[ "$engine_os" =~ ([Dd]ocker[[:space:]]+[Dd]esktop|[Cc]olima|[Rr]ancher|[Bb]oot2[Dd]ocker) ]]; then
+    VM_ENGINE=1
+fi
+if (( VM_ENGINE )); then
+    printf 'NOTE: %s (kernel %s) is a VM-based engine (such as Docker Desktop). The node runs inside its VM, so size the VM\n' "${engine_os:-the engine}" "${engine_kernel:-?}"
     printf '      for the node and expect inotify limits to be checked inside the node.\n'
 fi
 
@@ -141,7 +166,7 @@ fi
 # 8. minikube version floor (verified on 1.38.1).
 mk_version="$(minikube version --short 2>/dev/null | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' || echo v0.0.0)"
 if [[ "$(printf '%s\n' "v1.36.0" "$mk_version" | sort -V | head -1)" != "v1.36.0" ]]; then
-    printf 'ERROR: minikube %s is too old (need >= 1.36; verified on 1.38.1).\n' "$mk_version" >&2
+    printf 'ERROR: minikube %s is too old (need >= 1.36; verified on 1.38.1, older releases are untested).\n' "$mk_version" >&2
     printf 'Install a current minikube (e.g. to ~/.local/bin).\n' >&2
     exit 1
 fi

@@ -8,7 +8,7 @@ Planned 2026-10-08 (Opus). Move to `_plans/archive/` once executed.
   --disk-size=$MINIKUBE_DISK(80g) --driver=docker --container-runtime=containerd --addons=metrics-server`.
   - No rootless, no CRI-O, no registry or rancher addons, and no local-path default.
   - The pre-flight rejects `minikube config get rootless == true`, `MINIKUBE_ROOTLESS`, and rootless Docker. It also rejects a profile created with another driver or runtime.
-- **Engine.** Docker Engine is required: native docker-ce on Linux. A VM-based engine (Docker Desktop, Colima, Rancher Desktop) is an option, never a requirement.
+- **Engine.** Docker Engine is required: native docker-ce on Linux. A VM-based engine (Docker Desktop) is an option, never a requirement.
   - `docker_engine_ok` pre-flight with a hint.
   - The capacity check compares `docker info` NCPU and MemTotal with the overrides.
   - On VM engines the inotify check runs inside the node instead of on the host.

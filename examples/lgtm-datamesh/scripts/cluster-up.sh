@@ -28,6 +28,7 @@ set -uo pipefail
 PROFILE="${MINIKUBE_PROFILE:-capstone}"
 TAG="v1"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"; cd "$ROOT"   # build-image.sh takes cwd-relative services/<svc>
 
 step() { printf '\n==> %s\n' "$1"; }
 ok()   { printf '    \xe2\x9c\x93 %s\n' "$1"; }

@@ -72,7 +72,8 @@ trap '[[ -n "$tmp" ]] && rm -f "$tmp"' EXIT
 
 if ! minikube -p "$PROFILE" image load "$IMAGE" || ! image_in_profile "$NAME" "$TAG"; then
     step "Direct load did not land the image; falling back to a tar archive"
-    tmp="$(mktemp --suffix=.tar)"
+    tmp="$(mktemp "${TMPDIR:-/tmp}/capstone-image.XXXXXX")"
+    mv "$tmp" "${tmp}.tar"; tmp="${tmp}.tar"
     docker image save -o "$tmp" "$IMAGE"
     minikube -p "$PROFILE" image load "$tmp"
 fi
@@ -89,30 +90,30 @@ if [[ "${BUILD_IMAGE_NO_RESTART:-0}" != "1" ]]; then
         [[ -n "$dep" ]] || continue
         for img in $images; do
             if [[ "$img" == "$IMAGE" || "$img" == "docker.io/$IMAGE" ]]; then
-                kubectl rollout restart "deploy/${dep}" -n "$NS"
+                kubectl --context "$PROFILE" rollout restart "deploy/${dep}" -n "$NS"
                 restarted+=("$dep")
                 break
             fi
         done
-    done < <(kubectl get deploy -n "$NS" -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.template.spec.containers[*].image} {.spec.template.spec.initContainers[*].image}{"\n"}{end}')
+    done < <(kubectl --context "$PROFILE" get deploy -n "$NS" -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.template.spec.containers[*].image} {.spec.template.spec.initContainers[*].image}{"\n"}{end}')
     if ((${#restarted[@]})); then
         printf '    restarted: %s\n' "${restarted[*]}"
         # Wait for the restarted rollouts so callers never hit a pod that is
         # still being replaced (the mesh answers 503 until the new pod is in
         # the endpoints). A Deployment scaled to zero finishes immediately.
         for dep in "${restarted[@]}"; do
-            kubectl rollout status "deploy/${dep}" -n "$NS" --timeout=180s >/dev/null \
+            kubectl --context "$PROFILE" rollout status "deploy/${dep}" -n "$NS" --timeout=180s >/dev/null \
                 || printf '    WARN: deploy/%s did not finish rolling out within 180s\n' "$dep" >&2
             # Then wait for the replaced pods to finish terminating: while an old
             # pod drains, a request on the NodePort can still land on it and get
             # a 503 from its sidecar.
-            sel="$(kubectl get deploy "$dep" -n "$NS" \
-                -o go-template='{{range $k, $v := .spec.selector.matchLabels}}{{$k}}={{$v}},{{end}}' 2>/dev/null)"
+            sel="$(kubectl --context "$PROFILE" get deploy "$dep" -n "$NS" \
+                -o go-template='{{range $k, $v := .spec.selector.matchLabels}}{{$k}}={{$v}},{{end}}' 2>/dev/null)" || true
             sel="${sel%,}"
             if [[ -n "$sel" ]]; then
                 for _ in $(seq 1 60); do
-                    terminating="$(kubectl get pods -n "$NS" -l "$sel" \
-                        -o go-template='{{range .items}}{{if .metadata.deletionTimestamp}}x{{end}}{{end}}' 2>/dev/null)"
+                    terminating="$(kubectl --context "$PROFILE" get pods -n "$NS" -l "$sel" \
+                        -o go-template='{{range .items}}{{if .metadata.deletionTimestamp}}x{{end}}{{end}}' 2>/dev/null)" || true
                     [[ -z "$terminating" ]] && break
                     sleep 2
                 done

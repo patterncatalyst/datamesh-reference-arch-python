@@ -74,17 +74,28 @@ RAM-constrained.
 |-------------|---------|-------|
 | OS | Fedora 44 | Docker Engine (docker-ce) as the container runtime |
 | RAM | 64 GB | the `capstone` minikube profile uses 24 GB; rest is host headroom |
-| Disk | 1 TB | ≥30 GB free for image cache + PVs |
+| Disk | 1 TB | about 100 GB free under the Docker data root (`/var/lib/docker`) |
 | CPU | 16 vCPU recommended | not strictly required but the stack is heavy |
 
 ### Container engine & host tuning
 
-The capstone runs on **Docker Engine** (native docker-ce on Linux; Docker
-Desktop, Colima and Rancher Desktop work on macOS/Windows but are never
-requirements). Start flags: `--driver=docker --container-runtime=containerd
+The capstone runs on **Docker Engine** (native docker-ce). The
+scripts are supported on Fedora and RHEL hosts (bare metal or VM). A VM-based
+engine such as Docker Desktop also works if its VM is sized for the node; it
+is never required.
+Start flags: `--driver=docker --container-runtime=containerd
 --addons=metrics-server`. Docker group membership is root-equivalent on the
 host.
 Podman: used only by the optional OpenShift (CRC) appendix. <!-- forbidden-ok -->
+
+**Upgrading from an earlier (rootless podman) capstone profile.** <!-- forbidden-ok -->
+Delete the old profile first, then clear the setting, then run setup: <!-- forbidden-ok -->
+
+```bash
+MINIKUBE_ROOTLESS=true minikube delete -p capstone   # forbidden-ok
+minikube config unset rootless                        # forbidden-ok
+./scripts/setup-capstone-profile.sh
+```
 
 Profile sizing defaults can be overridden before bootstrap:
 

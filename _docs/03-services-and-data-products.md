@@ -92,7 +92,7 @@ cluster.
 The capstone's answer is deliberately simple: **build with Docker Engine, then load the
 image into the profile with `minikube image load`**. There is no registry to run and no
 addresses to reconcile, and it works the same on a native engine and on a VM-based one
-(Docker Desktop, Colima, Rancher Desktop). That portability is the reason for the choice:
+(Docker Desktop, for example). That portability is the reason for the choice:
 pushing to a registry on the host's loopback only works when the engine's daemon shares
 the host's network, which a VM-based engine's does not.
 

@@ -154,14 +154,14 @@ else
     echo "          ln -sfn ~/.local/share/istio-1.29.2 ~/.local/share/istio-current"
 fi
 
-section "minikube minimum version (1.35's registry addon pins a dead image digest)"
+section "minikube minimum version (verified on 1.38.1; older releases are untested)"
 if command -v minikube >/dev/null 2>&1; then
     MK_VERSION="$(minikube version --short 2>/dev/null | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' || echo v0.0.0)"
     echo "  minikube ${MK_VERSION} at $(command -v minikube)"
     if [[ "$(printf '%s\n' "v1.36.0" "$MK_VERSION" | sort -V | head -1)" == "v1.36.0" ]]; then
         echo "  STATUS: ✓ OK (>= 1.36)"
     else
-        echo "  STATUS: ⚠ too old — the registry addon can never come up on < 1.36."
+        echo "  STATUS: ⚠ older than 1.36 — verified on 1.38.1; older releases are untested."
         echo "          Install a current minikube (e.g. to ~/.local/bin, which"
         echo "          precedes /usr/local/bin on PATH)."
     fi

@@ -14,8 +14,8 @@
 #   2. case-sensitive legacy helper names
 #   3. --ports values lacking a 127.0.0.1: prefix (shell expansions are ignored,
 #      they come from node_ports_arg)
-#   4. the same patterns inside presentation/**/*.pptx slides and notes
-#   5. container runtime scope: podman / rootless / CRI-O / crun /
+#   4. the scan 1 and scan 5 patterns inside presentation/**/*.pptx slides and notes
+#   5. container runtime scope: podman / rootless / CRI-O / crio / crun /
 #      MINIKUBE_ROOTLESS / the retired localhost:5000 registry name outside the
 #      CRC appendix allowlist (the minikube path is Docker Engine + containerd,
 #      DRA-019)
@@ -33,7 +33,7 @@ ROOT_DIR="${ROOT_DIR:-$(cd "$HERE/.." && pwd)}"
 cd "$ROOT_DIR"
 
 targets=()
-for t in _docs onboarding examples scripts _plans _includes _layouts \
+for t in _docs onboarding examples scripts _plans _includes _layouts assets .github \
          README.md PRD.md index.html setup.html demos.html; do
     [[ -e "$t" ]] && targets+=("$t")
 done
@@ -103,7 +103,7 @@ fi
 # Scan 5: container runtime scope. Pattern is built from fragments so the script
 # never matches itself.
 pm="pod""man"
-re5="$pm|rootless|cri-o|\\bcrun\\b|MINIKUBE_ROOTLESS|localhost:5000"
+re5="$pm|rootless|cri-o|\\bcrio\\b|\\bcrun\\b|MINIKUBE_ROOTLESS|localhost:5000"
 if (( ${#targets[@]} )); then
     hits="$( (grep -rnIiE "${GREP_EXCL[@]}" -e "$re5" "${targets[@]}" 2>/dev/null || true) | filter \
         | grep -v -e '^examples/lgtm-datamesh/openshift/' \
@@ -124,7 +124,7 @@ if [[ -d presentation ]]; then
             # Strip XML tags per paragraph so text split across <a:t> runs is rejoined.
             m="$(unzip -p "$f" 'ppt/slides/*.xml' 'ppt/notesSlides/*.xml' 2>/dev/null \
                 | sed -e "s#</a:p>#&\\${nl}#g" -e 's/<[^>]*>//g' \
-                | grep -ioE ".{0,30}($re1).{0,30}" | sort | uniq -c | sed -E 's/^ +//' || true)"
+                | grep -ioE ".{0,30}($re1|$re5).{0,30}" | sort | uniq -c | sed -E 's/^ +//' || true)"
             [[ -n "$m" ]] && report "pptx contains forbidden syntax: $f" "$m"
         done < <(find presentation -type f -name '*.pptx' -print0 | sort -z)
     else

@@ -25,7 +25,9 @@ cd "$(repo_root)/examples/$EXAMPLE"
 trap "cleanup_container $CONTAINER" EXIT
 
 step "Building $EXAMPLE"
-docker build -t "$IMAGE" . >/dev/null || fail "$EXAMPLE: build failed"
+BUILD_FILE=Dockerfile
+[[ -f Containerfile ]] && BUILD_FILE=Containerfile
+docker build -f "$BUILD_FILE" -t "$IMAGE" . >/dev/null || fail "$EXAMPLE: build failed"
 pass "$EXAMPLE built"
 
 step "Running $EXAMPLE on :$HOST_PORT"

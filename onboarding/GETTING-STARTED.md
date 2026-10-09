@@ -81,16 +81,16 @@ What's verified to work end to end:
 - **Host:** Fedora 44 with native Docker Engine (docker-ce) as the container runtime
 - **Memory:** 64 GB RAM (the `capstone` minikube profile uses 24 GB; the
   rest is host headroom for IDEs, browsers, and host services)
-- **Disk:** 1 TB total, with ≥30 GB free for image cache and persistent
+- **Disk:** 1 TB total, with about 100 GB free under the Docker data root (/var/lib/docker) for image cache and persistent
   volumes
 - **Kernel:** `fs.inotify.max_user_instances` raised (the bootstrap audits
   this and prints the exact `sysctl` command if it isn't)
 - **Tooling:** minikube, kubectl, helm
 - **Network:** outbound HTTPS to pull images, charts, and operators
 
-What probably works but isn't verified: other Fedora versions, RHEL,
-Ubuntu, and any host with any Docker Engine (native, or VM-based such as
-Docker Desktop, Colima, Rancher Desktop) with enough CPU and memory; set
+What probably works but isn't verified: other Fedora and RHEL versions, and any
+Fedora or RHEL host with any Docker Engine (native, or VM-based such as
+Docker Desktop) with enough CPU and memory; set
 `MINIKUBE_CPUS` and `MINIKUBE_MEMORY` to fit. If you're on one of those, the
 bootstrap may need small adaptations; read it before running it.
 

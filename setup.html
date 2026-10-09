@@ -46,7 +46,7 @@ permalink: /setup/
                 <tr>
                     <td>Disk</td>
                     <td>1 TB</td>
-                    <td>30 GB free minimum for image cache + PVs</td>
+                    <td>About 100 GB free under the Docker data root (<code>/var/lib/docker</code>)</td>
                 </tr>
                 <tr>
                     <td>CPU</td>
@@ -97,12 +97,21 @@ docker info</code></pre>
 
         <h3>VM-based engines</h3>
         <p>
-            On macOS and Windows, Docker Desktop, Colima, or Rancher Desktop
-            can provide the engine instead. They are options, not
-            requirements. Their VM must be sized to at least 28 GB of memory;
+            The capstone scripts are supported on Fedora and RHEL hosts (bare metal
+            or VM). A VM-based engine such as Docker Desktop can provide the engine instead. It
+            is an option, not a requirement. Its VM must be sized to at least 28 GB of memory;
             set <code>MINIKUBE_CPUS</code> and <code>MINIKUBE_MEMORY</code> to
             fit it, as described below.
         </p>
+
+        <h3>Upgrading from an earlier (rootless podman) capstone profile</h3> <!-- forbidden-ok -->
+        <p> <!-- forbidden-ok -->
+            An earlier release created the profile with rootless podman. Delete that profile first, <!-- forbidden-ok -->
+            then clear the setting, then run setup: <!-- forbidden-ok -->
+        </p>
+<pre><code>MINIKUBE_ROOTLESS=true minikube delete -p capstone <!-- forbidden-ok -->
+minikube config unset rootless <!-- forbidden-ok -->
+./scripts/setup-capstone-profile.sh</code></pre>
 
         <h3>Fitting minikube to the engine</h3>
         <p>
@@ -127,7 +136,7 @@ export MINIKUBE_DISK=80g</code></pre>
         <h2 class="section-heading">Required tooling</h2>
 
         <ul>
-            <li><strong>docker</strong> and <strong>docker compose</strong></li>
+            <li><strong>docker</strong> and <strong>docker compose</strong> (compose is not used by the minikube path; listed as a standard host tool)</li>
             <li><strong>minikube</strong> &gt;= 1.36 &mdash; verified on 1.38.1</li>
             <li><strong>kubectl</strong></li>
             <li><strong>helm</strong></li>
