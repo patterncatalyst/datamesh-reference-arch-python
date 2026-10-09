@@ -45,8 +45,8 @@ else
     printf '  (none)\n'
 fi
 
-# 3. "minikube VM" — with the podman driver it's actually a container, not a VM
-hdr "minikube VM references (should be 'minikube node container' under podman driver)"
+# 3. "minikube VM" — with the docker driver it's a container, not a VM
+hdr "minikube VM references (should be 'minikube node container' under the docker driver)"
 if grep -rn 'minikube VM' _docs/ 2>/dev/null; then
     counts[minikube-vm]=$(grep -rn 'minikube VM' _docs/ 2>/dev/null | wc -l)
 else

@@ -35,7 +35,7 @@ repo_root() {
 # Idempotent: removes a container if it exists, silent if not.
 cleanup_container() {
     local name="$1"
-    podman rm -f "$name" >/dev/null 2>&1 || true
+    docker rm -f "$name" >/dev/null 2>&1 || true
 }
 
 # Wait up to N seconds for an HTTP endpoint to start responding.

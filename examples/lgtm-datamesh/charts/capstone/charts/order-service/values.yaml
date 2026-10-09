@@ -3,12 +3,14 @@
 replicas: 1
 
 image:
-  repository: localhost:5000/order-service
+  # Image is loaded into the node by build-image.sh (minikube image load); no registry.
+  repository: capstone/order-service
   tag: v1
-  pullPolicy: Always
+  # Never: images are loaded into the node by build-image.sh (minikube image load) and never pulled; build-image.sh restarts the Deployment so a rebuilt :v1 is used.
+  pullPolicy: Never
 
-# NodePort so demos reach it over the stable SSH tunnel (local 8080) instead of
-# kubectl port-forward. See demos/lib/tunnels.sh for the allocation map.
+# NodePort 30080, published on 127.0.0.1:8080 at profile creation
+# (map: demos/lib/endpoints.sh).
 service:
   type: NodePort
   port: 80

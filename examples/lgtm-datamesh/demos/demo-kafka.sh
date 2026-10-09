@@ -4,10 +4,10 @@
 # order.placed event to Kafka, notification-service consumes it.
 #
 # Flow:
-#   1. registry-prefix guard on the charts we deploy
+#   1. image-name guard on the charts we deploy
 #   2. ensure the Strimzi operator is installed
 #   3. deploy the Kafka cluster chart; wait for the Kafka CR to be Ready
-#   4. build + push inventory (order needs CheckStock), order, notification
+#   4. build + load inventory (order needs CheckStock), order, notification
 #   5. ensure Postgres Ready; deploy inventory, order, notification
 #   6. place an in-stock order via order-service REST (emits order.placed)
 #   7. poll notification-service GET /received until the order_id appears
@@ -16,11 +16,11 @@
 # Usage:  ./demos/demo-kafka.sh [--purge-db]
 
 set -uo pipefail
-export MINIKUBE_ROOTLESS=true   # CAP-010
 
 PROFILE="capstone"; NS="capstone"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
-source "${ROOT}/demos/lib/tunnels.sh"
+source "${ROOT}/demos/lib/endpoints.sh"
+source "${ROOT}/demos/lib/images.sh"
 PG_RELEASE="capstone-postgres"; PG_CHART="charts/capstone/charts/postgres"
 KAFKA_RELEASE="capstone-kafka"; KAFKA_CHART="charts/capstone/charts/kafka"
 KAFKA_CR="capstone-kafka"
@@ -43,14 +43,14 @@ fail() {
     exit 1
 }
 
-# ── 1. registry guard ─────────────────────────────────────────────────────────
-step "Sanity: chart image.repository points at the registry"
+# ── 1. image guard ─────────────────────────────────────────────────────────
+step "Sanity: chart image.repository is capstone/<svc> with pullPolicy Never"
 for svc in "${APP_SERVICES[@]}"; do
-    repo="$(awk '/^  repository:/{print $2; exit}' "charts/capstone/charts/${svc}/values.yaml")"
-    case "$repo" in
-        localhost:5000/*) printf '    ✓ %s → %s\n' "$svc" "$repo" ;;
-        *) fail "${svc} image.repository is '${repo}' — must start with localhost:5000/" ;;
-    esac
+    if chart_repo_ok "charts/capstone/charts/${svc}/values.yaml" "$svc"; then
+        printf '    ✓ %s → %s\n' "$svc" "$(image_ref "$svc")"
+    else
+        fail "${svc} chart must use image.repository capstone/${svc} with pullPolicy Never"
+    fi
 done
 
 minikube status -p "$PROFILE" >/dev/null 2>&1 || fail "profile '$PROFILE' not running — ./scripts/setup-capstone-profile.sh"
@@ -72,10 +72,10 @@ kubectl wait "kafka/${KAFKA_CR}" -n "$NS" --for=condition=Ready --timeout=360s \
     || fail "Kafka cluster did not become Ready"
 printf '    ✓ Kafka Ready\n'
 
-# ── 4. build + push ───────────────────────────────────────────────────────────
+# ── 4. build + load ───────────────────────────────────────────────────────────
 for svc in "${APP_SERVICES[@]}"; do
-    step "Building + pushing ${svc}"
-    ./scripts/build-image.sh "services/${svc}" "${svc}" v1 || fail "${svc} build/push failed"
+    step "Building + loading ${svc}"
+    ./scripts/build-image.sh "services/${svc}" "${svc}" v1 || fail "${svc} build/load failed"
 done
 
 # ── 5. Postgres + deploy services ─────────────────────────────────────────────
@@ -99,10 +99,10 @@ for svc in "${APP_SERVICES[@]}"; do
 done
 
 # ── 6. place an order (emits order.placed) ────────────────────────────────────
-step "Bringing up tunnels: order-service (${LOCAL_ORDER}) and notification-service (${LOCAL_NOTIF})"
-ensure_tunnel order notification
+step "Checking endpoints: order-service (${LOCAL_ORDER}) and notification-service (${LOCAL_NOTIF})"
+ensure_endpoint order notification
 wait_http "http://127.0.0.1:${LOCAL_ORDER}/" 20 || true
-# notification-service is KEDA-scaled-to-zero; its tunnel has no endpoint until
+# notification-service is KEDA-scaled-to-zero; its Service has no ready endpoint until
 # the order.placed event below wakes it — the poll loop tolerates that.
 
 step "Placing an in-stock order (WIDGET-001 x2) via order-service REST"
@@ -121,7 +121,7 @@ step "Polling notification-service /received for the order.placed event"
 # KEDA's kafka lag poll + pod start + consumer-group join must fit here.
 seen=0
 for i in $(seq 1 90); do
-    # The SSH tunnel is stable, but notification-service is KEDA-scaled-to-zero:
+    # The published NodePort needs no client-side process, but notification-service is KEDA-scaled-to-zero:
     # until the order.placed event wakes it the NodePort has no endpoint and the
     # curl fails — treat that as "not yet" and keep polling.
     if ! RECV="$(curl -fsS "http://127.0.0.1:${LOCAL_NOTIF}/received" 2>/dev/null)"; then

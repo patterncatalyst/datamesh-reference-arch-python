@@ -69,8 +69,8 @@ kubectl rollout status deployment/istiod -n istio-system --timeout=5m
 kubectl rollout status deployment/istio-ingressgateway -n istio-system --timeout=5m
 
 # Pin the ingress gateway's HTTP port (80, index 1) to a fixed NodePort so the
-# canary demos reach it over the stable SSH tunnel (local 8088) instead of a
-# kubectl port-forward. See demos/lib/tunnels.sh for the allocation map.
+# canary demos reach it on NodePort 30088, published on 127.0.0.1:8088 at profile
+# creation (map: demos/lib/endpoints.sh).
 printf '==> Pinning istio-ingressgateway HTTP nodePort to 30088\n'
 kubectl patch svc istio-ingressgateway -n istio-system --type='json' \
     -p '[{"op":"replace","path":"/spec/ports/1/nodePort","value":30088}]' \

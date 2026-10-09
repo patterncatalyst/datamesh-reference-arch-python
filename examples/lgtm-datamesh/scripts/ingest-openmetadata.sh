@@ -110,8 +110,8 @@ run_job om-declare-lineage job-lineage.yaml
 
 printf '\n==> Catalog populated and lineage declared.\n\n'
 printf 'Browse it:\n'
-printf '  ./scripts/tunnel-services.sh   # ensure the OpenMetadata tunnel (local 8585) is up\n'
-printf '  open http://localhost:8585  (admin@open-metadata.org / admin)\n'
+printf '  ./scripts/show-endpoints.sh    # OpenMetadata is published on 127.0.0.1:8585\n'
+printf '  open http://127.0.0.1:8585  (admin@open-metadata.org / admin)\n'
 printf '  → Services shows capstone-postgres (Database) and capstone-kafka (Messaging)\n'
 printf '  → the order-placed topic'\''s Lineage tab shows orders upstream, notifications downstream\n\n'
 printf 'Verify end-to-end:\n'

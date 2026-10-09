@@ -2,9 +2,10 @@
 {{- range $name, $svc := .Values.services }}
 {{- if $svc.route }}
 ---
-# OpenShift Route — the platform-native ingress. Replaces the NodePort +
-# stable-SSH-tunnel scheme charts/capstone/charts/<svc>/values.yaml's
-# `service.nodePort` relies on for minikube: the cluster's router (the
+# OpenShift Route — the platform-native ingress. Replaces the NodePort
+# scheme charts/capstone/charts/<svc>/values.yaml's `service.nodePort` uses on
+# minikube (NodePorts published to 127.0.0.1 at profile creation); on OpenShift,
+# Routes: the cluster's router (the
 # `ingress` cluster operator) gives this Service a real external hostname,
 # <name>-<namespace>.apps-crc.testing on CRC. Edge TLS terminates at the
 # router; plain HTTP is redirected to HTTPS.

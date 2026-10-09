@@ -3,15 +3,14 @@
 replicas: 1
 
 image:
-  # In-cluster registry address (CAP-009). build-image.sh pushes to
-  # 127.0.0.1:<port>; the kubelet pulls from localhost:5000.
-  repository: localhost:5000/inventory-service
+  # Image is loaded into the node by build-image.sh (minikube image load); no registry.
+  repository: capstone/inventory-service
   tag: v1
-  pullPolicy: Always
+  # Never: images are loaded into the node by build-image.sh (minikube image load) and never pulled; build-image.sh restarts the Deployment so a rebuilt :v1 is used.
+  pullPolicy: Never
 
-# http exposed as NodePort so demos reach it over the stable SSH tunnel
-# (local 8087) instead of kubectl port-forward; gRPC stays in-cluster only.
-# See demos/lib/tunnels.sh for the allocation map.
+# http exposed as NodePort 30087, published on 127.0.0.1:8087 at profile
+# creation (map: demos/lib/endpoints.sh); gRPC stays in-cluster only.
 service:
   type: NodePort
   port: 80

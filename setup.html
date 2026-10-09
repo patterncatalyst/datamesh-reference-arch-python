@@ -35,8 +35,8 @@ permalink: /setup/
             <tbody>
                 <tr>
                     <td>OS</td>
-                    <td>Fedora 44</td>
-                    <td>Rootless podman as container runtime</td>
+                    <td>Fedora 44, Docker Engine (docker-ce, daemon running, user in docker group)</td>
+                    <td>minikube node runs containerd with runc</td>
                 </tr>
                 <tr>
                     <td>RAM</td>
@@ -46,7 +46,7 @@ permalink: /setup/
                 <tr>
                     <td>Disk</td>
                     <td>1 TB</td>
-                    <td>30 GB free minimum for image cache + PVs</td>
+                    <td>About 100 GB free under the Docker data root (<code>/var/lib/docker</code>)</td>
                 </tr>
                 <tr>
                     <td>CPU</td>
@@ -62,16 +62,7 @@ permalink: /setup/
 
 <section class="section-tight">
     <div class="container" style="max-width: 42rem;">
-        <h2 class="section-heading">Kernel &amp; container tuning</h2>
-
-        <h3>Legacy iptables modules</h3>
-        <p>
-            Fedora is nftables-only; the rootless minikube node can't
-            modprobe itself. Without these modules CNI portmap fails.
-        </p>
-<pre><code>sudo sh -c 'printf "ip_tables\niptable_nat\nip6_tables\n" \
-    &gt; /etc/modules-load.d/99-kubernetes-iptables.conf'
-sudo systemctl restart systemd-modules-load</code></pre>
+        <h2 class="section-heading">Kernel tuning</h2>
 
         <h3>inotify limits</h3>
         <p>
@@ -81,14 +72,60 @@ sudo systemctl restart systemd-modules-load</code></pre>
 <pre><code>sudo sh -c 'printf "fs.inotify.max_user_instances = 512\nfs.inotify.max_user_watches = 524288\n" \
     &gt; /etc/sysctl.d/99-kubernetes.conf'
 sudo sysctl -p /etc/sysctl.d/99-kubernetes.conf</code></pre>
+    </div>
+</section>
 
-        <h3>Podman pids_limit</h3>
+<!-- ───────── Container engine ───────── -->
+
+<section class="section">
+    <div class="container" style="max-width: 42rem;">
+        <h2 class="section-heading">Container engine</h2>
         <p>
-            The fully-meshed stack runs ~2000+ tasks; Fedora's default 2048
-            saturates. Set this before creating the minikube profile.
+            The capstone runs on Docker Engine: native docker-ce on Linux,
+            with the daemon running and your user in the
+            <code>docker</code> group. Install it from
+            <a href="https://docs.docker.com/engine/install/" rel="noopener">docs.docker.com/engine/install</a>,
+            then enable it and point the CLI at it:
         </p>
-<pre><code>mkdir -p ~/.config/containers
-printf '[containers]\npids_limit = 0\n' &gt;&gt; ~/.config/containers/containers.conf</code></pre>
+<pre><code>sudo systemctl enable --now docker      # or: sudo systemctl start docker
+sudo usermod -aG docker "$USER"         # log out and back in afterwards
+docker context use default
+docker info</code></pre>
+        <p>
+            Membership in the <code>docker</code> group is root-equivalent on the host.
+        </p>
+
+        <h3>VM-based engines</h3>
+        <p>
+            The capstone scripts are supported on Fedora and RHEL hosts (bare metal
+            or VM). A VM-based engine such as Docker Desktop can provide the engine instead. It
+            is an option, not a requirement. Its VM must be sized to at least 28 GB of memory;
+            set <code>MINIKUBE_CPUS</code> and <code>MINIKUBE_MEMORY</code> to
+            fit it, as described below.
+        </p>
+
+        <h3>Upgrading from an earlier (rootless podman) capstone profile</h3> <!-- forbidden-ok -->
+        <p> <!-- forbidden-ok -->
+            An earlier release created the profile with rootless podman. Delete that profile first, <!-- forbidden-ok -->
+            then clear the setting, then run setup: <!-- forbidden-ok -->
+        </p>
+<pre><code>MINIKUBE_ROOTLESS=true minikube delete -p capstone <!-- forbidden-ok -->
+minikube config unset rootless <!-- forbidden-ok -->
+./scripts/setup-capstone-profile.sh</code></pre>
+
+        <h3>Fitting minikube to the engine</h3>
+        <p>
+            The profile defaults to 16 CPUs, 24 GB of memory, and an 80 GB
+            disk. Override them before creating the profile:
+        </p>
+<pre><code>export MINIKUBE_CPUS=16
+export MINIKUBE_MEMORY=24g
+export MINIKUBE_DISK=80g</code></pre>
+        <p>
+            The docker driver on Linux ignores the disk size; data lives under
+            the engine's data root (<code>docker info</code> shows it), where
+            about 100 GB free is recommended.
+        </p>
     </div>
 </section>
 
@@ -99,11 +136,8 @@ printf '[containers]\npids_limit = 0\n' &gt;&gt; ~/.config/containers/containers
         <h2 class="section-heading">Required tooling</h2>
 
         <ul>
-            <li>
-                <strong>minikube</strong> &gt;= 1.36 &mdash; 1.35's registry
-                addon pins a <code>kube-registry-proxy</code> image digest
-                that no longer exists on gcr.io
-            </li>
+            <li><strong>docker</strong> and <strong>docker compose</strong> (compose is not used by the minikube path; listed as a standard host tool)</li>
+            <li><strong>minikube</strong> &gt;= 1.36 &mdash; verified on 1.38.1</li>
             <li><strong>kubectl</strong></li>
             <li><strong>helm</strong></li>
             <li>
@@ -113,6 +147,10 @@ printf '[containers]\npids_limit = 0\n' &gt;&gt; ~/.config/containers/containers
                 <code>samples/addons/kiali.yaml</code> from it)
             </li>
         </ul>
+        <p>
+            Optional, for the Red Hat (OpenShift Local) appendix only:
+            <strong>crc</strong>, <strong>podman</strong>, and <strong>podman compose</strong>. <!-- forbidden-ok -->
+        </p>
 
         <h3>Installing the Istio distribution</h3>
 <pre><code>curl -fsSL https://github.com/istio/istio/releases/download/1.29.2/istio-1.29.2-linux-amd64.tar.gz \
@@ -132,7 +170,8 @@ cp ~/.local/share/istio-current/bin/istioctl ~/.local/bin/</code></pre>
 <pre><code>cd examples/lgtm-datamesh
 ./scripts/bootstrap-capstone.sh</code></pre>
         <p>
-            Bootstrap runs 10 tiers: minikube profile + registry, Istio,
+            Images are built with Docker Engine and loaded into the node with
+            <code>minikube image load</code>; there is no registry. Bootstrap runs 10 tiers: minikube profile, Istio,
             CloudNativePG operator, Postgres cluster, Kafka (Strimzi),
             KEDA + HTTP add-on, OpenMetadata + observability, all services +
             scalers + seed data, Kiali, and catalog ingestion + lineage.
@@ -183,16 +222,21 @@ cp ~/.local/share/istio-current/bin/istioctl ~/.local/bin/</code></pre>
         <h2 class="section-heading">Accessing the tools</h2>
         <p>
             The tools run inside the cluster and are exposed as NodePort
-            services reached over stable SSH tunnels &mdash; not
-            <code>kubectl port-forward</code>, which drops when the cluster
-            idles or under load. One command starts every tunnel:
+            services published on <code>127.0.0.1</code> when the
+            <code>capstone</code> minikube profile is created. Nothing runs in
+            the background and nothing needs starting per demo. Ports are
+            fixed at creation; an older profile without them is refused by
+            <code>setup-capstone-profile.sh</code> and recreated with
+            <code>./scripts/setup-capstone-profile.sh --replace</code>.
+            <code>--replace</code> deletes and recreates the cluster, so run
+            <code>./scripts/bootstrap-capstone.sh</code> again afterwards.
+            Run the workshop in isolation: shut down CRC, other minikube
+            profiles, and other workloads first so the host ports are free.
+            To see which endpoints are published and reachable:
         </p>
-        <pre><code>./scripts/tunnel-services.sh            # start all tunnels
-./scripts/tunnel-services.sh --status   # which are alive
-./scripts/tunnel-services.sh --stop     # tear them down</code></pre>
+        <pre><code>./scripts/show-endpoints.sh</code></pre>
         <p>
-            They stay up until you stop them. (Prometheus uses local port 9091
-            because Fedora ships Cockpit on 9090.)
+            (Prometheus uses host port 9091 because Fedora ships Cockpit on 9090.)
         </p>
 
         <table>
@@ -203,13 +247,13 @@ cp ~/.local/share/istio-current/bin/istioctl ~/.local/bin/</code></pre>
                 </tr>
             </thead>
             <tbody>
-                <tr><td>Grafana</td><td><code>http://localhost:3000</code></td></tr>
-                <tr><td>Prometheus</td><td><code>http://localhost:9091</code></td></tr>
-                <tr><td>Kiali</td><td><code>http://localhost:20001/kiali</code></td></tr>
+                <tr><td>Grafana</td><td><code>http://127.0.0.1:3000</code></td></tr>
+                <tr><td>Prometheus</td><td><code>http://127.0.0.1:9091</code></td></tr>
+                <tr><td>Kiali</td><td><code>http://127.0.0.1:20001/kiali</code></td></tr>
                 <tr><td>Tempo (via Grafana)</td><td>&mdash; (Grafana &rarr; Explore &rarr; Tempo datasource)</td></tr>
-                <tr><td>OpenMetadata</td><td><code>http://localhost:8585</code></td></tr>
-                <tr><td>Apicurio</td><td><code>http://localhost:8084</code></td></tr>
-                <tr><td>Kafka UI</td><td><code>http://localhost:8089</code></td></tr>
+                <tr><td>OpenMetadata</td><td><code>http://127.0.0.1:8585</code></td></tr>
+                <tr><td>Apicurio</td><td><code>http://127.0.0.1:8084</code></td></tr>
+                <tr><td>Kafka UI</td><td><code>http://127.0.0.1:8089</code></td></tr>
             </tbody>
         </table>
 

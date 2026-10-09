@@ -19,7 +19,6 @@
 # Run from examples/lgtm-datamesh/:  ./demos/demo-keda-kafka.sh
 
 set -uo pipefail
-export MINIKUBE_ROOTLESS=true
 
 NS="capstone"
 PROFILE="capstone"

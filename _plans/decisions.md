@@ -160,9 +160,9 @@ admission.
 **Status:** decided; implemented at `templates/route.yaml`,
 `templates/apicurio.yaml` (Route block), and `openshift/build-and-push.sh`.
 
-**Context.** The minikube path reaches services over NodePort through a
-stable SSH tunnel, because minikube has no cluster-native router or
-easy-to-reach internal registry. OpenShift ships both: a Route object with a
+**Context.** The minikube path reaches services over NodePorts published
+to `127.0.0.1` at profile creation (DRA-017), because minikube has no
+cluster-native router or easy-to-reach internal registry. OpenShift ships both: a Route object with a
 real external hostname served by the cluster router, and an integrated image
 registry addressed in-cluster at
 `image-registry.openshift-image-registry.svc:5000`.
@@ -172,9 +172,9 @@ registry addressed in-cluster at
 integrated registry via `build-and-push.sh`, authenticated with an
 `oc whoami -t` token rather than any external registry account.
 
-**Rejected alternative.** Reproduce the minikube NodePort-plus-SSH-tunnel
+**Rejected alternative.** Reproduce the minikube published-NodePort
 pattern on OpenShift — rejected because it ignores two capabilities the
-platform already provides natively, adds a tunnel-keep-alive dependency
+platform already provides natively, adds a host-port publishing step
 OpenShift doesn't need, and would require readers to manage external registry
 credentials for images that never need to leave the cluster.
 
@@ -740,3 +740,120 @@ and admission was the extra hardening fields this decision removes.
   check before assuming it's harmless — the rendered YAML looks
   more secure with the extra fields, but the live SCC assignment is what
   actually determines whether Grafana can write its data directory.
+
+---
+
+## DRA-017 — Host access: NodePorts published on 127.0.0.1 at profile creation
+
+**Status:** decided; implemented in `examples/lgtm-datamesh/demos/lib/endpoints.sh`,
+`scripts/setup-capstone-profile.sh`, and `scripts/show-endpoints.sh`; enforced by
+`scripts/forbidden-syntax.sh`.
+
+**Context.** Host access to the capstone minikube cluster (profile `capstone`,
+rootless podman) used SSH tunnels and `kubectl port-forward`. <!-- forbidden-ok -->
+Both break or disconnect: a forwarded connection pins one pod and dies when it
+is replaced, and a tunnel process drops when the cluster idles or is under <!-- forbidden-ok -->
+load. The failures surfaced as flaky smokes and dead UIs, not as clear errors
+(see the lessons-learned entry on pinned pods).
+
+**Decision.** Every host-facing service is a fixed NodePort, and the profile
+publishes each one to the host when it is created:
+`minikube start -p capstone --ports=127.0.0.1:<hostPort>:<nodePort>,...`. The
+host:nodePort pairs come from the single map in
+`examples/lgtm-datamesh/demos/lib/endpoints.sh`. Host ports and URLs are
+unchanged (Grafana stays at `http://127.0.0.1:3000`). Every pair carries the
+`127.0.0.1:` prefix, because the bare form (`--ports=a:b`) binds `0.0.0.0` and <!-- forbidden-ok -->
+exposes the cluster to the network. `./scripts/show-endpoints.sh` prints a
+status table of what is published and reachable.
+
+**Rejected alternatives.**
+
+- Supervised SSH tunnels (a watchdog that restarts them) — rejected because it <!-- forbidden-ok -->
+  keeps the moving part and adds a supervisor to maintain. <!-- forbidden-ok -->
+- `kubectl port-forward` retry loops — rejected because they re-attach to one <!-- forbidden-ok -->
+  pod at a time and still lose the connection between retries.
+- `minikube tunnel` with `LoadBalancer` Services — rejected because it needs a <!-- forbidden-ok -->
+  privileged long-running process.
+- Bare `--ports=a:b` — rejected because it binds `0.0.0.0`. <!-- forbidden-ok -->
+- Renumbering host ports to match nodePorts — rejected because every URL in
+  the docs, site, deck, and demos would change for no gain.
+
+**Consequences.**
+
+- Published ports are fixed at creation. Adding a port means recreating the
+  profile; `setup-capstone-profile.sh` refuses an older profile without the
+  ports, and `./scripts/setup-capstone-profile.sh --replace` recreates it
+  (`--replace` deletes the cluster; re-run `./scripts/bootstrap-capstone.sh` afterwards).
+- `scripts/forbidden-syntax.sh` runs in CI and fails on tunnel and <!-- forbidden-ok -->
+  port-forward wording, the retired helper names, and `--ports` values without <!-- forbidden-ok -->
+  a `127.0.0.1:` prefix. A line that must mention them (stating the
+  prohibition, or a historical lesson) carries the marker `forbidden-ok`.
+- Workshops run in isolation: shut down CRC, other minikube profiles, and
+  other workloads before starting, so the published host ports are free.
+- `_plans/archive/` and `*.archive.md` are the historical record. They are
+  unchanged, describe superseded host access, and are excluded from the gate.
+
+---
+
+## DRA-018 — In-node runtime: CRI-O with crun on the rootless-podman driver
+
+**Status:** Superseded by DRA-019 (2026-10-08): the minikube capstone moved to Docker Engine + containerd.
+
+**Context.** The capstone profile ran `--driver=podman --container-runtime=containerd`. That mixes OCI runtimes: rootless podman runs the node container with crun, while containerd inside the node runs pods with runc. A fresh profile on minikube v1.38.1 also showed two node-image problems, independent of the runtime choice:
+
+- The node image starts Docker once at first boot, before minikube masks it. Docker 29 enables IP forwarding in the node's network namespace and sets the iptables `FORWARD` policy to `DROP`. kindnet expects `ACCEPT`, so every pod-to-pod and pod-to-Service packet is dropped. CoreDNS times out and the Istio ingress gateway never becomes Ready.
+- Under CRI-O with crun, `minikube addons enable` fails its paused-container check, because that check calls `runc list` and `/run/runc` does not exist.
+- Under CRI-O, minikube's hostpath provisioner creates volume directories `0755 root`. CloudNativePG runs Postgres as uid 26, so `initdb` fails with `could not create directory ... Permission denied`.
+
+**Decision.**
+
+- One OCI runtime end to end: podman driver, CRI-O in the node, crun under both. minikube's CRI-O defaults to `default_runtime = "crun"`.
+- `setup-capstone-profile.sh` enables addons in `minikube start --addons=metrics-server,registry,storage-provisioner-rancher`, not with `minikube addons enable`.
+- `local-path` (the Rancher local-path provisioner, which creates volume directories `0777`) is the default StorageClass; `standard` stays available but is no longer the default.
+- `ensure_node_forwarding` (in `demos/lib/endpoints.sh`) resets the node's `FORWARD` policy to `ACCEPT` when it finds `DROP`. `setup-capstone-profile.sh` runs it after creating or starting the profile, and `cluster-up.sh` runs it after every start. The rule lives in the node container's network namespace, not on the host.
+
+**Rejected alternatives.**
+
+- Keep containerd and runc: two OCI runtimes in one stack, contrary to the "podman means crun" rule.
+- Switch the CNI (for example `--cni=bridge`) to dodge the `DROP` policy: the policy drops forwarded traffic whatever the CNI, so this changes more and fixes nothing.
+- Add `ACCEPT` rules only for `10.244.0.0/16`: Service traffic is DNAT-ed through kube-proxy, so pod-CIDR rules alone are fragile. Restoring the default kindnet expects is simpler.
+
+**Consequences.**
+
+- Existing profiles created with containerd must be recreated: `./scripts/setup-capstone-profile.sh --replace` (deletes the cluster; re-run `./scripts/bootstrap-capstone.sh` afterwards).
+- If a future node image stops starting Docker at boot, `ensure_node_forwarding` becomes a no-op.
+- Any script that enables an addon later must pass it at start, or will hit the paused-check failure.
+
+---
+
+## DRA-019 — minikube on Docker Engine + containerd (runc); image load, no registry; podman only for the CRC appendix
+
+**Status:** decided 2026-10-08.
+
+**Context.** User decision on 2026-10-08. The rootless-podman path (DRA-018) needed five host-side workarounds: the node `FORWARD` DROP policy, the runc paused-check under CRI-O, `0755` hostpath directories under CRI-O, `MINIKUBE_ROOTLESS`, and pids-limit / kernel-module pre-flights. The Quarkus sibling repo runs docker + containerd cleanly. Docker Desktop must not be a requirement.
+
+**Decision.**
+
+- Start flags: `--driver=docker --container-runtime=containerd --addons=metrics-server`, with sizing from `MINIKUBE_MEMORY` (24g), `MINIKUBE_CPUS` (16) and `MINIKUBE_DISK` (80g). One OCI runtime, runc, end to end.
+- Docker Engine is required: native docker-ce on Linux; the scripts are supported on Fedora and RHEL hosts (bare metal or VM), and a VM-based engine such as Docker Desktop is an option, never a requirement. The setup pre-flight rejects rootless Docker, `MINIKUBE_ROOTLESS`, and profiles created with another driver or runtime.
+- Images are built with Docker Engine and loaded with `minikube image load` via `scripts/build-image.sh`. No registry. Names are `capstone/<svc>:v1` with `imagePullPolicy: Never`, not `IfNotPresent`, so a missing image fails fast instead of falling through to `docker.io/capstone/*`. `build-image.sh` restarts the Deployments that use a rebuilt image.
+- `ensure_node_forwarding` stays as a guard, with a runtime-neutral comment; it is a no-op if the `FORWARD` policy is already `ACCEPT`.
+- The default `standard` StorageClass is used. If CloudNativePG `initdb` reports `Permission denied`, the fallback is local-path (`storage-provisioner-rancher`).
+- Podman is scoped to the optional CRC appendix: per-command `--tls-verify`, host DNS for `*.apps-crc.testing`, and Red Hat tooling.
+- Host access is unchanged (DRA-017); only the inspection backend moves to `docker container inspect`.
+
+**Rejected alternatives.**
+
+- Keep rootless podman with CRI-O or containerd: needs the five workarounds above.
+- Require Docker Desktop: not available or wanted on Linux; Docker Engine is enough.
+- Keep the registry addon: it is non-persistent, and VM-based engines cannot push to a loopback registry.
+- `minikube docker-env`: works only with the docker runtime, not containerd.
+- `imagePullPolicy: IfNotPresent`: a missing image would fall through to `docker.io/capstone/*`.
+- Docker for the CRC push: the appendix follows Red Hat's podman tooling.
+
+**Consequences.**
+
+- Profiles created with podman must be recreated: `./scripts/setup-capstone-profile.sh --replace`, then re-run `./scripts/bootstrap-capstone.sh`.
+- Membership in the `docker` group is root-equivalent on the host.
+- CI gate scan 5 in `scripts/forbidden-syntax.sh` enforces the podman scope.
+- Live verification (2026-10-08/09): passed on Docker Engine 29.8.0 provided by Docker Desktop with the docker driver and containerd 2.2.1; see `_plans/reconciliation.md`. `ensure_node_forwarding` did not fire (the node's `FORWARD` policy was already `ACCEPT`). The live run also surfaced three fixes now in the scripts: bootstrap's service list ordering, endpoint checks accepting `LoadBalancer` Services, and `build-image.sh` waiting for its rollouts and for replaced pods to terminate. gRPC clients set `GRPC_DNS_RESOLVER=native`. A native (non-VM) Docker Engine run is still to do.

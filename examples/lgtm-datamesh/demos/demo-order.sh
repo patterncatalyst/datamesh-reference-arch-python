@@ -3,14 +3,14 @@
 # demo-order.sh — the r21 walking-skeleton verification (r21a-corrected).
 #
 # Proves the entire spine end-to-end:
-#   image build (host podman) → load into profile → helm deploy →
+#   docker build → minikube image load into profile → helm deploy →
 #   operator-managed Postgres → service connects → REST works →
 #   data round-trips through Postgres → assertions pass
 #
 # r21a changes:
-#   - builds + pushes via scripts/build-image.sh (host podman build →
-#     in-cluster registry), the proven path under rootless-podman +
-#     containerd (CAP-007/009). No more `minikube image load`.
+#   - builds with `docker build` and loads into the profile via
+#     scripts/build-image.sh (minikube image load); charts use
+#     capstone/<svc>:v1 with imagePullPolicy: Never.
 #   - on failure, LEAVES the failed resources in place and dumps a
 #     diagnostic bundle inline (pod status, describe events, logs) instead
 #     of tearing everything down — so a failed run hands you the evidence
@@ -26,8 +26,7 @@
 
 set -uo pipefail   # NOT -e: we manage failures explicitly so we can diagnose
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/lib/tunnels.sh"
-export MINIKUBE_ROOTLESS=true   # CAP-010: mandatory for rootless-podman host ops
+source "${SCRIPT_DIR}/lib/endpoints.sh"
 
 NS="capstone"
 PROFILE="capstone"
@@ -57,8 +56,8 @@ dump_diagnostics() {
         printf '\n--- logs (previous, if crash-looped) ---\n'
         kubectl logs -n "$NS" "$pod" --previous --tail=60 2>&1 || true
     fi
-    printf '\n--- registry catalog ---\n'
-    curl -fsS "http://$(podman port "$PROFILE" | awk -F: '/5000\/tcp/{print $NF; exit}')/v2/_catalog" 2>&1 || echo "(could not query registry catalog)"
+    printf '\n--- images loaded in the profile ---\n'
+    minikube -p "$PROFILE" image ls 2>&1 | grep capstone/ || echo "(no capstone/ images loaded)"
     printf '\nResources left running. To clean up manually:\n'
     printf '  helm uninstall %s -n %s\n' "$RELEASE_ORDER" "$NS"
     printf '  helm uninstall %s -n %s   # also removes Postgres\n' "$RELEASE_PG" "$NS"
@@ -99,10 +98,10 @@ kubectl get crd clusters.postgresql.cnpg.io >/dev/null 2>&1 \
     || fail "CloudNativePG CRDs not found — run scripts/setup-postgres-operator.sh first"
 command -v helm >/dev/null || fail "helm not in PATH"
 
-# ─── Build + push the image (r21c: host podman build → in-cluster registry) ──
+# ─── Build + load the image (docker build → minikube image load) ──
 
-step "Building and pushing ${IMAGE_NAME}:${IMAGE_TAG} to the in-cluster registry"
-./scripts/build-image.sh "$SERVICE_DIR" "$IMAGE_NAME" "$IMAGE_TAG" || fail "image build/push failed"
+step "Building and loading ${IMAGE_NAME}:${IMAGE_TAG} into the profile"
+./scripts/build-image.sh "$SERVICE_DIR" "$IMAGE_NAME" "$IMAGE_TAG" || fail "image build/load failed"
 
 # ─── Deploy Postgres (Cluster CR; operator provisions it) ────────────────────
 
@@ -136,9 +135,9 @@ kubectl rollout status deployment/order-service -n "$NS" --timeout=180s \
 
 # ─── Exercise the REST surface ───────────────────────────────────────────────
 
-step "Opening a tunnel to order-service"
+step "Checking endpoint 127.0.0.1:${TP_ORDER} (order-service, published NodePort)"
 LOCAL_ORDER=$TP_ORDER
-ensure_tunnel order
+ensure_endpoint order
 wait_http "http://127.0.0.1:${LOCAL_ORDER}/" 20 || true
 
 BASE="http://127.0.0.1:${LOCAL_ORDER}"

@@ -3,10 +3,11 @@
 replicas: 1
 
 image:
-  repository: localhost:5000/graphql-gateway
+  # Image is loaded into the node by build-image.sh (minikube image load); no registry.
+  repository: capstone/graphql-gateway
   tag: v1
-  # Always: mutable :v1 tag during the dev loop (CAP-015).
-  pullPolicy: Always
+  # Never: images are loaded into the node by build-image.sh (minikube image load) and never pulled; build-image.sh restarts the Deployment so a rebuilt :v1 is used.
+  pullPolicy: Never
 
 service:
   port: 80

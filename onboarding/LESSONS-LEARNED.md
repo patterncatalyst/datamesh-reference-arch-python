@@ -191,13 +191,6 @@ cycle the node. Prevention: don't run minikube clusters for weeks at a
 time, or check kube-proxy's state when surprising network behaviour
 appears.
 
-### PID ceiling on rootless podman nodes
-
-The default `pids_limit` for rootless podman is 2048, which is plenty for
-small workloads but gets eaten by the full data mesh once OpenMetadata
-and the observability stack are running. Memorialised as CAP-041. Raise
-it at node creation, not after.
-
 ### Migration tooling: init-containers beat `create_all`
 
 The skeleton used SQLAlchemy `create_all` for r21's first service —
@@ -218,24 +211,12 @@ meshed pod still reports `2/2` because the sidecar's `Always`-restart
 init-container counts. Memorialised throughout the archive's recent
 CAPs.
 
-### Rootless-podman + containerd minikube has its own image-distribution model
+### A forwarded connection pins its pod, so host access moved to published NodePorts
 
-You can't `docker push` to localhost and expect minikube to find it,
-because rootless podman's daemon isn't accessible from the cluster's
-node, and minikube's containerd runtime doesn't share an image cache
-with the host. The reference uses minikube's in-cluster registry as
-the distribution point (build → tag for the in-cluster registry →
-push → containerd pulls from inside the cluster). Memorialised as
-CAP-007, CAP-009, CAP-010 — three CAPs because it took that many
-iterations to land. The lesson: rootless minikube has its own
-image-distribution shape and `docker push localhost:5000/img` is not it.
-
-### A port-forward pins its pod — poll loops must re-attach under autoscalers
-
-`kubectl port-forward svc/x` picks one pod at connect time and stays
-bound to it. Under a scale-to-zero autoscaler that's a trap with several
-interlocking parts, discovered when three smokes failed against a
-healthy system:
+Early versions of the smokes reached the cluster with `kubectl port-forward svc/x`, <!-- forbidden-ok -->
+which picks one pod at connect time and stays bound to it. Under a
+scale-to-zero autoscaler that is a trap with several interlocking parts,
+discovered when three smokes failed against a healthy system:
 
 - **"Rolled out" is not "still running."** Helm sets `replicas: 1`, the
   rollout gate passes, and KEDA reconciles the deployment back to 0
@@ -247,31 +228,32 @@ healthy system:
 - **The tested event is what wakes the consumer.** With the consumer
   scaled to zero, the smoke's own order creates the lag that wakes a
   NEW pod — which consumes and persists the event while the smoke polls
-  the dead tunnel to the OLD pod.
-- **`curl ... || echo '[]'` turns a dead tunnel into "not consumed
+  the dead connection to the OLD pod.
+- **`curl ... || echo '[]'` turns a dead connection into "not consumed
   yet."** The fallback that made the poll loop robust to slow starts
   also made it blind to transport failure. The event was in Postgres
   the whole time; the smoke reported it missing.
 
-The fixes (commits `764aa3f`, `1093d78`, `e22b318`): on curl failure,
-kill and re-establish the port-forward against the Service, then treat
-that attempt as "not yet"; size poll windows for scale-from-zero
-(lag-poll + pod start + consumer-group join), not for a warm consumer;
-and for paths that go through the KEDA HTTP interceptor, retry transient
-non-200s (the 0.12.2 interceptor can 502 the first POSTs after a
-scale-from-zero — CAP-046's cold-start race).
+The interim fixes (commits `764aa3f`, `1093d78`, `e22b318`) re-established
+the connection against the Service on every curl failure, sized poll
+windows for scale-from-zero (lag-poll + pod start + consumer-group join)
+rather than a warm consumer, and retried transient non-200s on paths
+through the KEDA HTTP interceptor (the 0.12.2 interceptor can 502 the
+first POSTs after a scale-from-zero — CAP-046's cold-start race).
 
-The lesson generalises twice over. Any test that tunnels into a cluster
-managed by an autoscaler must treat the tunnel as unreliable — and any
-fallback that silently swallows transport errors in a poll loop should
-be treated as a smell. When a poll says the data never arrived, check
-the datastore directly before believing it.
+The durable fix was to remove the moving part. Host access now goes
+through NodePorts published on `127.0.0.1` when the profile is created
+(DRA-017): the Service, not a pod, is the endpoint, and no helper process
+exists to drop. Poll windows still need to be sized for scale-from-zero,
+and any fallback that silently swallows transport errors in a poll loop
+is still a smell. When a poll says the data never arrived, check the
+datastore directly before believing it.
 
 ### Well-known local ports are booby-trapped on the verified platform
 
-The observability smoke port-forwarded Prometheus to local 9090 — and
+The observability smoke forwarded Prometheus to local 9090 — and <!-- forbidden-ok -->
 Fedora, the reference's verified platform, ships Cockpit listening on
-host 9090 by default. The port-forward's bind failure was silenced by
+host 9090 by default. The forwarder's bind failure was silenced by
 `>/dev/null 2>&1`, the readiness probe's `curl` (without `-f`) was
 satisfied by Cockpit's 404, and the smoke then "queried Prometheus,"
 got nothing, and reported the metrics pipeline broken. Nothing was
@@ -282,25 +264,20 @@ tooling to well-known ports (9090, 3000, 8080) — pick high odd ones and
 make them env-overridable; always `-f` a readiness probe so a port
 squatter answering 404 can't satisfy it; and when a smoke contradicts
 what you can observe directly, suspect the smoke's transport before the
-system under test.
+system under test. The published Prometheus port is 9091 for this reason.
 
 ### Fresh-host bring-up finds the assumptions your dev machine hides
 
-Two bring-up blockers existed on a clean Fedora 44 host that no
+Bring-up blockers existed on a clean Fedora 44 host that no
 long-lived dev machine would surface:
 
-- **The CNI portmap plugin needs legacy `ip_tables`/`iptable_nat`
-  kernel modules, and a rootless node can't load them.** Fedora is
-  nftables-only out of the box; inside the rootless podman node,
-  `modprobe` gets `Operation not permitted`, and every hostPort pod
-  (starting with the registry proxy) fails sandbox creation. The host
-  must load the modules — persist them via `/etc/modules-load.d/` so a
-  reboot doesn't silently re-break the cluster.
-- **Pinned addon image digests rot.** minikube 1.35's registry addon
-  pins a `kube-registry-proxy` digest that no longer exists on gcr.io;
-  the addon can never come up on that minikube version regardless of
-  configuration. The fix was upgrading minikube, not debugging the
-  cluster.
+- **Pinned addon image digests rot.** In the earlier setup, minikube 1.35's
+  registry addon pinned a `kube-registry-proxy` digest that no longer existed
+  on gcr.io, so the addon could never come up on that minikube version
+  regardless of configuration. The fix then was upgrading minikube, not
+  debugging the cluster. The capstone no longer uses the registry addon (images
+  are loaded with `minikube image load`), but the lesson stands for any addon
+  that pins an image by digest.
 
 The lesson is CAP-044's ("test the bootstrap on a fresh profile") taken
 one level further: test on a fresh *host* occasionally, because the
@@ -308,14 +285,125 @@ bootstrap also accumulates couplings to host state — loaded kernel
 modules, tool versions, listening ports — that a fresh profile on the
 same machine can't expose.
 
-### `imagePullPolicy: Always` for mutable tags during development
+### gRPC's c-ares resolver can eat a 3-second deadline
 
-The reference uses `:v1` as a development tag (not for production, where
+On the Docker-driver profile, every `POST /orders` failed with `503 inventory-service
+unreachable ... DEADLINE_EXCEEDED`, although inventory answered its own `CheckStock` in
+10 ms. Timing the call from the order pod isolated it: `inventory-service:50051` took
+3.01 s, while the fully qualified `inventory-service.capstone.svc.cluster.local:50051`
+took 0.01 s, and `getaddrinfo` resolved the short name instantly. gRPC Python resolves
+names with its bundled c-ares resolver, which walks the search list itself and waited
+about 3 s on one lookup, exactly the client's 3 s deadline. `GRPC_DNS_RESOLVER=native`
+(set in the order-service and graphql-gateway Containerfiles) makes gRPC use the system
+resolver like every other library in the pod. The lesson: when a gRPC deadline fails
+but the server is fast, time name resolution separately from the call.
+
+### Pushing to a loopback registry only works on a native engine
+
+A push to a registry on the host's loopback port is made by the container engine's daemon, so the address is resolved from the daemon's network namespace. On a native Docker Engine that is the host. On a VM-based engine (Docker Desktop) the daemon runs inside a VM whose `127.0.0.1` is not the host's, and the push fails with `dial tcp [::1]:5000: i/o timeout`. `minikube image load` hands the image to the profile directly and works with any engine, which is why the capstone uses it and runs no registry.
+
+### Local images: `imagePullPolicy: Never` plus a restart on rebuild
+
+Images loaded with `minikube image load` are tagged `capstone/<svc>:v1`, and the charts set `imagePullPolicy: Never`. A missing image then fails fast with `ErrImageNeverPull` instead of falling through to a Docker Hub lookup that can never succeed. The other half of the rule: a mutable `:v1` tag means running pods keep the old image after a rebuild, so `scripts/build-image.sh` restarts the Deployments that use the image it just loaded.
+
+### A fresh node can drop all pod traffic: reset the `FORWARD` policy
+
+On minikube v1.38.1, a new capstone profile came up Ready, yet CoreDNS timed out
+and the Istio ingress gateway never passed its readiness probe. A busybox pod
+could not ping, TCP-connect, or send UDP to any other pod. The cause was inside the
+node: the node image starts Docker once at first boot, and Docker 29 sets the
+iptables `FORWARD` policy to `DROP` when it enables IP forwarding. kindnet expects
+`ACCEPT`, so every forwarded packet was dropped (`iptables -L FORWARD -v` showed the
+policy counter climbing). Recreating the profile did not help; it reproduced on
+every fresh node. The cause is the node image's Docker, so it does not depend on the
+driver. It was seen on rootless podman, <!-- forbidden-ok -->
+and `ensure_node_forwarding` guards every driver: it resets the policy to `ACCEPT`
+after each start and does nothing when the policy is already `ACCEPT`. It was not
+seen on the docker driver in the 2026-10-09 run, and the guard stays in place because
+the node image can change. The lesson: when every pod-network path fails at once, read
+the node's `FORWARD` policy before blaming the CNI or DNS.
+
+---
+
+## Historical: the rootless-podman era (superseded by DRA-019) <!-- forbidden-ok -->
+
+These describe the earlier rootless-podman setup. They are kept for the reasoning, not as instructions; the current setup is Docker Engine + containerd (DRA-019). <!-- forbidden-ok -->
+
+### Why minikube moved off rootless podman (historical) <!-- forbidden-ok -->
+
+The capstone ran minikube with the rootless podman driver from r20 to October 2026. <!-- forbidden-ok -->
+On 2026-10-08, recreating the profile on minikube v1.38.1 (Fedora 44, podman 5.8.7) <!-- forbidden-ok -->
+surfaced a run of problems, each needing its own workaround, while the sibling <!-- forbidden-ok -->
+Quarkus reference ran the same platform on the docker driver with none of them:
+
+| Problem | Symptom | Workaround it needed |
+|---|---|---|
+| Node `FORWARD` policy `DROP` | Fresh node Ready, but CoreDNS timed out, the Istio ingress gateway never became Ready, and pods could not reach each other (ping, TCP and UDP all failed) | Reset the policy to `ACCEPT` inside the node after every start (still guarded on all drivers; see "A fresh node can drop all pod traffic" under the mechanical lessons) |
+| `minikube addons enable` under CRI-O + crun <!-- forbidden-ok --> | `check paused: list paused: runc: sudo runc list -f json` failed with `open /run/runc: no such file or directory` | Enable addons only through `minikube start --addons=` |
+| Hostpath volumes created `0755 root` under CRI-O <!-- forbidden-ok --> | CloudNativePG `initdb` (uid 26): `could not create directory ".../pgdata": Permission denied` | Switch the default StorageClass to local-path |
+| Mixed OCI runtimes <!-- forbidden-ok --> | Podman ran the node with crun while containerd ran pods with runc <!-- forbidden-ok --> | Switch the in-node runtime to CRI-O, which caused the two rows above <!-- forbidden-ok --> |
+| Image distribution | Images built on the host never reached the node's runtime; `minikube image build`/`load` unreliable on this driver | A registry addon, a random loopback push port, and three CAPs (007/009/010) |
+| Rootless plumbing <!-- forbidden-ok --> | `sudo podman` prompts without `MINIKUBE_ROOTLESS=true`; hostPort pods failing without host iptables modules; PID exhaustion at the default `pids_limit` | Env var on every script, host kernel-module and pids pre-flights |
+
+Each workaround worked, but together they made the minikube path fragile and <!-- forbidden-ok -->
+unlike what learners run elsewhere. DRA-019 moved the minikube capstone to Docker <!-- forbidden-ok -->
+Engine with containerd and runc, and kept podman only for the optional <!-- forbidden-ok -->
+OpenShift Local (CRC) appendix, where it is the native Red Hat tool. <!-- forbidden-ok -->
+The entries below record each problem in detail.
+
+The lesson: when a local-cluster driver needs a workaround per tier, compare it
+against a known-good sibling setup early instead of stacking fixes.
+
+### PID ceiling on rootless podman nodes (historical) <!-- forbidden-ok -->
+
+The default `pids_limit` for rootless podman was 2048, which was plenty for <!-- forbidden-ok -->
+small workloads but got eaten by the full data mesh once OpenMetadata
+and the observability stack are running. Memorialised as CAP-041. It had to be raised
+at node creation, not after.
+
+### Pick one OCI runtime: podman driver means CRI-O and crun (historical) <!-- forbidden-ok -->
+
+The podman driver runs the node container with crun. Pairing it with <!-- forbidden-ok -->
+`--container-runtime=containerd` puts runc under the pods, so the stack used two
+OCI runtimes. For a short time the capstone switched to CRI-O, whose minikube default is crun (DRA-018, since superseded by DRA-019). <!-- forbidden-ok -->
+One side effect: `minikube addons enable` fails under CRI-O + crun because its <!-- forbidden-ok -->
+paused-container check calls `runc list`; enable addons in `minikube start --addons=`
+instead.
+Another: minikube's hostpath provisioner creates volume directories `0755 root`, so
+non-root pods cannot write to them (CloudNativePG's `initdb`, running as uid 26, failed
+with `Permission denied`). The capstone made the local-path provisioner, which
+creates them `0777`, the default StorageClass.
+
+### Rootless-podman minikube has its own image-distribution model (historical) <!-- forbidden-ok -->
+
+You couldn't `docker push` to localhost and expect minikube to find it,
+because rootless podman's daemon wasn't accessible from the cluster's <!-- forbidden-ok -->
+node, and the in-node CRI runtime (CRI-O since 2026-10; containerd before) didn't share an image cache <!-- forbidden-ok -->
+with the host. The reference used minikube's in-cluster registry as
+the distribution point (build → tag for the in-cluster registry →
+push → the node's runtime pulled from inside the cluster). Memorialised as
+CAP-007, CAP-009, CAP-010 — three CAPs because it took that many
+iterations to land. The lesson then: rootless minikube had its own <!-- forbidden-ok -->
+image-distribution shape and `docker push localhost:5000/img` was not it. <!-- forbidden-ok -->
+
+### Kernel modules for the CNI portmap plugin (historical)
+
+The CNI portmap plugin needed legacy `ip_tables`/`iptable_nat` kernel modules,
+and a rootless node couldn't load them. Fedora is nftables-only out of the box; <!-- forbidden-ok -->
+inside the rootless podman node, `modprobe` got `Operation not permitted`, <!-- forbidden-ok -->
+and every hostPort pod (starting with the registry proxy) failed sandbox
+creation. The host had to load the modules — persisted via `/etc/modules-
+load.d/` so a reboot didn't silently re-break the cluster.
+
+### `imagePullPolicy: Always` for mutable tags during development (historical)
+
+The reference used `:v1` as a development tag (not for production, where
 content-addressable tags or proper semver belong). With a mutable tag,
-kubelet's default `IfNotPresent` policy means it never re-pulls; you push
-a new image and nothing changes in the cluster until you delete the pod
-and let it re-roll. Set `imagePullPolicy: Always` on development services
-to make every pod restart fetch the latest image. Memorialised as CAP-015.
+kubelet's default `IfNotPresent` policy meant it never re-pulled; you pushed
+a new image and nothing changed in the cluster until you deleted the pod
+and let it re-roll. The reference used `Always` (now `Never` with image load,
+see the current lesson "Local images: `imagePullPolicy: Never` plus a restart
+on rebuild") so every pod restart fetched the latest image. Memorialised as CAP-015.
 
 ---
 
@@ -329,8 +417,8 @@ single horizontal layer. The reference's r21 brought up *one* service
 (order-service) end-to-end: REST handler, database, schema, container,
 manifest, helm chart, smoke test, deployed. After that, the other four
 services followed a template (CAP-011) in roughly an iteration each;
-every horizontal-layer concern (the Postgres operator, the in-cluster
-registry, the chart structure) was already proven by the time it had
+every horizontal-layer concern (the Postgres operator, the image
+pipeline, the chart structure) was already proven by the time it had
 to scale to five services. Memorialised as CAP-006.
 
 The lesson generalises: vertical slices are debt-reducing; horizontal
@@ -381,12 +469,12 @@ The second half of the lesson: a suite that has only ever passed in one
 order hasn't demonstrated order independence. The same 24 scripts were
 run in a deliberately shuffled order and one more latent race fell out —
 a smoke that had passed two full runs on lucky timing (demo-kafka's
-dead-tunnel poll, `e22b318`). Shuffling the order is the cheapest chaos
+dead-connection poll, `e22b318`). Shuffling the order is the cheapest chaos
 test a suite can get.
 
 And when a fix lands, verify it *under the conditions that failed* — the
 retry paths here were confirmed by watching them fire in the logs (two
-dead-tunnel attempts then success; one 502 then 200), not by a pass on a
+dead-connection attempts then success; one 502 then 200), not by a pass on a
 warm cluster that might never have exercised them.
 
 ### Decision log with rejected alternatives

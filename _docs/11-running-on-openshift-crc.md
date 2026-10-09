@@ -7,7 +7,7 @@ duration: 40 min
 
 [Chapter 3]({{ '/docs/02-kubernetes-substrate/' | relative_url }}) built the case for
 Kubernetes as the mesh's substrate and brought the capstone up on minikube via Helm —
-NodePorts, a stable SSH tunnel, a local image registry. That's a real deployment, and
+NodePorts published to loopback, a local image registry. That's a real deployment, and
 everything in the reading set up to the [summary]({{ '/docs/10-summary/' | relative_url }})
 assumes it. But "deploy it to Kubernetes" and "deploy it to OpenShift" are not the same
 sentence. OpenShift adds opinions on top of plain Kubernetes — Security Context
@@ -44,6 +44,8 @@ documenting the OpenShift-native counterpart.
 
 You don't need a paid subscription or a cloud account. **OpenShift Local** (CRC —
 "CodeReady Containers") runs a real, single-node OpenShift cluster in a local VM.
+
+This appendix uses podman (and `oc`) on the host to build and push to the integrated registry; the minikube path uses Docker Engine. Podman is needed only here. <!-- forbidden-ok -->
 
 1. **Create a free Red Hat Developer account.** Go to
    [developers.redhat.com](https://developers.redhat.com), register or log in. It's free
@@ -168,12 +170,13 @@ datamesh-infra`, which is worth knowing when debugging a pod stuck in
 `CreateContainerConfigError` with an SCC-related event — it's the same RoleBinding under
 the hood.
 
-### 2. Routes, not port-forward/NodePort
+### 2. Routes, not published NodePorts
 
 The minikube path this capstone uses elsewhere in the reading set exposes services via
-NodePort, reached over a stable SSH tunnel because minikube has no cluster-native router.
-OpenShift has one built in: a `Route` object hands a Service a real external hostname,
-served by the cluster's router, with no tunnel to keep alive. The chart defines two —
+NodePorts published to `127.0.0.1` when the profile is created, because minikube has no
+cluster-native router. OpenShift has one built in: a `Route` object hands a Service a
+real external hostname, served by the cluster's router, with nothing to publish on the
+host. The chart defines two —
 `templates/route.yaml` ranges over the same `services:` map and emits a Route for any
 service with `route: true` set (currently just `graphql-gateway`), and `apicurio.yaml`
 wires its own Route directly since Apicurio isn't part of that map:

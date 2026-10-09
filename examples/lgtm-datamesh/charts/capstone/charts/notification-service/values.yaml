@@ -3,19 +3,15 @@
 replicas: 1
 
 image:
-  # In-cluster registry address (CAP-009). build-image.sh pushes to
-  # 127.0.0.1:<port>; the kubelet pulls from localhost:5000.
-  repository: localhost:5000/notification-service
+  # Image is loaded into the node by build-image.sh (minikube image load); no registry.
+  repository: capstone/notification-service
   tag: v1
-  # Always: the :v1 tag is mutable during the dev loop, and the node caches
-  # images by tag — IfNotPresent would serve a stale cached :v1 after a
-  # rebuild. Local-registry pulls are cheap, so Always guarantees the pod
-  # runs what was just pushed (CAP-015).
-  pullPolicy: Always
+  # Never: images are loaded into the node by build-image.sh (minikube image load) and never pulled; build-image.sh restarts the Deployment so a rebuilt :v1 is used.
+  pullPolicy: Never
 
-# NodePort so demos reach it over the stable SSH tunnel (local 8083) instead of
-# kubectl port-forward. Scaled-to-zero by KEDA (Kafka lag): the NodePort has no
-# endpoint until KEDA wakes it. See demos/lib/tunnels.sh for the allocation map.
+# NodePort 30083, published on 127.0.0.1:8083 at profile creation
+# (map: demos/lib/endpoints.sh). Scaled-to-zero by KEDA (Kafka lag): the
+# NodePort has no endpoint until KEDA wakes it.
 service:
   type: NodePort
   port: 80

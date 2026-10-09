@@ -1,7 +1,7 @@
 # ingress-route.yaml — OpenShift edge Route exposing the Sail-managed Istio
 # ingress gateway at a real `*.apps-crc.testing` hostname, so the
 # order-service v1/v2 canary (routing.yaml) is reachable from outside the
-# cluster without a NodePort/SSH tunnel — same "Routes, not NodePort"
+# cluster without a NodePort — same "Routes, not NodePort"
 # pattern the live core already uses (DRA-005, ../../helm/datamesh/templates/route.yaml).
 #
 # LIVE-CONFIRM PLACEHOLDER: `spec.to.name` assumes the OSSM3 (Sail operator)

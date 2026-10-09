@@ -18,7 +18,7 @@
 #
 # Usage (from examples/lgtm-datamesh/):
 #   ./scripts/setup-observability.sh
-#   ./scripts/tunnel-services.sh    # Grafana on http://localhost:3000
+#   ./scripts/show-endpoints.sh     # Grafana on http://127.0.0.1:3000
 #   ./demos/demo-observability.sh   # metrics plumbing
 #   ./demos/demo-tracing.sh         # trace backend plumbing
 
@@ -65,8 +65,9 @@ helm upgrade --install tempo grafana-community/tempo \
     --wait
 
 # Pin Tempo's query (3200, index 2) and OTLP/HTTP (4318, index 9) ports to fixed
-# NodePorts for stable SSH tunnels (local 3200 and 4318). Indices follow the
-# chart's fixed port order (see demos/lib/tunnels.sh for the allocation map).
+# NodePorts 30320 and 30418, published on 127.0.0.1:3200 and 127.0.0.1:4318 at
+# profile creation (map: demos/lib/endpoints.sh). Indices follow the chart's
+# fixed port order.
 printf '==> Pinning Tempo query nodePort to 30320 and OTLP/HTTP nodePort to 30418\n'
 kubectl patch svc tempo -n "$NAMESPACE" --type='json' \
     -p '[{"op":"replace","path":"/spec/ports/2/nodePort","value":30320},
@@ -82,10 +83,10 @@ helm upgrade --install grafana grafana-community/grafana \
 
 # ─── Done ────────────────────────────────────────────────────────────────────
 printf '\n==> Prometheus + Grafana installed in the %s namespace.\n\n' "$NAMESPACE"
-printf 'Services exposed as NodePort — start SSH tunnels with:\n'
-printf '  ./scripts/tunnel-services.sh\n\n'
+printf 'Services are exposed as NodePorts published on 127.0.0.1 (list them with):\n'
+printf '  ./scripts/show-endpoints.sh\n\n'
 printf 'Then open Grafana and find the "Capstone — Scaling & Traffic" dashboard:\n'
-printf '  http://localhost:3000\n\n'
+printf '  http://127.0.0.1:3000\n\n'
 printf 'Login (read the real credentials from the secret — the chart keeps an existing\n'
 printf 'password on upgrade, so do not assume it is the values default):\n'
 printf '  user: $(kubectl get secret grafana -n %s -o jsonpath="{.data.admin-user}" | base64 -d)\n' "$NAMESPACE"

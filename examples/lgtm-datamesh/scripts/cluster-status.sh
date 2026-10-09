@@ -6,9 +6,10 @@
 # answer during the r29c debugging marathon:
 #   - Is the profile running and is the control plane actually healthy?
 #     (etcd can crashloop in place after a long uptime — see §17 troubleshooting.)
-#   - Which locally-built images are MISSING from the in-cluster registry?
-#     (The registry does not persist across `minikube stop/start`; missing
-#     images surface as ImagePullBackOff "not found".)
+#   - Which service images are MISSING from the profile?
+#     (Images are loaded into the node's containerd and persist across
+#     `minikube stop/start`; after a profile --replace they are gone and pods
+#     surface as ErrImageNeverPull.)
 #   - Are the core services, KEDA, and the observability stack up?
 #
 # Read-only: it changes nothing. Use it any time something looks off, and as the
@@ -17,12 +18,10 @@
 # Run from examples/lgtm-datamesh/:  ./scripts/cluster-status.sh
 
 set -uo pipefail
-export MINIKUBE_ROOTLESS=true   # CAP-010
 
-PROFILE="capstone"
+PROFILE="${MINIKUBE_PROFILE:-capstone}"
 TAG="v1"
-# Services whose images live in the in-cluster registry (one per services/ dir).
-SERVICES=(graphql-gateway inventory-service notification-service order-service payment-service shipping-service)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 step() { printf '\n==> %s\n' "$1"; }
 ok()   { printf '    \xe2\x9c\x93 %s\n' "$1"; }   # ✓
@@ -65,29 +64,20 @@ else
     ok "etcd / scheduler / controller-manager all Running"
 fi
 
-# ─── In-cluster registry: which images are missing? ──────────────────────────
-step "In-cluster registry images"
-HOST_PORT="$(podman port "$PROFILE" 2>/dev/null | awk -F'[:]' '/5000\/tcp/ {print $NF; exit}')"
-if [[ -z "$HOST_PORT" ]]; then
-    warn "could not find the registry host port (is the registry addon enabled?)"
-    note_problem
+# ─── Service images in the profile: which are missing? ───────────────────────
+step "Service images in the profile"
+source "${SCRIPT_DIR}/../demos/lib/endpoints.sh"
+source "${SCRIPT_DIR}/../demos/lib/images.sh"
+missing=()
+for svc in "${CAPSTONE_SERVICES[@]}"; do
+    image_in_profile "$svc" "$TAG" || missing+=("$svc")
+done
+if [[ ${#missing[@]} -eq 0 ]]; then
+    ok "all ${#CAPSTONE_SERVICES[@]} service images present (${IMAGE_PREFIX}/<svc>:${TAG}) in profile '$PROFILE'"
 else
-    HOST_REG="127.0.0.1:${HOST_PORT}"
-    missing=()
-    for svc in "${SERVICES[@]}"; do
-        if curl -fsS --max-time 4 "http://${HOST_REG}/v2/${svc}/tags/list" 2>/dev/null | grep -q "\"${TAG}\""; then
-            :
-        else
-            missing+=("$svc")
-        fi
-    done
-    if [[ ${#missing[@]} -eq 0 ]]; then
-        ok "all ${#SERVICES[@]} service images present (:${TAG}) in registry at ${HOST_REG}"
-    else
-        bad "missing from registry (will cause ImagePullBackOff): ${missing[*]}"
-        warn "rebuild them with: ./scripts/cluster-up.sh   (or per-image: ./scripts/build-image.sh services/<svc> <svc> ${TAG})"
-        note_problem
-    fi
+    bad "missing from the profile (pods will fail with ErrImageNeverPull): ${missing[*]}"
+    warn "rebuild + load them with: ./scripts/cluster-up.sh   (or per-image: ./scripts/build-image.sh services/<svc> <svc> ${TAG})"
+    note_problem
 fi
 
 # ─── Workload health by namespace ────────────────────────────────────────────
@@ -117,6 +107,13 @@ if [[ "$hso" == "True" ]]; then
     ok "KEDA HTTPScaledObject for graphql-gateway is Ready (gateway may be scaled to zero — expected)"
 else
     warn "KEDA HTTPScaledObject not reporting Ready (status: ${hso:-unknown})"
+fi
+
+# ─── Endpoints ───────────────────────────────────────────────────────────────
+step "Endpoints"
+if ! "${SCRIPT_DIR}/show-endpoints.sh"; then
+    bad "endpoint check failed (unpublished port, non-loopback binding, or nodePort mismatch)"
+    note_problem
 fi
 
 # ─── Verdict ─────────────────────────────────────────────────────────────────

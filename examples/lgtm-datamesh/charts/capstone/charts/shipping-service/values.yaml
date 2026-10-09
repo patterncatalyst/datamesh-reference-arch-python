@@ -3,15 +3,11 @@
 replicas: 1
 
 image:
-  # In-cluster registry address (CAP-009). build-image.sh pushes to
-  # 127.0.0.1:<port>; the kubelet pulls from localhost:5000.
-  repository: localhost:5000/shipping-service
+  # Image is loaded into the node by build-image.sh (minikube image load); no registry.
+  repository: capstone/shipping-service
   tag: v1
-  # Always: the :v1 tag is mutable during the dev loop, and the node caches
-  # images by tag — IfNotPresent would serve a stale cached :v1 after a
-  # rebuild. Local-registry pulls are cheap, so Always guarantees the pod
-  # runs what was just pushed (CAP-015).
-  pullPolicy: Always
+  # Never: images are loaded into the node by build-image.sh (minikube image load) and never pulled; build-image.sh restarts the Deployment so a rebuilt :v1 is used.
+  pullPolicy: Never
 
 service:
   port: 80

@@ -14,11 +14,11 @@
 # Idempotent: an artifact that already exists (HTTP 409) is treated as already
 # published. (Production CI would add a new version instead.)
 #
-# Reachable URLs are supplied by the caller (the smoke script brings up SSH
-# tunnels and passes localhost URLs):
-#   APICURIO_URL   e.g. http://127.0.0.1:8084   (apicurio tunnel)
-#   ORDER_URL      e.g. http://127.0.0.1:8080   (order-service tunnel)
-#   GATEWAY_URL    e.g. http://127.0.0.1:8081   (KEDA interceptor tunnel)
+# Reachable URLs are supplied by the caller (the smoke script passes the
+# published NodePort URLs on 127.0.0.1):
+#   APICURIO_URL   e.g. http://127.0.0.1:8084   (published NodePort 30084)
+#   ORDER_URL      e.g. http://127.0.0.1:8080   (published NodePort 30080)
+#   GATEWAY_URL    e.g. http://127.0.0.1:8081   (published NodePort 30081, KEDA interceptor)
 #   GATEWAY_HOST   Host header routing the interceptor to the gateway
 #                  (default graphql-gateway.capstone) — required because the
 #                  gateway is KEDA-scaled-to-zero and only reachable via the

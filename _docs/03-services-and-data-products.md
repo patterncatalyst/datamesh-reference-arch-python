@@ -83,37 +83,29 @@ start rather than retrofitting it.
 ## The one part that fights back: getting images to the kubelet
 
 This is worth its own section because it's the single part of the capstone that
-reliably trips people up, and it's a direct consequence of a deliberate choice made
-back in §3: the capstone uses the **rootless-podman driver with the containerd
-runtime**, because that's the most realistic local mirror of how Kubernetes runs in
-production. The cost of that realism is that getting a locally-built image to the
-kubelet is not as simple as you'd expect.
+reliably trips people up. The profile is a Docker container (the docker driver) running
+containerd, and that container has its own image store, separate from the Docker Engine
+on your host. An image you build locally is invisible to the kubelet until you put it
+there, and a pod that can't find its image fails in ways that look like a broken
+cluster.
 
-The intuitive approaches are unreliable on this driver. `minikube image build` can
-exit successfully without the image actually landing in the profile's containerd
-store, so the pod then fails to pull. `minikube image load` can report "image not
-found" for an image that's plainly present, because the lookup goes through the
-rootless podman socket in a way that doesn't resolve.
+The capstone's answer is deliberately simple: **build with Docker Engine, then load the
+image into the profile with `minikube image load`**. There is no registry to run and no
+addresses to reconcile, and it works the same on a native engine and on a VM-based one
+(Docker Desktop, for example). That portability is the reason for the choice:
+pushing to a registry on the host's loopback only works when the engine's daemon shares
+the host's network, which a VM-based engine's does not.
 
-The reliable answer the capstone standardizes on is **minikube's built-in registry
-addon**: build on the host with podman, push to the registry, and let deployments pull
-from it like any ordinary image. The one detail that catches everyone is that the
-registry has *two addresses*. With the podman driver the host-side port is not 5000 —
-minikube assigns one (something like `127.0.0.1:41685`) and tells you when you enable
-the addon — while *inside* the cluster the kubelet reaches the same registry at
-`localhost:5000`. So you **push** from the host to `127.0.0.1:<assigned-port>` and the
-cluster **pulls** from `localhost:5000`. The build script discovers the host port
-automatically; the charts pull from the in-cluster address.
+Images are tagged `capstone/<svc>:v1` and the charts set `imagePullPolicy: Never`. The
+policy matters in both directions. If an image was never loaded, the pod fails at once
+with `ErrImageNeverPull` instead of quietly trying Docker Hub for a name that exists
+nowhere. And because `:v1` is a mutable tag, a rebuild does not change what running pods
+use, so `scripts/build-image.sh` restarts the Deployments that use the image it just
+loaded.
 
-One environment variable makes or breaks all of this: `MINIKUBE_ROOTLESS=true`. If
-it's not set in your shell, minikube routes host operations through `sudo podman`,
-which can't see your rootless container — producing a spread of failures that look
-like a broken cluster but aren't. The capstone scripts both persist it and export it
-at the top of every script; if you run minikube commands by hand, export it first.
-
-None of this is unique to the capstone — it's inherent to the rootless driver — but
+None of this is unique to the capstone — any local cluster has some version of the gap between the host's images and the node's — but
 the capstone is where it bites, because it's the first place you build and deploy your
-*own* images at scale. Get the registry workflow right once here, and every service
+*own* images at scale. Get the image workflow right once here, and every service
 afterward is the same three commands. (The deeper operational sharp edges of running
 all this on a single node are collected as gotchas, separate from this build-level
 friction.)

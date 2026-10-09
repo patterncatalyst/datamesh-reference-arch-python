@@ -11,32 +11,35 @@
 # apply, kubectl wait, and build-only-if-missing, so re-running resumes safely.
 #
 # Tiers (each gated on health before the next):
-#   1. profile + registry        5. Kafka operator + cluster CR
+#   1. profile                   5. Kafka operator + cluster CR
 #   2. Istio                      6. KEDA
 #   3. CloudNativePG operator     7. OpenMetadata (needs Postgres) + observability
-#   4. Postgres cluster CR        8. images → apicurio → services → scalers → seed
+#   4. Postgres cluster CR        8. build+load images → apicurio → services → scalers → seed
 #
 # Catalog population (discovery contracts + OpenMetadata ingestion) is printed as
-# the final follow-on rather than run inline — those need warm-server port-forwards
+# the final follow-on rather than run inline — those need a warm server
 # and are better as explicit steps (and the ingestion Jobs opt out of the mesh, r34).
 #
 # Run from examples/lgtm-datamesh/:  ./scripts/bootstrap-capstone.sh
 
 set -uo pipefail
-export MINIKUBE_ROOTLESS=true
 
 NS="capstone"
-PROFILE="capstone"
+PROFILE="${MINIKUBE_PROFILE:-capstone}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
 
 PG_RELEASE="capstone-postgres";  PG_CHART="charts/capstone/charts/postgres"
 KAFKA_RELEASE="capstone-kafka";  KAFKA_CHART="charts/capstone/charts/kafka"; KAFKA_CR="capstone-kafka"
 APICURIO_RELEASE="apicurio";     APICURIO_CHART="charts/capstone/charts/apicurio"
 KAFKAUI_RELEASE="kafka-ui";      KAFKAUI_CHART="charts/capstone/charts/kafka-ui"
-SERVICES=(graphql-gateway inventory-service notification-service order-service payment-service shipping-service)
 
-# Canonical tunnel ports + helpers (ensure_tunnel, wait_http) — no port-forward.
-source "${ROOT}/demos/lib/tunnels.sh"
+# Canonical host ports + helpers (ensure_endpoint, wait_http). Host access is a
+# published NodePort on 127.0.0.1, fixed when the profile is created.
+source "${ROOT}/demos/lib/endpoints.sh"
+# Image helpers (image_in_profile, CAPSTONE_SERVICES). No registry: images are
+# built with docker and loaded into the profile.
+source "${ROOT}/demos/lib/images.sh"
+SERVICES=("${CAPSTONE_SERVICES[@]}")   # defined in images.sh; must follow the source
 
 step() { printf '\n\033[1m==> %s\033[0m\n' "$1"; }
 ok()   { printf '    \xe2\x9c\x93 %s\n' "$1"; }
@@ -44,8 +47,8 @@ fail() { printf '\n\xe2\x9c\x97 %s\n' "$1" >&2; exit 1; }
 
 wait_rollout() { kubectl rollout status "$1" -n "$NS" --timeout="${2:-300s}"; }
 
-# ── Tier 1: profile + registry ───────────────────────────────────────────────
-step "1/10 Profile + in-cluster registry"
+# ── Tier 1: profile ──────────────────────────────────────────────────────────
+step "1/10 Profile"
 ./scripts/setup-capstone-profile.sh || fail "profile setup failed"
 [[ "$(kubectl config current-context 2>/dev/null)" == "$PROFILE" ]] || kubectl config use-context "$PROFILE"
 ok "profile up, context set"
@@ -117,24 +120,22 @@ ok "OpenMetadata rolled out"
 ./scripts/setup-observability.sh || fail "observability setup failed"
 ok "observability (Prometheus/Grafana/Tempo) installed"
 
-# ── Tier 8: images → apicurio → services → scalers → seed ────────────────────
+# ── Tier 8: build + load images → apicurio → services → scalers → seed ────────────────────
 step "8/10 Workloads: images, apicurio, services, scalers"
-HOST_PORT="$(podman port "$PROFILE" 2>/dev/null | awk -F'[:]' '/5000\/tcp/ {print $NF; exit}')"
-[[ -n "$HOST_PORT" ]] || fail "registry host port not found"
 for svc in "${SERVICES[@]}"; do
-    if curl -fsS --max-time 4 "http://127.0.0.1:${HOST_PORT}/v2/${svc}/tags/list" 2>/dev/null | grep -q '"v1"'; then
+    if image_in_profile "$svc" v1; then
         ok "image ${svc}:v1 present"
     else
-        printf '    building %s...\n' "$svc"
-        ./scripts/build-image.sh "services/${svc}" "$svc" v1 >/dev/null || fail "build of $svc failed"
-        ok "built ${svc}:v1"
+        printf '    Building + loading %s...\n' "$svc"
+        ./scripts/build-image.sh "services/${svc}" "$svc" v1 >/dev/null || fail "build/load of $svc failed"
+        ok "built + loaded ${svc}:v1"
     fi
 done
 
 helm upgrade --install "$APICURIO_RELEASE" "$APICURIO_CHART" -n "$NS" || fail "apicurio install failed"
 # Kafka UI — a data-mesh infrastructure console for browsing Kafka topics,
-# messages, consumer groups, and (via Apicurio ccompat) schemas. Reached over the
-# SSH tunnel on local 8089. Additive; opts out of the mesh (no sidecar).
+# messages, consumer groups, and (via Apicurio ccompat) schemas. Reached on the
+# published NodePort at 127.0.0.1:8089. Additive; opts out of the mesh (no sidecar).
 helm upgrade --install "$KAFKAUI_RELEASE" "$KAFKAUI_CHART" -n "$NS" || fail "kafka-ui install failed"
 for svc in "${SERVICES[@]}"; do
     helm upgrade --install "$svc" "charts/capstone/charts/$svc" -n "$NS" || fail "$svc install failed"
@@ -153,7 +154,7 @@ ok "core services Ready"
 
 # Seed one order so the Kafka topic + Postgres have data for the catalog/ingestion.
 step "Seeding one order (gives the catalog data to ingest)"
-ensure_tunnel order
+ensure_endpoint order
 wait_http "http://127.0.0.1:${TP_ORDER}/" 20 || true
 curl -fs -o /dev/null --max-time 8 -X POST "http://127.0.0.1:${TP_ORDER}/orders" \
     -H 'Content-Type: application/json' \
@@ -182,7 +183,7 @@ bash ./scripts/cluster-status.sh || true
 # Pin external-service NodePorts (idempotent). The KEDA HTTP interceptor and the
 # istio-ingressgateway get their fixed NodePorts from setup-keda.sh / setup-istio.sh
 # — but those tiers are SKIPPED on a stop/start restart where the CRDs/istiod
-# already exist. Re-apply the pins here so the tunnels (gateway via interceptor
+# already exist. Re-apply the pins here so the published NodePorts (gateway via interceptor
 # :8081, ingress :8088) always have a NodePort to reach. (Tempo's pins are applied
 # by setup-observability.sh, which runs unconditionally in Tier 7.)
 step "Pinning external-service NodePorts (interceptor 30081, ingress 30088)"
@@ -194,22 +195,21 @@ kubectl patch svc istio-ingressgateway -n istio-system --type='json' \
     -p '[{"op":"replace","path":"/spec/ports/1/nodePort","value":30088}]' >/dev/null 2>&1 || true
 ok "interceptor → 30081, istio-ingress :80 → 30088"
 
-step "UI SSH tunnels (Grafana, Prometheus, Tempo, Kiali, OpenMetadata, Apicurio, Kafka UI)"
-./scripts/tunnel-services.sh
+step "Endpoints (Grafana, Prometheus, Tempo, Kiali, OpenMetadata, Apicurio, Kafka UI)"
+./scripts/show-endpoints.sh || true
 
 step "Bring-up complete — the cluster is walkthrough-ready."
 cat <<EOF
     # The five-act presenter walkthrough (the deck's "What you can see it do"):
     ./demos/walkthrough.sh
 
-    # UI dashboards (SSH tunnels started automatically):
-    #   Grafana        http://localhost:3000
-    #   Prometheus     http://localhost:9091
-    #   Kiali          http://localhost:20001/kiali
-    #   OpenMetadata   http://localhost:8585
-    #   Apicurio       http://localhost:8084
-    #   Kafka UI       http://localhost:8089
-    #   Stop them:     ./scripts/tunnel-services.sh --stop
+    # UI dashboards (published NodePorts on 127.0.0.1):
+    #   Grafana        http://127.0.0.1:3000
+    #   Prometheus     http://127.0.0.1:9091
+    #   Kiali          http://127.0.0.1:20001/kiali
+    #   OpenMetadata   http://127.0.0.1:8585
+    #   Apicurio       http://127.0.0.1:8084
+    #   Kafka UI       http://127.0.0.1:8089
 
     # Other things you can do from here:
     ./demos/demo-discovery.sh             # publish OpenAPI/proto/SDL to Apicurio

@@ -30,12 +30,11 @@
 #   subset-by-label routing. Flagged in istio/routing.yaml.
 
 set -uo pipefail
-export MINIKUBE_ROOTLESS=true   # CAP-010
 
 NS="capstone"
 PROFILE="capstone"
 ISTIO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../istio" && pwd)"
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/tunnels.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/endpoints.sh"
 LOCAL_PORT="$TP_INGRESS"
 GW="http://127.0.0.1:${LOCAL_PORT}"
 REQUESTS=100
@@ -140,10 +139,10 @@ printf '    ✓ both subsets are in the mesh\n'
 step "Applying the DestinationRule, Gateway, and a 90/10 canary"
 apply_weights 90 10
 
-step "Opening the tunnel to the istio-ingressgateway (local ${LOCAL_PORT})"
-ensure_tunnel ingress
+step "Checking the published istio-ingressgateway endpoint (host ${LOCAL_PORT})"
+ensure_endpoint ingress
 wait_http "${GW}/version" 30 \
-    || fail "ingress gateway not reachable on ${GW} (is the tunnel up? try ./scripts/tunnel-services.sh)"
+    || fail "ingress gateway not reachable on ${GW} (run ./scripts/show-endpoints.sh; if the port is missing, ./scripts/setup-capstone-profile.sh --replace, which deletes the cluster; re-run ./scripts/bootstrap-capstone.sh afterwards)"
 
 step "Driving ${REQUESTS} requests at the 90/10 split"
 measure_split "90/10" 1 30      # ~10 expected; generous band for 100 samples

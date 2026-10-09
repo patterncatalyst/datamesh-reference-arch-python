@@ -15,8 +15,7 @@
 
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/lib/tunnels.sh"
-export MINIKUBE_ROOTLESS=true
+source "${SCRIPT_DIR}/lib/endpoints.sh"
 
 NS="capstone"
 PROFILE="capstone"
@@ -60,8 +59,8 @@ kubectl get cluster.postgresql.cnpg.io capstone-postgres -n "$NS" >/dev/null 2>&
 command -v helm >/dev/null || fail "helm not in PATH"
 
 # ─── Build + deploy ──────────────────────────────────────────────────────────
-step "Building and pushing ${IMAGE_NAME}:${IMAGE_TAG}"
-./scripts/build-image.sh "$SERVICE_DIR" "$IMAGE_NAME" "$IMAGE_TAG" || fail "image build/push failed"
+step "Building and loading ${IMAGE_NAME}:${IMAGE_TAG}"
+./scripts/build-image.sh "$SERVICE_DIR" "$IMAGE_NAME" "$IMAGE_TAG" || fail "image build/load failed"
 
 step "Deploying review-service"
 helm upgrade --install "$RELEASE" "$CHART" -n "$NS" || fail "helm install failed"
@@ -72,9 +71,9 @@ kubectl wait -n "$NS" --for=condition=Ready pod \
     || fail "review-service pod did not become Ready"
 printf '    ✓ review-service Ready\n'
 
-# ─── Tunnel + assert the REST surface ────────────────────────────────────────
-step "Opening a tunnel to review-service ($PORT → svc:80)"
-ensure_tunnel review
+# ─── Endpoint + assert the REST surface ────────────────────────────────────────
+step "Checking endpoint 127.0.0.1:$PORT (review-service, published NodePort)"
+ensure_endpoint review
 wait_http "http://127.0.0.1:${PORT}/health" 15 || true
 
 base="http://127.0.0.1:${PORT}"

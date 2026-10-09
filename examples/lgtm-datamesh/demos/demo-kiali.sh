@@ -22,7 +22,7 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/lib/tunnels.sh"
+source "${SCRIPT_DIR}/lib/endpoints.sh"
 
 ISTIO_SYSTEM="istio-system"
 OBS_NS="observability"
@@ -39,7 +39,7 @@ dump() {
     kubectl get configmap kiali -n "$ISTIO_SYSTEM" -o jsonpath='{.data.config\.yaml}' 2>&1 | sed -n '1,40p'
     printf '\n--- recent kiali logs ---\n'
     kubectl logs -n "$ISTIO_SYSTEM" -l app.kubernetes.io/name=kiali --tail=30 2>&1
-    printf '\nInspect: ./scripts/tunnel-services.sh ; open http://localhost:%s%s\n' \
+    printf '\nInspect: ./scripts/show-endpoints.sh ; open http://127.0.0.1:%s%s\n' \
         "$KIALI_PORT" "$KIALI_WEBROOT"
 }
 fail() { printf '\n✗ FAILED: %s\n' "$1"; dump; exit 1; }
@@ -77,12 +77,12 @@ else
     fail "kiali config does not point at prometheus-server.${OBS_NS} — re-run scripts/setup-kiali.sh"
 fi
 
-# ─── 3. Port-forward and hit the API ─────────────────────────────────────────
-step "Opening a tunnel to Kiali and probing its API"
-ensure_tunnel kiali
+# ─── 3. Hit the published API ────────────────────────────────────────────
+step "Checking the Kiali endpoint and probing its API"
+ensure_endpoint kiali
 wait_http "http://127.0.0.1:${KIALI_PORT}${KIALI_WEBROOT}/healthz" 20 || true
 curl -fsS "http://127.0.0.1:${KIALI_PORT}${KIALI_WEBROOT}/healthz" >/dev/null 2>&1 \
-    || fail "Kiali /healthz did not respond over the port-forward"
+    || fail "Kiali /healthz did not respond on the published NodePort (run ./scripts/show-endpoints.sh; if the port is missing, ./scripts/setup-capstone-profile.sh --replace, which deletes the cluster; re-run ./scripts/bootstrap-capstone.sh afterwards)"
 printf '    ✓ Kiali /healthz responds\n'
 
 # ─── 4. Kiali can see the capstone namespace ─────────────────────────────────
@@ -113,5 +113,5 @@ fi
 # ─── Done ────────────────────────────────────────────────────────────────────
 step "PASS — Kiali is up, wired to the capstone stack, and sees the $APP_NS namespace."
 printf '\nView the live topology (run a demo first to create traffic):\n'
-printf '  ./scripts/tunnel-services.sh   # then open http://localhost:%s%s\n' "$KIALI_PORT" "$KIALI_WEBROOT"
-printf '  open http://localhost:%s%s/   (Graph → namespace: %s)\n' "$KIALI_PORT" "$KIALI_WEBROOT" "$APP_NS"
+printf '  ./scripts/show-endpoints.sh   # then open http://127.0.0.1:%s%s\n' "$KIALI_PORT" "$KIALI_WEBROOT"
+printf '  open http://127.0.0.1:%s%s/   (Graph → namespace: %s)\n' "$KIALI_PORT" "$KIALI_WEBROOT" "$APP_NS"

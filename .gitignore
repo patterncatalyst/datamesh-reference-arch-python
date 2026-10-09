@@ -10,3 +10,7 @@ Gemfile.lock
 # Node.js
 node_modules/
 package-lock.json
+
+# Python bytecode
+__pycache__/
+*.pyc

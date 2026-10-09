@@ -5,8 +5,9 @@
 # near-zero oscillation the HTTP add-on shows on a single node).
 #
 # Reach it after install with:
-#   ./scripts/tunnel-services.sh   # starts SSH tunnel to NodePort 30300
-#   open http://localhost:3000     (admin / capstone)
+#   NodePort 30300, published on 127.0.0.1:3000 at profile creation
+#   (map: demos/lib/endpoints.sh)
+#   open http://127.0.0.1:3000     (admin / capstone)
 #
 # A Tempo datasource for traces is added in r29b.
 

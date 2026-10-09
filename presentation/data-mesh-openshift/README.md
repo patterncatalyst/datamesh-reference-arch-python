@@ -67,3 +67,12 @@ matching **`.excalidraw` + `.svg` pairs** (same convention as the 101 set).
 `svglib.js` + `makediagrams.js` generate all three artifacts (`.excalidraw`,
 `.svg`, `.png`) from one source. Edit the `.excalidraw` for one-off hand-tweaks
 (then re-export its SVG/PNG), or edit `makediagrams.js` for systematic regen.
+
+## Speaker notes patched after the build
+
+`build-deck.js` does not generate the speaker notes. The notes on slides 33 and
+49 were patched in the `.pptx` after the build to describe the current host
+access path (the trace act enters through the KEDA HTTP interceptor on its
+published NodePort, `127.0.0.1:8081`). Only those notes text runs changed; slide
+XML is byte-identical. Re-running `node build-deck.js` does not reproduce these
+edits, so reapply them after a rebuild.

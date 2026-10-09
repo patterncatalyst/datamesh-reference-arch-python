@@ -50,14 +50,14 @@ openshift/
    and let the platform assign one. Postgres and Kafka *do* need specific
    UIDs (70 / 1000) their upstream images hardcode, so they run under a
    dedicated ServiceAccount (`datamesh-infra`) bound to the `nonroot-v2` SCC.
-3. **Routes, not NodePort/SSH tunnels.** `charts/capstone/` exposes services
-   via NodePort reached over a stable SSH tunnel (minikube has no router).
+3. **Routes, not NodePorts.** On minikube, `charts/capstone/` exposes services
+   via NodePorts published to 127.0.0.1 (minikube has no router).
    OpenShift has one: external access here is two `Route` objects
    (graphql-gateway, apicurio) served by the cluster's router.
 4. **The integrated registry.** Images are pushed to OpenShift's internal
    registry (`image-registry.openshift-image-registry.svc:5000/datamesh/...`)
-   and referenced from there, instead of the minikube-profile local registry
-   (`localhost:5000/...`) `charts/capstone/` subcharts use.
+   and referenced from there, instead of the minikube path, where `charts/capstone/` subcharts use
+   `capstone/<svc>` images loaded with `minikube image load` (no registry).
 5. **Tracing is off.** `charts/capstone/` wires every service to OTLP/Tempo.
    Since the LGTM stack isn't deployed here, the OTEL_* env vars are simply
    omitted — the services' `opentelemetry-instrument` entrypoint (where
@@ -104,6 +104,7 @@ probes — is carried over unchanged.
 ./openshift/build-and-push.sh -r "$REG" -n datamesh
 ```
 
+Podman is used only for this OpenShift (CRC) path; the minikube capstone uses Docker Engine.
 This builds each `services/<svc>/Containerfile` with podman and pushes it to
 `$REG/datamesh/<svc>:v1` — the exact ref `values.yaml`'s
 `image.registry`/`image.tag` compose.
