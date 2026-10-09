@@ -16,11 +16,11 @@
 # Usage:  ./demos/demo-discovery.sh [--purge-db]
 
 set -uo pipefail
-export MINIKUBE_ROOTLESS=true   # CAP-010
 
 PROFILE="capstone"; NS="capstone"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
 source "${ROOT}/demos/lib/endpoints.sh"
+source "${ROOT}/demos/lib/images.sh"
 PG_RELEASE="capstone-postgres"; PG_CHART="charts/capstone/charts/postgres"
 KAFKA_RELEASE="capstone-kafka"; KAFKA_CHART="charts/capstone/charts/kafka"; KAFKA_CR="capstone-kafka"
 APICURIO_RELEASE="apicurio"; APICURIO_CHART="charts/capstone/charts/apicurio"
@@ -44,14 +44,14 @@ fail() {
     exit 1
 }
 
-# ── registry guard ────────────────────────────────────────────────────────────
-step "Sanity: chart image.repository points at the registry"
+# ── image guard ────────────────────────────────────────────────────────────
+step "Sanity: chart image.repository is capstone/<svc> with pullPolicy Never"
 for svc in "${DEPLOY[@]}"; do
-    repo="$(awk '/^  repository:/{print $2; exit}' "charts/capstone/charts/${svc}/values.yaml")"
-    case "$repo" in
-        localhost:5000/*) printf '    ✓ %s → %s\n' "$svc" "$repo" ;;
-        *) fail "${svc} image.repository is '${repo}' — must start with localhost:5000/" ;;
-    esac
+    if chart_repo_ok "charts/capstone/charts/${svc}/values.yaml" "$svc"; then
+        printf '    ✓ %s → %s\n' "$svc" "$(image_ref "$svc")"
+    else
+        fail "${svc} chart must use image.repository capstone/${svc} with pullPolicy Never"
+    fi
 done
 [[ -f "$PROTO_PATH" ]] || fail "proto not found at ${PROTO_PATH} — run ./scripts/gen-protos.sh? (the .proto is committed)"
 
@@ -67,10 +67,10 @@ helm upgrade --install "$APICURIO_RELEASE" "$APICURIO_CHART" -n "$NS" >/dev/null
 kubectl rollout status deployment/apicurio -n "$NS" --timeout=180s || fail "apicurio rollout failed"
 printf '    ✓ Kafka + Apicurio ready\n'
 
-# ── build + push + Postgres + deploy ──────────────────────────────────────────
+# ── build + load + Postgres + deploy ──────────────────────────────────────────
 for svc in "${DEPLOY[@]}"; do
-    step "Building + pushing ${svc}"
-    ./scripts/build-image.sh "services/${svc}" "${svc}" v1 || fail "${svc} build/push failed"
+    step "Building + loading ${svc}"
+    ./scripts/build-image.sh "services/${svc}" "${svc}" v1 || fail "${svc} build/load failed"
 done
 step "Ensuring Postgres is Ready"
 kubectl get crd clusters.postgresql.cnpg.io >/dev/null 2>&1 || fail "CloudNativePG operator missing"

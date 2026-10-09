@@ -5,7 +5,7 @@
 #
 # Flow:
 #   1. confirm the committed gRPC stubs exist (run scripts/gen-protos.sh if not)
-#   2. build + push both images to the in-cluster registry (CAP-007/009)
+#   2. build both images and load them into the profile (docker build + minikube image load)
 #   3. ensure the shared Postgres cluster is Ready
 #   4. deploy inventory-service (seeds demo stock: WIDGET-001=50, WIDGET-OOS=0)
 #      and order-service
@@ -20,7 +20,7 @@
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/endpoints.sh"
-export MINIKUBE_ROOTLESS=true   # CAP-010
+source "${SCRIPT_DIR}/lib/images.sh"
 
 PROFILE="capstone"; NS="capstone"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
@@ -51,23 +51,23 @@ for svc in inventory-service order-service; do
 done
 printf '    ✓ stubs present in both services\n'
 
-# ── 1b. charts point at the in-cluster registry? ──────────────────────────────
-step "Sanity: chart image.repository points at the registry"
+# ── 1b. charts use local capstone/<svc> images? ──────────────────────────────
+step "Sanity: chart image.repository is capstone/<svc> with pullPolicy Never"
 for svc in inventory-service order-service; do
-    repo="$(awk '/^  repository:/{print $2; exit}' "charts/capstone/charts/${svc}/values.yaml")"
-    case "$repo" in
-        localhost:5000/*) printf '    ✓ %s → %s\n' "$svc" "$repo" ;;
-        *) fail "${svc} image.repository is '${repo}' — must start with localhost:5000/ (a bare name pulls from Docker Hub and ErrImagePulls)" ;;
-    esac
+    if chart_repo_ok "charts/capstone/charts/${svc}/values.yaml" "$svc"; then
+        printf '    ✓ %s → %s\n' "$svc" "$(image_ref "$svc")"
+    else
+        fail "${svc} chart must use image.repository capstone/${svc} with pullPolicy Never"
+    fi
 done
 
-# ── 2. build + push both images ───────────────────────────────────────────────
+# ── 2. build + load both images ───────────────────────────────────────────────
 minikube status -p "$PROFILE" >/dev/null 2>&1 || fail "profile '$PROFILE' not running — ./scripts/setup-capstone-profile.sh"
 kubectl config use-context "$PROFILE" >/dev/null
-step "Building + pushing inventory-service"
-./scripts/build-image.sh services/inventory-service inventory-service v1 || fail "inventory build/push failed"
-step "Building + pushing order-service"
-./scripts/build-image.sh services/order-service order-service v1 || fail "order build/push failed"
+step "Building + loading inventory-service"
+./scripts/build-image.sh services/inventory-service inventory-service v1 || fail "inventory build/load failed"
+step "Building + loading order-service"
+./scripts/build-image.sh services/order-service order-service v1 || fail "order build/load failed"
 
 # ── 3. Postgres ───────────────────────────────────────────────────────────────
 step "Ensuring the shared Postgres cluster is Ready"

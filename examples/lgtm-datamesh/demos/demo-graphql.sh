@@ -6,8 +6,8 @@
 #
 # Flow:
 #   1. confirm committed gRPC stubs exist for the gateway
-#   2. sanity: charts point at the in-cluster registry
-#   3. build + push inventory-service, order-service, graphql-gateway
+#   2. sanity: charts use local capstone/<svc> images
+#   3. build + load inventory-service, order-service, graphql-gateway
 #   4. ensure Postgres Ready; deploy all three
 #   5. place an in-stock order via order-service REST to get an order id
 #   6. query the gateway:  { order(id) { id itemSku quantity stock { sku quantityOnHand available } } }
@@ -17,11 +17,11 @@
 # Usage:  ./demos/demo-graphql.sh [--purge-db]
 
 set -uo pipefail
-export MINIKUBE_ROOTLESS=true   # CAP-010
 
 PROFILE="capstone"; NS="capstone"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
 source "${ROOT}/demos/lib/endpoints.sh"
+source "${ROOT}/demos/lib/images.sh"
 PG_RELEASE="capstone-postgres"; PG_CHART="charts/capstone/charts/postgres"
 LOCAL_ORDER=$TP_ORDER; LOCAL_GQL=$TP_GATEWAY   # 8080 order-service, 8081 gateway via KEDA interceptor
 PURGE_DB=0; [[ "${1:-}" == "--purge-db" ]] && PURGE_DB=1
@@ -48,22 +48,22 @@ for svc in inventory-service order-service graphql-gateway; do
 done
 printf '    ✓ stubs present\n'
 
-# ── 2. registry-prefix guard ──────────────────────────────────────────────────
-step "Sanity: chart image.repository points at the registry"
+# ── 2. image-name guard ──────────────────────────────────────────────────
+step "Sanity: chart image.repository is capstone/<svc> with pullPolicy Never"
 for svc in "${SERVICES[@]}"; do
-    repo="$(awk '/^  repository:/{print $2; exit}' "charts/capstone/charts/${svc}/values.yaml")"
-    case "$repo" in
-        localhost:5000/*) printf '    ✓ %s → %s\n' "$svc" "$repo" ;;
-        *) fail "${svc} image.repository is '${repo}' — must start with localhost:5000/" ;;
-    esac
+    if chart_repo_ok "charts/capstone/charts/${svc}/values.yaml" "$svc"; then
+        printf '    ✓ %s → %s\n' "$svc" "$(image_ref "$svc")"
+    else
+        fail "${svc} chart must use image.repository capstone/${svc} with pullPolicy Never"
+    fi
 done
 
-# ── 3. build + push all three ─────────────────────────────────────────────────
+# ── 3. build + load all three ─────────────────────────────────────────────────
 minikube status -p "$PROFILE" >/dev/null 2>&1 || fail "profile '$PROFILE' not running — ./scripts/setup-capstone-profile.sh"
 kubectl config use-context "$PROFILE" >/dev/null
 for svc in "${SERVICES[@]}"; do
-    step "Building + pushing ${svc}"
-    ./scripts/build-image.sh "services/${svc}" "${svc}" v1 || fail "${svc} build/push failed"
+    step "Building + loading ${svc}"
+    ./scripts/build-image.sh "services/${svc}" "${svc}" v1 || fail "${svc} build/load failed"
 done
 
 # ── 4. Postgres + deploy ──────────────────────────────────────────────────────

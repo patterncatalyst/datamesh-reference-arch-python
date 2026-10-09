@@ -23,7 +23,6 @@
 #   - scripts/setup-openmetadata.sh has been run (OpenMetadata installed)
 
 set -uo pipefail   # NOT -e: failures are handled explicitly so we can diagnose
-export MINIKUBE_ROOTLESS=true   # CAP-010
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/endpoints.sh"

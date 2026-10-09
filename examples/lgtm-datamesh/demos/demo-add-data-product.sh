@@ -22,7 +22,6 @@
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/endpoints.sh"
-export MINIKUBE_ROOTLESS=true
 
 NS="capstone"
 RELEASE="review-service"

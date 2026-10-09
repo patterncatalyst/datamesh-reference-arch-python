@@ -10,18 +10,18 @@
 #       shows the decoded order — which is only possible if the consumer
 #       fetched the writer schema from the registry by id)
 #
-# Flow: registry guard → Strimzi+Kafka ready → deploy Apicurio → build+push
+# Flow: image guard → Strimzi+Kafka ready → deploy Apicurio → build+load
 #       inventory/order/notification → Postgres → deploy → place order →
 #       assert schema registered + event consumed → cleanup on success.
 #
 # Usage:  ./demos/demo-avro.sh [--purge-db]
 
 set -uo pipefail
-export MINIKUBE_ROOTLESS=true   # CAP-010
 
 PROFILE="capstone"; NS="capstone"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
 source "${ROOT}/demos/lib/endpoints.sh"
+source "${ROOT}/demos/lib/images.sh"
 PG_RELEASE="capstone-postgres"; PG_CHART="charts/capstone/charts/postgres"
 KAFKA_RELEASE="capstone-kafka"; KAFKA_CHART="charts/capstone/charts/kafka"; KAFKA_CR="capstone-kafka"
 APICURIO_RELEASE="apicurio"; APICURIO_CHART="charts/capstone/charts/apicurio"
@@ -44,14 +44,14 @@ fail() {
     exit 1
 }
 
-# ── 1. registry guard ─────────────────────────────────────────────────────────
-step "Sanity: chart image.repository points at the registry"
+# ── 1. image guard ─────────────────────────────────────────────────────────
+step "Sanity: chart image.repository is capstone/<svc> with pullPolicy Never"
 for svc in "${APP_SERVICES[@]}"; do
-    repo="$(awk '/^  repository:/{print $2; exit}' "charts/capstone/charts/${svc}/values.yaml")"
-    case "$repo" in
-        localhost:5000/*) printf '    ✓ %s → %s\n' "$svc" "$repo" ;;
-        *) fail "${svc} image.repository is '${repo}' — must start with localhost:5000/" ;;
-    esac
+    if chart_repo_ok "charts/capstone/charts/${svc}/values.yaml" "$svc"; then
+        printf '    ✓ %s → %s\n' "$svc" "$(image_ref "$svc")"
+    else
+        fail "${svc} chart must use image.repository capstone/${svc} with pullPolicy Never"
+    fi
 done
 
 minikube status -p "$PROFILE" >/dev/null 2>&1 || fail "profile '$PROFILE' not running"
@@ -70,10 +70,10 @@ helm upgrade --install "$APICURIO_RELEASE" "$APICURIO_CHART" -n "$NS" || fail "a
 kubectl rollout status deployment/apicurio -n "$NS" --timeout=180s || fail "apicurio rollout failed"
 printf '    ✓ Apicurio ready\n'
 
-# ── 4. build + push ───────────────────────────────────────────────────────────
+# ── 4. build + load ───────────────────────────────────────────────────────────
 for svc in "${APP_SERVICES[@]}"; do
-    step "Building + pushing ${svc}"
-    ./scripts/build-image.sh "services/${svc}" "${svc}" v1 || fail "${svc} build/push failed"
+    step "Building + loading ${svc}"
+    ./scripts/build-image.sh "services/${svc}" "${svc}" v1 || fail "${svc} build/load failed"
 done
 
 # ── 5. Postgres + deploy ──────────────────────────────────────────────────────

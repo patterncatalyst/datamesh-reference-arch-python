@@ -18,7 +18,6 @@
 # Run from examples/lgtm-datamesh/:  ./demos/demo-keda-http.sh
 
 set -uo pipefail
-export MINIKUBE_ROOTLESS=true
 
 NS="capstone"
 PROFILE="capstone"

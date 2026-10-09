@@ -20,7 +20,6 @@
 # Idempotent. up re-applies; down ignores-not-found.
 
 set -uo pipefail
-export MINIKUBE_ROOTLESS=true   # CAP-010
 
 NS="capstone"
 PROFILE="capstone"

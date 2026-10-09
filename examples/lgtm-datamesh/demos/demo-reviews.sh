@@ -16,7 +16,6 @@
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/endpoints.sh"
-export MINIKUBE_ROOTLESS=true
 
 NS="capstone"
 PROFILE="capstone"
@@ -60,8 +59,8 @@ kubectl get cluster.postgresql.cnpg.io capstone-postgres -n "$NS" >/dev/null 2>&
 command -v helm >/dev/null || fail "helm not in PATH"
 
 # ─── Build + deploy ──────────────────────────────────────────────────────────
-step "Building and pushing ${IMAGE_NAME}:${IMAGE_TAG}"
-./scripts/build-image.sh "$SERVICE_DIR" "$IMAGE_NAME" "$IMAGE_TAG" || fail "image build/push failed"
+step "Building and loading ${IMAGE_NAME}:${IMAGE_TAG}"
+./scripts/build-image.sh "$SERVICE_DIR" "$IMAGE_NAME" "$IMAGE_TAG" || fail "image build/load failed"
 
 step "Deploying review-service"
 helm upgrade --install "$RELEASE" "$CHART" -n "$NS" || fail "helm install failed"

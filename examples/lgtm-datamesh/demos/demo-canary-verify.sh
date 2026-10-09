@@ -30,7 +30,6 @@
 #   subset-by-label routing. Flagged in istio/routing.yaml.
 
 set -uo pipefail
-export MINIKUBE_ROOTLESS=true   # CAP-010
 
 NS="capstone"
 PROFILE="capstone"

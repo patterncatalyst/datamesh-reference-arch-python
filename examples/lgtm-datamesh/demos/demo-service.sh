@@ -5,7 +5,7 @@
 # (which also asserts order-service's domain endpoints).
 #
 # What it does:
-#   1. build + push the service image to the in-cluster registry (CAP-007/009)
+#   1. build the service image and load it into the profile (docker build + minikube image load)
 #   2. ensure the shared Postgres cluster is up (deploys the CR if absent)
 #   3. helm upgrade --install the service subchart
 #   4. wait for rollout, then assert GET /health and GET /healthz
@@ -19,7 +19,7 @@
 set -uo pipefail   # NOT -e: we manage failures explicitly so we can diagnose
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/endpoints.sh"
-export MINIKUBE_ROOTLESS=true   # CAP-010: mandatory for rootless-podman host ops
+source "${SCRIPT_DIR}/lib/images.sh"
 
 BASE="${1:?usage: demo-service.sh <name> [--purge-db]}"
 SERVICE="${BASE}-service"
@@ -56,27 +56,26 @@ diagnostics() {
     kubectl logs -n "$NS" -l "app.kubernetes.io/name=${SERVICE}" --tail=50 2>&1 || true
     printf '\n--- previous logs (if crashed) ---\n' >&2
     kubectl logs -n "$NS" -l "app.kubernetes.io/name=${SERVICE}" --previous --tail=50 2>&1 || true
-    printf '\n--- registry catalog ---\n' >&2
-    local hp; hp="$(podman port "$PROFILE" 2>/dev/null | awk -F: '/5000\/tcp/{print $NF; exit}')"
-    [[ -n "$hp" ]] && curl -fsS "http://127.0.0.1:${hp}/v2/_catalog" 2>&1 || echo "(could not query registry)" >&2
+    printf '\n--- images loaded in the profile ---\n' >&2
+    minikube -p "$PROFILE" image ls 2>&1 | grep capstone/ >&2 || echo "(no capstone/ images loaded)" >&2
 }
 
 [[ -d "$SVC_DIR" ]] || fail "service dir $SVC_DIR not found — scaffold it first: ./scripts/scaffold-service.sh $BASE <schema>"
 [[ -d "$CHART"   ]] || fail "chart dir $CHART not found"
 
-step "Sanity: chart image.repository points at the registry"
-repo="$(awk '/^  repository:/{print $2; exit}' "$CHART/values.yaml")"
-case "$repo" in
-    localhost:5000/*) printf '    \xe2\x9c\x93 %s -> %s\n' "$SERVICE" "$repo" ;;
-    *) fail "$SERVICE image.repository is '$repo' - must start with localhost:5000/ (a bare name pulls from Docker Hub and ErrImagePulls)" ;;
-esac
+step "Sanity: chart image.repository is capstone/<svc> with pullPolicy Never"
+if chart_repo_ok "$CHART/values.yaml" "$SERVICE"; then
+    printf '    \xe2\x9c\x93 %s -> %s\n' "$SERVICE" "$(image_ref "$SERVICE")"
+else
+    fail "$SERVICE chart must use image.repository capstone/$SERVICE with pullPolicy Never"
+fi
 
 step "Pre-flight: profile + context"
 minikube status -p "$PROFILE" >/dev/null 2>&1 || fail "profile '$PROFILE' not running — ./scripts/setup-capstone-profile.sh"
 kubectl config use-context "$PROFILE" >/dev/null
 
-step "Build + push ${SERVICE}:v1 to the in-cluster registry"
-./scripts/build-image.sh "$SVC_DIR" "$SERVICE" v1 || fail "image build/push failed"
+step "Build + load ${SERVICE}:v1 into the profile"
+./scripts/build-image.sh "$SVC_DIR" "$SERVICE" v1 || fail "image build/load failed"
 
 step "Ensure the shared Postgres cluster is up"
 kubectl get crd clusters.postgresql.cnpg.io >/dev/null 2>&1 \

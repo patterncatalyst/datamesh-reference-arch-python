@@ -24,7 +24,6 @@
 # Usage:  ./demos/debug-ephemeral.sh
 
 set -uo pipefail
-export MINIKUBE_ROOTLESS=true   # CAP-010
 
 NS="capstone"
 APP="notification-service"

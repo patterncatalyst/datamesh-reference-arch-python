@@ -4,10 +4,10 @@
 # order.placed event to Kafka, notification-service consumes it.
 #
 # Flow:
-#   1. registry-prefix guard on the charts we deploy
+#   1. image-name guard on the charts we deploy
 #   2. ensure the Strimzi operator is installed
 #   3. deploy the Kafka cluster chart; wait for the Kafka CR to be Ready
-#   4. build + push inventory (order needs CheckStock), order, notification
+#   4. build + load inventory (order needs CheckStock), order, notification
 #   5. ensure Postgres Ready; deploy inventory, order, notification
 #   6. place an in-stock order via order-service REST (emits order.placed)
 #   7. poll notification-service GET /received until the order_id appears
@@ -16,11 +16,11 @@
 # Usage:  ./demos/demo-kafka.sh [--purge-db]
 
 set -uo pipefail
-export MINIKUBE_ROOTLESS=true   # CAP-010
 
 PROFILE="capstone"; NS="capstone"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
 source "${ROOT}/demos/lib/endpoints.sh"
+source "${ROOT}/demos/lib/images.sh"
 PG_RELEASE="capstone-postgres"; PG_CHART="charts/capstone/charts/postgres"
 KAFKA_RELEASE="capstone-kafka"; KAFKA_CHART="charts/capstone/charts/kafka"
 KAFKA_CR="capstone-kafka"
@@ -43,14 +43,14 @@ fail() {
     exit 1
 }
 
-# ── 1. registry guard ─────────────────────────────────────────────────────────
-step "Sanity: chart image.repository points at the registry"
+# ── 1. image guard ─────────────────────────────────────────────────────────
+step "Sanity: chart image.repository is capstone/<svc> with pullPolicy Never"
 for svc in "${APP_SERVICES[@]}"; do
-    repo="$(awk '/^  repository:/{print $2; exit}' "charts/capstone/charts/${svc}/values.yaml")"
-    case "$repo" in
-        localhost:5000/*) printf '    ✓ %s → %s\n' "$svc" "$repo" ;;
-        *) fail "${svc} image.repository is '${repo}' — must start with localhost:5000/" ;;
-    esac
+    if chart_repo_ok "charts/capstone/charts/${svc}/values.yaml" "$svc"; then
+        printf '    ✓ %s → %s\n' "$svc" "$(image_ref "$svc")"
+    else
+        fail "${svc} chart must use image.repository capstone/${svc} with pullPolicy Never"
+    fi
 done
 
 minikube status -p "$PROFILE" >/dev/null 2>&1 || fail "profile '$PROFILE' not running — ./scripts/setup-capstone-profile.sh"
@@ -72,10 +72,10 @@ kubectl wait "kafka/${KAFKA_CR}" -n "$NS" --for=condition=Ready --timeout=360s \
     || fail "Kafka cluster did not become Ready"
 printf '    ✓ Kafka Ready\n'
 
-# ── 4. build + push ───────────────────────────────────────────────────────────
+# ── 4. build + load ───────────────────────────────────────────────────────────
 for svc in "${APP_SERVICES[@]}"; do
-    step "Building + pushing ${svc}"
-    ./scripts/build-image.sh "services/${svc}" "${svc}" v1 || fail "${svc} build/push failed"
+    step "Building + loading ${svc}"
+    ./scripts/build-image.sh "services/${svc}" "${svc}" v1 || fail "${svc} build/load failed"
 done
 
 # ── 5. Postgres + deploy services ─────────────────────────────────────────────
