@@ -1,6 +1,6 @@
 # Presentation assets
 
-This directory holds the presentation materials for the capstone: the existing
+This directory holds the presentation materials for the final project: the existing
 **Data Mesh 101** deck (the conceptual intro) and, in time, a new
 implementation-focused deck that walks the §17 reference architecture and demos
 it step by step.
@@ -107,7 +107,7 @@ Phase D (which slide uses which); refine as the sections are written.
 | `contract-flow` | Contracts, registry, catalog | runtime vs discovery path |
 | `contracts-registry-catalog` | Apicurio + OpenMetadata | contract → registry → catalog |
 | `ingestion-streaming-sourcing` | The async spine (Kafka) | ingestion/streaming |
-| `reference-data-mesh-architecture` | The capstone as reference architecture | centerpiece / Phase E |
+| `reference-data-mesh-architecture` | The final project as reference architecture | centerpiece / Phase E |
 
 When a Phase C section adopts a diagram, copy it into `assets/diagrams/` under
 the tutorial's `NN-name.svg` + `.excalidraw` convention (so the doc can embed it

@@ -47,11 +47,11 @@ CNI_NS="istio-cni"
 # The core Postgres StatefulSet (../helm/datamesh/templates/postgres.yaml)
 # pod is always "postgres-0" (replicas: 1). Its initdb superuser is NOT
 # "postgres" — the upstream postgres image's POSTGRES_USER env makes the
-# *named* user the superuser, and values.yaml sets that to "capstone_app".
+# *named* user the superuser, and values.yaml sets that to "datamesh_app".
 PG_POD="postgres-0"
 PG_CONTAINER="postgres"
-PG_SUPERUSER="capstone_app"   # ../helm/datamesh/values.yaml postgres.username
-PG_SUPERDB="capstone"         # ../helm/datamesh/values.yaml postgres.database — connect here to CREATE DATABASE
+PG_SUPERUSER="datamesh_app"   # ../helm/datamesh/values.yaml postgres.username
+PG_SUPERDB="datamesh"         # ../helm/datamesh/values.yaml postgres.database — connect here to CREATE DATABASE
 
 # DEMO passwords — fine for a local reference build, not production (same
 # caveat as scripts/setup-openmetadata.sh's OM_PASSWORD).

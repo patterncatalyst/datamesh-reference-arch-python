@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# restore-baseline.sh — put the capstone workloads back in their bootstrap
+# restore-baseline.sh — put the datamesh workloads back in their bootstrap
 # state: all six service releases installed and the two KEDA scalers applied.
 #
 # Why this exists: the smokes clean up the service releases they deployed when
@@ -12,7 +12,7 @@
 #
 # Scope: bootstrap tier 8 only (services + scalers). The platform tiers
 # (Postgres, Kafka, Apicurio, observability, OpenMetadata) are checked and
-# warned about, not installed — that's bootstrap-capstone.sh's job.
+# warned about, not installed — that's bootstrap-datamesh.sh's job.
 #
 # Idempotent: helm upgrade --install + kubectl apply throughout.
 #
@@ -20,7 +20,7 @@
 
 set -uo pipefail
 
-NS="capstone"
+NS="datamesh"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
 
 SERVICES=(graphql-gateway inventory-service notification-service order-service payment-service shipping-service)
@@ -39,21 +39,21 @@ is_keda_managed() {
     return 1
 }
 
-kubectl get ns "$NS" >/dev/null 2>&1 || fail "namespace $NS not found — run bootstrap-capstone.sh first"
+kubectl get ns "$NS" >/dev/null 2>&1 || fail "namespace $NS not found — run bootstrap-datamesh.sh first"
 
 # ── platform sanity (warn only) ───────────────────────────────────────────────
 step "Platform check (warn-only — bootstrap owns these tiers)"
-kubectl get pods -n "$NS" -l "cnpg.io/cluster=capstone-postgres,cnpg.io/instanceRole=primary" --no-headers 2>/dev/null | grep -q Running \
-    && ok "Postgres primary Running" || warn "Postgres primary not Running — re-run bootstrap-capstone.sh"
-kubectl get kafka capstone-kafka -n "$NS" >/dev/null 2>&1 \
-    && ok "Kafka CR present" || warn "Kafka CR missing — re-run bootstrap-capstone.sh"
+kubectl get pods -n "$NS" -l "cnpg.io/cluster=datamesh-postgres,cnpg.io/instanceRole=primary" --no-headers 2>/dev/null | grep -q Running \
+    && ok "Postgres primary Running" || warn "Postgres primary not Running — re-run bootstrap-datamesh.sh"
+kubectl get kafka datamesh-kafka -n "$NS" >/dev/null 2>&1 \
+    && ok "Kafka CR present" || warn "Kafka CR missing — re-run bootstrap-datamesh.sh"
 kubectl get deploy apicurio -n "$NS" >/dev/null 2>&1 \
-    && ok "Apicurio present" || warn "Apicurio missing — re-run bootstrap-capstone.sh (or demo-discovery.sh deploys it)"
+    && ok "Apicurio present" || warn "Apicurio missing — re-run bootstrap-datamesh.sh (or demo-discovery.sh deploys it)"
 
 # ── the six service releases ──────────────────────────────────────────────────
 step "Installing/refreshing the six service releases"
 for svc in "${SERVICES[@]}"; do
-    helm upgrade --install "$svc" "charts/capstone/charts/$svc" -n "$NS" >/dev/null \
+    helm upgrade --install "$svc" "charts/datamesh/charts/$svc" -n "$NS" >/dev/null \
         || fail "$svc install failed"
     ok "$svc"
 done

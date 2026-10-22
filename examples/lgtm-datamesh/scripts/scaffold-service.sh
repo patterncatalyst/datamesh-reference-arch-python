@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 #
-# scaffold-service.sh — stamp out a new capstone service skeleton from the
+# scaffold-service.sh — stamp out a new datamesh service skeleton from the
 # proven order-service template (r21c).
 #
 # What it generates (a "walking skeleton" service — CAP-006):
 #   - services/<name>-service/         FastAPI app with /health + /healthz,
 #                                       async SQLAlchemy wired to its own
 #                                       Postgres schema, UBI 9 Containerfile
-#   - charts/capstone/charts/<name>-service/   helm subchart (Deployment +
+#   - charts/datamesh/charts/<name>-service/   helm subchart (Deployment +
 #                                       Service), image loaded into the
 #                                       node (minikube image load)
 #
@@ -41,7 +41,7 @@ SERVICE="${BASE}-service"
 # Resolve repo-relative paths from the example root (parent of scripts/).
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SVC_DIR="${ROOT}/services/${SERVICE}"
-CHART_DIR="${ROOT}/charts/capstone/charts/${SERVICE}"
+CHART_DIR="${ROOT}/charts/datamesh/charts/${SERVICE}"
 
 step() { printf '\n==> %s\n' "$1"; }
 fail() { printf 'ERROR: %s\n' "$1" >&2; exit 1; }
@@ -60,7 +60,7 @@ cat > "${SVC_DIR}/pyproject.toml" <<'EOF'
 [tool.poetry]
 name = "__SERVICE__"
 version = "0.1.0"
-description = "__SERVICE__ data product for the §17 capstone — health skeleton (domain surface added in later iterations)"
+description = "__SERVICE__ data product for the §17 final project — health skeleton (domain surface added in later iterations)"
 authors = ["patterncatalyst"]
 readme = "README.md"
 package-mode = false
@@ -135,7 +135,7 @@ EOF
 cat > "${SVC_DIR}/README.md" <<'EOF'
 # __SERVICE__
 
-A §17 capstone data product. Owns the `__SCHEMA__` Postgres schema
+A §17 final project data product. Owns the `__SCHEMA__` Postgres schema
 (per-service ownership, CAP-003).
 
 **r22 scope (skeleton):** the service starts, ensures its schema exists, and
@@ -152,8 +152,8 @@ appropriate to the service).
 ```bash
 # from examples/lgtm-datamesh/
 ./scripts/build-image.sh services/__SERVICE__ __SERVICE__ v1
-helm upgrade --install __SERVICE__ charts/capstone/charts/__SERVICE__ -n capstone
-kubectl rollout status deployment/__SERVICE__ -n capstone --timeout=120s
+helm upgrade --install __SERVICE__ charts/datamesh/charts/__SERVICE__ -n datamesh
+kubectl rollout status deployment/__SERVICE__ -n datamesh --timeout=120s
 ```
 
 Or run the health smoke test, which does all of the above and asserts the
@@ -168,8 +168,8 @@ cat > "${SVC_DIR}/app/config.py" <<'EOF'
 """Configuration for __SERVICE__, sourced from environment variables.
 
 In-cluster, the Postgres connection comes from the CloudNativePG-generated
-Secret (`capstone-postgres-app`), surfaced as env vars by the helm subchart.
-Locally, the defaults allow running against a local Postgres (e.g. `docker run --rm -p 127.0.0.1:5432:5432 -e POSTGRES_USER=capstone_app -e POSTGRES_PASSWORD=changeme -e POSTGRES_DB=capstone postgres:16`).
+Secret (`datamesh-postgres-app`), surfaced as env vars by the helm subchart.
+Locally, the defaults allow running against a local Postgres (e.g. `docker run --rm -p 127.0.0.1:5432:5432 -e POSTGRES_USER=datamesh_app -e POSTGRES_PASSWORD=changeme -e POSTGRES_DB=datamesh postgres:16`).
 """
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -185,9 +185,9 @@ class Settings(BaseSettings):
     # Postgres connection. In-cluster these come from the CNPG app Secret.
     pg_host: str = "127.0.0.1"
     pg_port: int = 5432
-    pg_user: str = "capstone_app"
+    pg_user: str = "datamesh_app"
     pg_password: str = "changeme"
-    pg_database: str = "capstone"
+    pg_database: str = "datamesh"
 
     # Server
     host: str = "0.0.0.0"
@@ -283,7 +283,7 @@ EOF
 
 # ─── services/<service>/app/main.py (health surface only) ─────────────────────
 cat > "${SVC_DIR}/app/main.py" <<'EOF'
-"""__SERVICE__ — a §17 capstone data product (r22 skeleton).
+"""__SERVICE__ — a §17 final project data product (r22 skeleton).
 
 r22 scope: the service stands up, connects to its Postgres schema
 (`__SCHEMA__`), and serves health probes. Its domain surface (REST/gRPC/
@@ -317,7 +317,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="__SERVICE__",
     version="0.1.0",
-    description="__SERVICE__ data product for the §17 capstone data mesh (skeleton).",
+    description="__SERVICE__ data product for the §17 final project data mesh (skeleton).",
     lifespan=lifespan,
 )
 
@@ -369,17 +369,17 @@ async def test_health_ok():
     assert body["service"] == "__SERVICE__"
 EOF
 
-# ─── charts/capstone/charts/<service>/Chart.yaml ──────────────────────────────
+# ─── charts/datamesh/charts/<service>/Chart.yaml ──────────────────────────────
 cat > "${CHART_DIR}/Chart.yaml" <<'EOF'
 apiVersion: v2
 name: __SERVICE__
-description: __SERVICE__ data product — FastAPI service backed by the capstone Postgres (__SCHEMA__ schema). r22 ships the health skeleton; domain surface added later.
+description: __SERVICE__ data product — FastAPI service backed by the datamesh Postgres (__SCHEMA__ schema). r22 ships the health skeleton; domain surface added later.
 type: application
 version: 0.1.0
 appVersion: "0.1.0"
 EOF
 
-# ─── charts/capstone/charts/<service>/values.yaml ─────────────────────────────
+# ─── charts/datamesh/charts/<service>/values.yaml ─────────────────────────────
 cat > "${CHART_DIR}/values.yaml" <<'EOF'
 # __SERVICE__ subchart values.
 
@@ -387,7 +387,7 @@ replicas: 1
 
 image:
   # Image is loaded into the node by build-image.sh (minikube image load); no registry.
-  repository: capstone/__SERVICE__
+  repository: datamesh/__SERVICE__
   tag: v1
   # Never: images are loaded into the node by build-image.sh (minikube image load) and never pulled; build-image.sh restarts the Deployment so a rebuilt :v1 is used.
   pullPolicy: Never
@@ -399,8 +399,8 @@ service:
 # Postgres connection. The CloudNativePG operator generates a Secret named
 # "<cluster>-app" holding the app user's credentials; we reference it by key.
 postgres:
-  clusterName: capstone-postgres
-  appSecret: capstone-postgres-app
+  clusterName: datamesh-postgres
+  appSecret: datamesh-postgres-app
   schema: __SCHEMA__
 
 resources:
@@ -422,7 +422,7 @@ probes:
     periodSeconds: 5
 EOF
 
-# ─── charts/capstone/charts/<service>/templates/deployment.yaml ───────────────
+# ─── charts/datamesh/charts/<service>/templates/deployment.yaml ───────────────
 cat > "${CHART_DIR}/templates/deployment.yaml" <<'EOF'
 apiVersion: apps/v1
 kind: Deployment
@@ -431,7 +431,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: __SERVICE__
-    app.kubernetes.io/part-of: capstone
+    app.kubernetes.io/part-of: datamesh
     app.kubernetes.io/component: data-product
 spec:
   replicas: {{ .Values.replicas }}
@@ -442,7 +442,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: __SERVICE__
-        app.kubernetes.io/part-of: capstone
+        app.kubernetes.io/part-of: datamesh
     spec:
       containers:
         - name: __SERVICE__
@@ -495,7 +495,7 @@ spec:
             periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
 EOF
 
-# ─── charts/capstone/charts/<service>/templates/service.yaml ──────────────────
+# ─── charts/datamesh/charts/<service>/templates/service.yaml ──────────────────
 cat > "${CHART_DIR}/templates/service.yaml" <<'EOF'
 apiVersion: v1
 kind: Service
@@ -504,7 +504,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: __SERVICE__
-    app.kubernetes.io/part-of: capstone
+    app.kubernetes.io/part-of: datamesh
 spec:
   type: ClusterIP
   selector:
@@ -540,7 +540,7 @@ fi
 cat <<EOF
 
   services/${SERVICE}/        FastAPI health skeleton (schema: ${SCHEMA})
-  charts/capstone/charts/${SERVICE}/   helm subchart
+  charts/datamesh/charts/${SERVICE}/   helm subchart
 
 Next:
   1. Build + deploy + assert the probes:

@@ -2,7 +2,7 @@
 
 Wraps the InventoryService.CheckStock call. The generated stubs live in the
 service's committed `gen/` tree (option b); we add it to sys.path so
-`capstone.inventory.v1` is importable in the container and locally.
+`datamesh.inventory.v1` is importable in the container and locally.
 
 This is the order flow's one synchronous cross-service dependency: before an
 order is persisted, order-service asks inventory-service whether the SKU is
@@ -20,7 +20,7 @@ if _GEN not in sys.path:
     sys.path.insert(0, _GEN)
 
 import grpc  # noqa: E402
-from capstone.inventory.v1 import (  # noqa: E402
+from datamesh.inventory.v1 import (  # noqa: E402
     inventory_pb2,
     inventory_pb2_grpc,
 )

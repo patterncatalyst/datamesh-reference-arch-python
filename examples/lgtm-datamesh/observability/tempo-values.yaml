@@ -1,5 +1,5 @@
 # tempo-values.yaml — Grafana Tempo in monolithic (single-binary) mode (r29b,
-# CAP-028): the capstone's trace backend. Local storage, OTLP receivers on, lean.
+# CAP-028): the datamesh's trace backend. Local storage, OTLP receivers on, lean.
 # Monolithic mode is Tempo's own recommendation for small/demo/test setups —
 # one container with distributor, ingester, querier, and compactor together.
 #

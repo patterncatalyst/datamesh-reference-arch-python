@@ -20,8 +20,8 @@
 
 set -uo pipefail
 
-NS="capstone"
-PROFILE="capstone"
+NS="datamesh"
+PROFILE="datamesh"
 KEDA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../keda" && pwd)"
 DEP="notification-service"
 SEL="app.kubernetes.io/name=notification-service"
@@ -68,7 +68,7 @@ step "Pre-flight checks"
 kubectl get deployment keda-operator -n keda >/dev/null 2>&1 \
     || fail "KEDA not installed — run scripts/setup-keda.sh first"
 kubectl get deployment "$DEP" -n "$NS" >/dev/null 2>&1 \
-    || fail "$DEP not deployed — helm upgrade --install notification-service charts/capstone/charts/notification-service -n $NS"
+    || fail "$DEP not deployed — helm upgrade --install notification-service charts/datamesh/charts/notification-service -n $NS"
 
 step "Applying the Kafka consumer-lag ScaledObject"
 kubectl apply -f "$KEDA_DIR/notification-scaledobject.yaml" >/dev/null \
@@ -83,9 +83,9 @@ printf '    ✓ scaled to ZERO (consumer idle, costing nothing)\n'
 
 # ─── 2. Create lag → scale up ────────────────────────────────────────────────
 step "Producing a ${BURST}-message burst to '${TOPIC}' to create lag"
-BROKER="$(kubectl get pods -n "$NS" -l strimzi.io/cluster=capstone-kafka -o name 2>/dev/null \
+BROKER="$(kubectl get pods -n "$NS" -l strimzi.io/cluster=datamesh-kafka -o name 2>/dev/null \
     | grep -E 'kafka-.*-[0-9]+$' | head -1 | cut -d/ -f2)"
-[[ -n "$BROKER" ]] || fail "could not find a capstone-kafka broker pod"
+[[ -n "$BROKER" ]] || fail "could not find a datamesh-kafka broker pod"
 printf '    using broker pod: %s\n' "$BROKER"
 seq 1 "$BURST" | kubectl exec -i -n "$NS" "$BROKER" -- \
     /opt/kafka/bin/kafka-console-producer.sh \

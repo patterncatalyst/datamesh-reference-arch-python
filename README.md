@@ -104,7 +104,7 @@ end to end, verified order-independent (see
   conceptual deck) and *Data Mesh on OpenShift* (the implementation deck).
 - **`assets/diagrams/`** — paired SVG + Excalidraw sources for every figure.
 - **`_plans/`** — active decisions and reconciliation tracking.
-  Historical material from the capstone era is preserved under
+  Historical material from the final-project era is preserved under
   `_plans/archive/`.
 - **`scripts/`** — top-level helper scripts: cross-reference and Liquid
   collision linters, a Fedora prerequisites audit, setup helpers for
@@ -126,7 +126,7 @@ for a read-only host check), then:
 
 ```bash
 cd examples/lgtm-datamesh
-./scripts/bootstrap-capstone.sh   # the whole stack, ten gated tiers
+./scripts/bootstrap-datamesh.sh   # the whole stack, ten gated tiers
 ./demos/walkthrough.sh            # the five-act presenter walkthrough
 ```
 
@@ -139,7 +139,7 @@ An optional OpenShift Local (CRC) appendix uses podman. <!-- forbidden-ok -->
 
 ## Origin
 
-This repo is a fork of the §17 capstone from
+This repo is a fork of the §17 final project from
 [`patterncatalyst/minikube-on-fedora`](https://github.com/patterncatalyst/minikube-on-fedora).
 The parent repo's tutorial (§1–§16) remains the canonical Minikube-on-Fedora
 guide; this repo is the data-mesh reference broken out for its own audience.

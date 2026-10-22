@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # setup-postgres-operator.sh — install the CloudNativePG operator into the
-# capstone cluster.
+# datamesh cluster.
 #
 # IMPORTANT: installing an operator is a CLUSTER-WIDE action. It:
 #   - registers Custom Resource Definitions (CRDs are always cluster-scoped:
@@ -43,10 +43,10 @@ if ! command -v kubectl >/dev/null 2>&1; then
 fi
 
 current_context=$(kubectl config current-context 2>/dev/null || echo "")
-if [[ "$current_context" != "capstone" ]]; then
-    printf 'WARNING: current kubectl context is "%s", not "capstone".\n' "$current_context" >&2
+if [[ "$current_context" != "datamesh" ]]; then
+    printf 'WARNING: current kubectl context is "%s", not "datamesh".\n' "$current_context" >&2
     printf 'The operator will be installed cluster-wide on THAT cluster.\n' >&2
-    printf 'Switch with: kubectl config use-context capstone\n' >&2
+    printf 'Switch with: kubectl config use-context datamesh\n' >&2
     printf 'Continue anyway? [y/N] ' >&2
     read -r answer
     [[ "$answer" =~ ^[Yy] ]] || exit 1
@@ -89,6 +89,6 @@ printf '    (these now exist in every namespace on this cluster)\n'
 printf '  - Controller running in namespace %s, reconciling Cluster CRs\n' "$OPERATOR_NS"
 printf '    in any namespace\n'
 printf '\n'
-printf 'Next: the capstone umbrella chart ships a Cluster CR in the\n'
-printf 'capstone namespace (charts/capstone/charts/postgres/). The operator\n'
+printf 'Next: the datamesh umbrella chart ships a Cluster CR in the\n'
+printf 'datamesh namespace (charts/datamesh/charts/postgres/). The operator\n'
 printf 'will see it and provision the actual Postgres pods + services.\n'

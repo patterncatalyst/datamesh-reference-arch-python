@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
-# setup-istio.sh — install the Istio control plane into the capstone cluster and
+# setup-istio.sh — install the Istio control plane into the datamesh cluster and
 # enable sidecar injection, in preparation for the order-service v1→v2 canary
 # (r26, CAP-024).
 #
-# Like the other capstone platform installs (Postgres/Kafka operators,
+# Like the other datamesh platform installs (Postgres/Kafka operators,
 # OpenMetadata), this is a run-once-per-cluster step, separate from the app
 # releases. Idempotent.
 #
@@ -15,7 +15,7 @@
 #      the istio-ingressgateway the canary routes through. (Not `demo`, which
 #      adds addons we don't need; not `minimal`, which omits the ingress
 #      gateway.)
-#   3. Labels the `capstone` namespace for sidecar injection.
+#   3. Labels the `datamesh` namespace for sidecar injection.
 #
 # SCOPE NOTE (CAP-024): r26 meshes order-service for the canary, not the whole
 # mesh. Labeling the namespace enables injection, but only pods CREATED or
@@ -31,13 +31,13 @@
 #   ./scripts/setup-istio.sh
 #
 # Then enable the canary (selector immutability means v1 must be recreated once):
-#   kubectl delete deployment order-service -n capstone --ignore-not-found
-#   helm upgrade --install capstone ./charts/capstone -n capstone
+#   kubectl delete deployment order-service -n datamesh --ignore-not-found
+#   helm upgrade --install datamesh ./charts/datamesh -n datamesh
 #   ./demos/demo-canary-verify.sh
 
 set -euo pipefail
 
-NS="capstone"
+NS="datamesh"
 ISTIO_PROFILE="default"
 
 # ─── Pre-flight ──────────────────────────────────────────────────────────────
@@ -69,9 +69,9 @@ fi
 printf '==> istioctl %s matches the pinned version\n' "$ISTIOCTL_VERSION"
 
 current_context="$(kubectl config current-context 2>/dev/null || echo "")"
-if [[ "$current_context" != "capstone" ]]; then
-    printf 'WARNING: current kubectl context is "%s", not "capstone".\n' "$current_context" >&2
-    printf 'Switch with: kubectl config use-context capstone\n' >&2
+if [[ "$current_context" != "datamesh" ]]; then
+    printf 'WARNING: current kubectl context is "%s", not "datamesh".\n' "$current_context" >&2
+    printf 'Switch with: kubectl config use-context datamesh\n' >&2
     printf 'Continue anyway? [y/N] ' >&2
     read -r answer
     [[ "$answer" =~ ^[Yy] ]] || exit 1
@@ -79,7 +79,7 @@ fi
 
 # ─── 1. Install Istio (control plane + ingress gateway) ──────────────────────
 
-printf '==> Installing Istio (profile=%s) into the capstone cluster\n' "$ISTIO_PROFILE"
+printf '==> Installing Istio (profile=%s) into the datamesh cluster\n' "$ISTIO_PROFILE"
 istioctl install --set profile="$ISTIO_PROFILE" -y
 
 printf '==> Waiting for istiod and the ingress gateway to be ready\n'
@@ -94,7 +94,7 @@ kubectl patch svc istio-ingressgateway -n istio-system --type='json' \
     -p '[{"op":"replace","path":"/spec/ports/1/nodePort","value":30088}]' \
     2>/dev/null || true
 
-# ─── 2. Enable injection on the capstone namespace ───────────────────────────
+# ─── 2. Enable injection on the datamesh namespace ───────────────────────────
 
 printf '==> Labeling namespace %s for sidecar injection\n' "$NS"
 kubectl label namespace "$NS" istio-injection=enabled --overwrite
@@ -106,7 +106,7 @@ printf 'Enable the order-service canary (one-time delete: the v1 selector now\n'
 printf 'includes version=v1, and selectors are immutable, so the old Deployment\n'
 printf 'must be recreated):\n'
 printf '  kubectl delete deployment order-service -n %s --ignore-not-found\n' "$NS"
-printf '  helm upgrade --install capstone ./charts/capstone -n %s\n' "$NS"
+printf '  helm upgrade --install datamesh ./charts/datamesh -n %s\n' "$NS"
 printf '\nThen run the canary demo + verification:\n'
 printf '  ./demos/demo-canary-verify.sh\n'
 printf '\nReminder (CAP-024 scope): do not restart the operator-managed infra pods\n'

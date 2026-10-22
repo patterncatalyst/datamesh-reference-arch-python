@@ -36,7 +36,7 @@ permalink: pretty
 # Collections — _docs and _plans are not Jekyll defaults; this enables them.
 # Unlike the upstream minikube-tutorial repo, this site's _docs IS the
 # data-mesh content (it's not nested under a parent tutorial). There's no
-# separate _capstone collection.
+# separate _datamesh collection.
 collections:
   docs:
     output: true
@@ -68,7 +68,7 @@ exclude:
   - scripts/
   - README.md
   - LICENSE
-  - _plans/archive/   # archived capstone plans contain inline {% %} prose Liquid can't parse
+  - _plans/archive/   # archived final-project plans contain inline {% %} prose Liquid can't parse
   - PRD.md
   - LESSONS-LEARNED.md
   - GETTING-STARTED.md

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# build-and-push.sh — build the 7 capstone Python service images and push
+# build-and-push.sh — build the 7 datamesh Python service images and push
 # them (plus mirrored copies of the postgres/kafka infra images) to an
 # OpenShift cluster's integrated image registry.
 #

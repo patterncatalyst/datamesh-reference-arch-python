@@ -12,11 +12,11 @@
 # Changed from the minikube source — the backend database:
 #   * host:     postgres.datamesh.svc.cluster.local (the plain StatefulSet
 #     Service in openshift/helm/datamesh/templates/postgres.yaml), NOT
-#     capstone-postgres-rw (that's the CNPG read-write Service the minikube
+#     datamesh-postgres-rw (that's the CNPG read-write Service the minikube
 #     deploy uses; this cluster has no CNPG operator/Cluster).
 #   * databaseName: openmetadata — a second database on the same Postgres
 #     instance, with a DEDICATED `openmetadata` login role (NOT the shared
-#     `capstone_app` role the core app secret uses) — both created by
+#     `datamesh_app` role the core app secret uses) — both created by
 #     ../install-platform.sh's `provision_openmetadata_db` (confirmed by
 #     reading that script: OPENMETADATA_ROLE=OPENMETADATA_DB="openmetadata"),
 #     same shape as the minikube source's setup-openmetadata.sh.

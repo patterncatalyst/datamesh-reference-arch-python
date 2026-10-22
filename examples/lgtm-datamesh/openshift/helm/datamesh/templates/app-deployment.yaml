@@ -25,7 +25,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: {{ $name }}
-        app.kubernetes.io/part-of: capstone
+        app.kubernetes.io/part-of: datamesh
         {{- if $root.Values.mesh.enabled }}
         # istio.io/rev LABEL (not an annotation) — the OSSM3/Sail revisioned
         # webhook's injection trigger (DRA-010).
@@ -44,7 +44,7 @@ spec:
       # Init container runs Alembic migrations before the app starts, so the
       # schema + tables exist and the app issues no DDL (retires create_all —
       # CAP-021). Same image, same DB env as the app. Ported from
-      # charts/capstone/charts/notification-service/templates/deployment.yaml.
+      # charts/datamesh/charts/notification-service/templates/deployment.yaml.
       initContainers:
         - name: migrate
           image: "{{ $root.Values.image.registry }}/{{ $name }}:{{ $root.Values.image.tag }}"

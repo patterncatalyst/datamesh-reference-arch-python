@@ -18,14 +18,14 @@
 # Ephemeral containers cannot be removed (they live with the pod), so each run
 # uses a unique container name. Re-running is safe; it just adds another.
 #
-# Prereqs: a running capstone cluster with notification-service deployed
+# Prereqs: a running datamesh cluster with notification-service deployed
 # (e.g. after ./demos/demo-notifications.sh, or deploy it first).
 #
 # Usage:  ./demos/debug-ephemeral.sh
 
 set -uo pipefail
 
-NS="capstone"
+NS="datamesh"
 APP="notification-service"
 DEBUG_IMAGE="registry.access.redhat.com/ubi10/ubi:10.2-1791444044"   # has curl + ps; any tool image works
 STAMP="$(date +%s)"

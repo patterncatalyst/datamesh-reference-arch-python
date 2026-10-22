@@ -247,7 +247,7 @@ permalink: /demos/
                 <div class="card__eyebrow">Self-serve platform &middot; <strong>Prometheus</strong></div>
                 <h3 class="card__title">Metrics stack health</h3>
                 <p class="card__desc">
-                    Prometheus scraping capstone targets, Grafana dashboard
+                    Prometheus scraping final-project targets, Grafana dashboard
                     provisioned with mesh and request-rate panels. The
                     platform delivers observability.
                 </p>
@@ -321,7 +321,7 @@ permalink: /demos/
                 <div class="card__eyebrow">Federated governance &middot; <strong>topology</strong></div>
                 <h3 class="card__title">Kiali mesh topology</h3>
                 <p class="card__desc">
-                    Kiali API answers, Prometheus reachable, capstone
+                    Kiali API answers, Prometheus reachable, datamesh
                     namespace visible in the graph. The mesh is observable
                     as a first-class surface.
                 </p>
@@ -338,7 +338,7 @@ permalink: /demos/
         <p>
             All demos assume you are in the
             <code>examples/lgtm-datamesh/</code> directory with kubectl
-            context set to <code>capstone</code>. See the
+            context set to <code>datamesh</code>. See the
             <a href="{{ '/setup/' | relative_url }}">setup &amp; prerequisites</a>
             page for installation and bootstrap.
         </p>
@@ -348,13 +348,13 @@ permalink: /demos/
         <h3>What to look at after running a demo</h3>
         <p>
             The tools are NodePorts published on <code>127.0.0.1</code> when
-            the <code>capstone</code> profile is created, so the URLs below
+            the <code>datamesh</code> profile is created, so the URLs below
             are available as soon as the stack is up. Run
             <code>./scripts/show-endpoints.sh</code> to see which are
             reachable. Ports are fixed at creation; recreate an older profile
-            with <code>./scripts/setup-capstone-profile.sh --replace</code>.
+            with <code>./scripts/setup-datamesh-profile.sh --replace</code>.
             <code>--replace</code> deletes and recreates the cluster, so run
-            <code>./scripts/bootstrap-capstone.sh</code> again afterwards.
+            <code>./scripts/bootstrap-datamesh.sh</code> again afterwards.
         </p>
         <ul>
             <li>

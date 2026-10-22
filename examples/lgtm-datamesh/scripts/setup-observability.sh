@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# setup-observability.sh — install the capstone observability stack into the
+# setup-observability.sh — install the datamesh observability stack into the
 # cluster (CAP-027 metrics, CAP-028 traces): Prometheus (+ kube-state-metrics),
 # Tempo (trace backend), and Grafana, all in the 'observability' namespace.
 #
@@ -13,7 +13,7 @@
 # OTLP). Nothing emits traces yet; instrumenting a service to send them is the
 # next step (see §17 and the tracing demo).
 #
-# Like the other capstone platform installs, this is run-once-per-cluster,
+# Like the other datamesh platform installs, this is run-once-per-cluster,
 # separate from the app releases, and idempotent.
 #
 # Usage (from examples/lgtm-datamesh/):
@@ -36,9 +36,9 @@ command -v kubectl >/dev/null 2>&1 || { printf 'ERROR: kubectl not in PATH.\n' >
 command -v helm    >/dev/null 2>&1 || { printf 'ERROR: helm not in PATH — see §2.\n' >&2; exit 1; }
 
 current_context="$(kubectl config current-context 2>/dev/null || echo "")"
-if [[ "$current_context" != "capstone" ]]; then
-    printf 'WARNING: current kubectl context is "%s", not "capstone".\n' "$current_context" >&2
-    printf 'Switch with: kubectl config use-context capstone\n' >&2
+if [[ "$current_context" != "datamesh" ]]; then
+    printf 'WARNING: current kubectl context is "%s", not "datamesh".\n' "$current_context" >&2
+    printf 'Switch with: kubectl config use-context datamesh\n' >&2
     printf 'Continue anyway? [y/N] ' >&2
     read -r answer
     [[ "$answer" =~ ^[Yy] ]] || exit 1
@@ -93,7 +93,7 @@ helm upgrade --install grafana grafana-community/grafana \
 printf '\n==> Prometheus + Grafana installed in the %s namespace.\n\n' "$NAMESPACE"
 printf 'Services are exposed as NodePorts published on 127.0.0.1 (list them with):\n'
 printf '  ./scripts/show-endpoints.sh\n\n'
-printf 'Then open Grafana and find the "Capstone — Scaling & Traffic" dashboard:\n'
+printf 'Then open Grafana and find the "Datamesh — Scaling & Traffic" dashboard:\n'
 printf '  http://127.0.0.1:3000\n\n'
 printf 'Login (read the real credentials from the secret — the chart keeps an existing\n'
 printf 'password on upgrade, so do not assume it is the values default):\n'

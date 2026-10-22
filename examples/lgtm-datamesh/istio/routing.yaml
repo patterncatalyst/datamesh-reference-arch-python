@@ -23,7 +23,7 @@ apiVersion: networking.istio.io/v1
 kind: Gateway
 metadata:
   name: order-service-gateway
-  namespace: capstone
+  namespace: datamesh
 spec:
   selector:
     istio: ingressgateway        # the default istio-ingressgateway in istio-system
@@ -39,7 +39,7 @@ apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
   name: order-service
-  namespace: capstone
+  namespace: datamesh
 spec:
   hosts:
     - "*"
@@ -60,7 +60,7 @@ apiVersion: networking.istio.io/v1
 kind: DestinationRule
 metadata:
   name: order-service
-  namespace: capstone
+  namespace: datamesh
 spec:
   host: order-service
   subsets:

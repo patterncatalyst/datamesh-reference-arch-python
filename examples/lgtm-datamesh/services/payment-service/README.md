@@ -1,6 +1,6 @@
 # payment-service
 
-A §17 capstone data product. Owns the `payments` Postgres schema
+A §17 final project data product. Owns the `payments` Postgres schema
 (per-service ownership, CAP-003).
 
 **r22 scope (skeleton):** the service starts, ensures its schema exists, and
@@ -17,8 +17,8 @@ appropriate to the service).
 ```bash
 # from examples/lgtm-datamesh/
 ./scripts/build-image.sh services/payment-service payment-service v1
-helm upgrade --install payment-service charts/capstone/charts/payment-service -n capstone
-kubectl rollout status deployment/payment-service -n capstone --timeout=120s
+helm upgrade --install payment-service charts/datamesh/charts/payment-service -n datamesh
+kubectl rollout status deployment/payment-service -n datamesh --timeout=120s
 ```
 
 Or run the health smoke test, which does all of the above and asserts the

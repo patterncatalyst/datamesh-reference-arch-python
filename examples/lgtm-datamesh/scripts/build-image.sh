@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 #
 # build-image.sh — build a service image with Docker and load it into the
-# capstone minikube profile. There is no registry.
+# datamesh minikube profile. There is no registry.
 #
 # WHY `minikube image load`: it works the same with a native Docker Engine
 # (Linux) and a VM-based one (Docker Desktop is one example), because the
 # image is streamed into the node's containerd rather than pulled over a
 # network address. Loaded images persist across `minikube stop` / `start`.
-# Charts reference capstone/<name>:<tag> with imagePullPolicy: Never, so the
+# Charts reference datamesh/<name>:<tag> with imagePullPolicy: Never, so the
 # kubelet only ever uses what was loaded into the profile.
 # (CAP-007, CAP-009 and CAP-010 are superseded by DRA-019.)
 #
@@ -19,8 +19,8 @@
 # Environment:
 #   SKIP_BUILD=1             skip `docker build`; load the existing local image
 #   BUILD_IMAGE_NO_RESTART=1 do not restart Deployments that use the image
-#   MINIKUBE_PROFILE         minikube profile (default: capstone)
-#   NS                       namespace of the Deployments to restart (default: capstone)
+#   MINIKUBE_PROFILE         minikube profile (default: datamesh)
+#   NS                       namespace of the Deployments to restart (default: datamesh)
 
 set -euo pipefail
 
@@ -31,8 +31,8 @@ source "${SCRIPT_DIR}/../demos/lib/images.sh"
 CONTEXT="${1:?usage: build-image.sh <context-dir> <image-name> [tag]}"
 NAME="${2:?usage: build-image.sh <context-dir> <image-name> [tag]}"
 TAG="${3:-v1}"
-PROFILE="${MINIKUBE_PROFILE:-capstone}"
-NS="${NS:-capstone}"
+PROFILE="${MINIKUBE_PROFILE:-datamesh}"
+NS="${NS:-datamesh}"
 
 step() { printf '\n==> %s\n' "$1"; }
 fail() { printf 'ERROR: %s\n' "$1" >&2; exit 1; }
@@ -72,7 +72,7 @@ trap '[[ -n "$tmp" ]] && rm -f "$tmp"' EXIT
 
 if ! minikube -p "$PROFILE" image load "$IMAGE" || ! image_in_profile "$NAME" "$TAG"; then
     step "Direct load did not land the image; falling back to a tar archive"
-    tmp="$(mktemp "${TMPDIR:-/tmp}/capstone-image.XXXXXX")"
+    tmp="$(mktemp "${TMPDIR:-/tmp}/datamesh-image.XXXXXX")"
     mv "$tmp" "${tmp}.tar"; tmp="${tmp}.tar"
     docker image save -o "$tmp" "$IMAGE"
     minikube -p "$PROFILE" image load "$tmp"

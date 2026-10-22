@@ -72,7 +72,7 @@ of capacity another domain needs.
 
 The reference's order, inventory, payment, shipping, and notification
 domains each live in their own namespace. The reference uses a single
-shared `capstone` namespace for the demo's clarity, but the production
+shared `datamesh` namespace for the demo's clarity, but the production
 shape is one namespace per domain — the reference's helm chart structure
 supports that directly.
 
@@ -98,7 +98,7 @@ and how to address it.
 
 The implementation pieces that realize this in the reference: every
 service's Deployment + Service makes the product *addressable* — a
-domain consumer reaches `order-service.capstone.svc.cluster.local` and
+domain consumer reaches `order-service.datamesh.svc.cluster.local` and
 gets the order product. The Apicurio schema registry holds the
 *versioned contracts* — OpenAPI for REST, Protobuf for gRPC, AsyncAPI
 for the Kafka events — and rejects breaking changes at registration
@@ -246,7 +246,7 @@ your own data mesh on Kubernetes, the pattern is:
 2. **Run the example tree** to see the cross-product behaviors live —
    the trace tree across three products, the canary contract evolution
    under live traffic, the autoscaler reacting to a Kafka backlog.
-3. **Use the decision log** at `_plans/archive/capstone-decisions.md`
+3. **Use the decision log** at `_plans/archive/final-project-decisions.md`
    to understand the *reasoning* for each implementation choice, not
    just the choice itself. The rejected alternatives are where the
    institutional memory of the build lives.

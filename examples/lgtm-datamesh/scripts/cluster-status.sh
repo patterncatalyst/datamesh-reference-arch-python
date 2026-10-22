@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# cluster-status.sh — one-shot health report for the capstone cluster.
+# cluster-status.sh — one-shot health report for the datamesh cluster.
 #
 # Answers, in a single command, the questions we kept running ten commands to
 # answer during the r29c debugging marathon:
@@ -19,7 +19,7 @@
 
 set -uo pipefail
 
-PROFILE="${MINIKUBE_PROFILE:-capstone}"
+PROFILE="${MINIKUBE_PROFILE:-datamesh}"
 TAG="v1"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -69,11 +69,11 @@ step "Service images in the profile"
 source "${SCRIPT_DIR}/../demos/lib/endpoints.sh"
 source "${SCRIPT_DIR}/../demos/lib/images.sh"
 missing=()
-for svc in "${CAPSTONE_SERVICES[@]}"; do
+for svc in "${DATAMESH_SERVICES[@]}"; do
     image_in_profile "$svc" "$TAG" || missing+=("$svc")
 done
 if [[ ${#missing[@]} -eq 0 ]]; then
-    ok "all ${#CAPSTONE_SERVICES[@]} service images present (${IMAGE_PREFIX}/<svc>:${TAG}) in profile '$PROFILE'"
+    ok "all ${#DATAMESH_SERVICES[@]} service images present (${IMAGE_PREFIX}/<svc>:${TAG}) in profile '$PROFILE'"
 else
     bad "missing from the profile (pods will fail with ErrImageNeverPull): ${missing[*]}"
     warn "rebuild + load them with: ./scripts/cluster-up.sh   (or per-image: ./scripts/build-image.sh services/<svc> <svc> ${TAG})"
@@ -96,12 +96,12 @@ report_ns() {
     fi
 }
 step "Workloads"
-report_ns capstone      "capstone (services)"
+report_ns datamesh      "datamesh (services)"
 report_ns observability "observability (Prometheus/Grafana/Tempo)"
 report_ns keda          "keda (autoscaler + HTTP add-on)"
 
 # KEDA HTTPScaledObject — the gateway is meant to scale to zero, so 0 pods is fine.
-hso="$(kubectl get httpscaledobject -n capstone graphql-gateway-http \
+hso="$(kubectl get httpscaledobject -n datamesh graphql-gateway-http \
     -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || true)"
 if [[ "$hso" == "True" ]]; then
     ok "KEDA HTTPScaledObject for graphql-gateway is Ready (gateway may be scaled to zero — expected)"

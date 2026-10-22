@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# show-endpoints.sh — read-only report of host access to the capstone cluster.
+# show-endpoints.sh — read-only report of host access to the datamesh cluster.
 #
 # For each endpoint: URL, whether the profile publishes its port on 127.0.0.1,
 # whether the Service nodePort matches, and whether something answers.
@@ -42,7 +42,7 @@ docker_engine_ok || exit 1
 
 if ! { profile_container_exists && profile_container_running; }; then
     printf '%sERROR:%s cluster "%s" is not running.\n' "$RED" "$RST" "$EP_PROFILE"
-    printf 'Start it with: minikube start -p %s   (or ./scripts/setup-capstone-profile.sh)\n' "$EP_PROFILE"
+    printf 'Start it with: minikube start -p %s   (or ./scripts/setup-datamesh-profile.sh)\n' "$EP_PROFILE"
     exit 1
 fi
 
@@ -105,14 +105,14 @@ fi
 printf '\n'
 if (( fail )); then
     if (( missing_port )); then
-        printf '%sFAIL:%s ports are fixed at profile creation. Recreate with: ./scripts/setup-capstone-profile.sh --replace\n' "$RED" "$RST"
-        printf '(--replace deletes and recreates the cluster; run ./scripts/bootstrap-capstone.sh again afterwards.)\n'
+        printf '%sFAIL:%s ports are fixed at profile creation. Recreate with: ./scripts/setup-datamesh-profile.sh --replace\n' "$RED" "$RST"
+        printf '(--replace deletes and recreates the cluster; run ./scripts/bootstrap-datamesh.sh again afterwards.)\n'
     fi
     if (( apierr )); then
         printf '%sFAIL:%s cannot query the API server for some Services (see the SVC NODEPORT column).\n' "$RED" "$RST"
     fi
     if (( drift )); then
-        printf '%sFAIL:%s a Service nodePort drifted from the map in demos/lib/endpoints.sh; re-run the relevant setup script or ./scripts/bootstrap-capstone.sh.\n' "$RED" "$RST"
+        printf '%sFAIL:%s a Service nodePort drifted from the map in demos/lib/endpoints.sh; re-run the relevant setup script or ./scripts/bootstrap-datamesh.sh.\n' "$RED" "$RST"
     fi
     exit 1
 fi

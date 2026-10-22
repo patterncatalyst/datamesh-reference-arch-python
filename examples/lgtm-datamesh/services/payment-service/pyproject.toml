@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "payment-service"
 version = "0.1.0"
-description = "payment-service data product for the §17 capstone — health skeleton (domain surface added in later iterations)"
+description = "payment-service data product for the §17 final project — health skeleton (domain surface added in later iterations)"
 authors = ["patterncatalyst"]
 readme = "README.md"
 package-mode = false

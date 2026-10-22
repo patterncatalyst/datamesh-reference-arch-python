@@ -1,5 +1,5 @@
 # order-service-v2.yaml — the canary's v2 subset (ported from
-# ../../../istio/order-service-v2.yaml, retargeted from minikube/`capstone`
+# ../../../istio/order-service-v2.yaml, retargeted from minikube/`datamesh`
 # to OpenShift/`datamesh`).
 #
 # Deployed ALONGSIDE the Helm-managed v1 order-service (app-deployment.yaml,
@@ -31,7 +31,7 @@ metadata:
   namespace: datamesh
   labels:
     app.kubernetes.io/name: order-service
-    app.kubernetes.io/part-of: capstone
+    app.kubernetes.io/part-of: datamesh
     version: v2
 spec:
   replicas: 1
@@ -48,7 +48,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: order-service
-        app.kubernetes.io/part-of: capstone
+        app.kubernetes.io/part-of: datamesh
         version: v2
         # istio.io/rev LABEL — same OSSM3/Sail injection trigger as the v1
         # Deployment (DRA-010); kept as a literal `default` here rather than

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #
-# setup-keda.sh — install KEDA (core + HTTP add-on) into the capstone cluster,
+# setup-keda.sh — install KEDA (core + HTTP add-on) into the datamesh cluster,
 # in preparation for the dual autoscalers (r26b, CAP-025):
 #   * Kafka consumer-lag scaling for notification-service (core KEDA)
 #   * HTTP request scaling for graphql-gateway (the HTTP add-on)
 #
-# Like the other capstone platform installs, this is run-once-per-cluster,
+# Like the other datamesh platform installs, this is run-once-per-cluster,
 # separate from the app releases. Idempotent. Versions match §12.
 #
 # Usage (from examples/lgtm-datamesh/):
@@ -27,9 +27,9 @@ command -v kubectl >/dev/null 2>&1 || { printf 'ERROR: kubectl not in PATH.\n' >
 command -v helm    >/dev/null 2>&1 || { printf 'ERROR: helm not in PATH — see §2.\n' >&2; exit 1; }
 
 current_context="$(kubectl config current-context 2>/dev/null || echo "")"
-if [[ "$current_context" != "capstone" ]]; then
-    printf 'WARNING: current kubectl context is "%s", not "capstone".\n' "$current_context" >&2
-    printf 'Switch with: kubectl config use-context capstone\n' >&2
+if [[ "$current_context" != "datamesh" ]]; then
+    printf 'WARNING: current kubectl context is "%s", not "datamesh".\n' "$current_context" >&2
+    printf 'Switch with: kubectl config use-context datamesh\n' >&2
     printf 'Continue anyway? [y/N] ' >&2
     read -r answer
     [[ "$answer" =~ ^[Yy] ]] || exit 1
@@ -70,7 +70,7 @@ helm upgrade --install keda-add-ons-http kedacore/keda-add-ons-http \
 
 # ─── 4. Pin the HTTP interceptor proxy to a fixed NodePort ───────────────────
 # The demos wake graphql-gateway the real way — by driving a request through
-# this interceptor (Host: graphql-gateway.capstone) — reached on NodePort
+# this interceptor (Host: graphql-gateway.datamesh) — reached on NodePort
 # 30081, published on 127.0.0.1:8081 at profile creation (map: demos/lib/endpoints.sh).
 printf '==> Pinning KEDA HTTP interceptor proxy nodePort to 30081\n'
 kubectl patch svc keda-add-ons-http-interceptor-proxy -n "$NAMESPACE" \

@@ -1,4 +1,4 @@
-# om-deps-values.yaml — trimmed OpenMetadata *dependencies* for the capstone.
+# om-deps-values.yaml — trimmed OpenMetadata *dependencies* for the datamesh.
 #
 # This is an OVERRIDE file, merged by Helm onto the upstream
 # open-metadata/openmetadata-dependencies chart defaults (chart 2.0.5). We
@@ -6,9 +6,9 @@
 # the chart default.
 #
 # Decisions (CAP-022):
-#   * MySQL  -> DISABLED. OpenMetadata's backend is the capstone CloudNativePG
+#   * MySQL  -> DISABLED. OpenMetadata's backend is the datamesh CloudNativePG
 #     Postgres instead (a dedicated `openmetadata` database in the existing
-#     `capstone-postgres` cluster). See setup-openmetadata.sh.
+#     `datamesh-postgres` cluster). See setup-openmetadata.sh.
 #   * Airflow -> DISABLED. Ingestion runs as one-off Kubernetes Jobs
 #     (`metadata ingest -c <yaml>`), not via an orchestrator (r27b wires the
 #     first ingestion). This drops the entire Airflow tier (api-server,
@@ -29,7 +29,7 @@ global:
   security:
     allowInsecureImages: true
 
-# Replaced by reuse of the capstone Postgres (CloudNativePG).
+# Replaced by reuse of the datamesh Postgres (CloudNativePG).
 mysql:
   enabled: false
 

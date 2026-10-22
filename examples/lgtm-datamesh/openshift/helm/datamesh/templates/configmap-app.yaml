@@ -1,7 +1,7 @@
 {{- $dns := include "datamesh.dns" . -}}
 # Shared env contract for the app Deployments that need cross-service
-# addresses — the Helm port of the endpoints charts/capstone/values.yaml's
-# `global:` block hardcodes to the `capstone` namespace. Every address here is
+# addresses — the Helm port of the endpoints charts/datamesh/values.yaml's
+# `global:` block hardcodes to the `datamesh` namespace. Every address here is
 # built from the release namespace ({{ .Release.Namespace }}) so the chart is
 # namespace-portable (installed as `datamesh` per the README, but not
 # hardcoded to it).

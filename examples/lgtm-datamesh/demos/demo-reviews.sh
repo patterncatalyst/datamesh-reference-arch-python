@@ -2,12 +2,12 @@
 #
 # demo-reviews.sh — verify the review-service data product (Phase A).
 #
-# Builds + deploys review-service against the capstone Postgres and asserts its
+# Builds + deploys review-service against the datamesh Postgres and asserts its
 # REST surface end-to-end: probes, the seeded rows, create, fetch-by-id, and the
 # ?sku= filter. This proves the new data product stands and serves before we
 # layer discovery (Apicurio contract + OpenMetadata catalog/lineage) on top.
 #
-# Assumes the capstone cluster is up with Postgres (cluster-up.sh / the capstone
+# Assumes the datamesh cluster is up with Postgres (cluster-up.sh / the datamesh
 # deploy). Leaves resources in place + dumps diagnostics on failure; cleans up
 # review-service on success (Postgres is shared and left alone).
 #
@@ -17,10 +17,10 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/endpoints.sh"
 
-NS="capstone"
-PROFILE="capstone"
+NS="datamesh"
+PROFILE="datamesh"
 RELEASE="review-service"
-CHART="charts/capstone/charts/review-service"
+CHART="charts/datamesh/charts/review-service"
 SERVICE_DIR="services/review-service"
 IMAGE_NAME="review-service"
 IMAGE_TAG="v1"
@@ -54,8 +54,8 @@ trap on_exit EXIT
 step "Pre-flight checks"
 [[ "$(kubectl config current-context 2>/dev/null)" == "$PROFILE" ]] \
     || fail "kubectl context is not '$PROFILE' — run: kubectl config use-context $PROFILE"
-kubectl get cluster.postgresql.cnpg.io capstone-postgres -n "$NS" >/dev/null 2>&1 \
-    || fail "capstone-postgres not found — bring the capstone up first (./scripts/cluster-up.sh)"
+kubectl get cluster.postgresql.cnpg.io datamesh-postgres -n "$NS" >/dev/null 2>&1 \
+    || fail "datamesh-postgres not found — bring the datamesh up first (./scripts/cluster-up.sh)"
 command -v helm >/dev/null || fail "helm not in PATH"
 
 # ─── Build + deploy ──────────────────────────────────────────────────────────

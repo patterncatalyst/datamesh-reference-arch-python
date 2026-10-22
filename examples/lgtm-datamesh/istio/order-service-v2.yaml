@@ -18,10 +18,10 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: order-service-v2
-  namespace: capstone
+  namespace: datamesh
   labels:
     app.kubernetes.io/name: order-service
-    app.kubernetes.io/part-of: capstone
+    app.kubernetes.io/part-of: datamesh
     app.kubernetes.io/component: data-product
     version: v2
 spec:
@@ -34,7 +34,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: order-service
-        app.kubernetes.io/part-of: capstone
+        app.kubernetes.io/part-of: datamesh
         version: v2
       annotations:
         sidecar.istio.io/inject: "true"
@@ -46,7 +46,7 @@ spec:
     spec:
       containers:
         - name: order-service
-          image: "capstone/order-service:v1"   # same image as v1
+          image: "datamesh/order-service:v1"   # same image as v1
           imagePullPolicy: Never
           ports:
             - name: http
@@ -59,7 +59,7 @@ spec:
             - name: INVENTORY_GRPC_ADDR
               value: "inventory-service:50051"
             - name: KAFKA_BOOTSTRAP
-              value: "capstone-kafka-kafka-bootstrap:9092"
+              value: "datamesh-kafka-kafka-bootstrap:9092"
             - name: KAFKA_ORDER_TOPIC
               value: "order-placed"
             - name: APICURIO_URL
@@ -67,23 +67,23 @@ spec:
             - name: KAFKA_ORDER_SUBJECT
               value: "order-placed-value"
             - name: PG_HOST
-              value: "capstone-postgres-rw.capstone.svc.cluster.local"
+              value: "datamesh-postgres-rw.datamesh.svc.cluster.local"
             - name: PG_PORT
               value: "5432"
             - name: PG_DATABASE
               valueFrom:
                 secretKeyRef:
-                  name: capstone-postgres-app
+                  name: datamesh-postgres-app
                   key: dbname
             - name: PG_USER
               valueFrom:
                 secretKeyRef:
-                  name: capstone-postgres-app
+                  name: datamesh-postgres-app
                   key: username
             - name: PG_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: capstone-postgres-app
+                  name: datamesh-postgres-app
                   key: password
           resources:
             requests:

@@ -1,4 +1,4 @@
-# om-app-values.yaml — OpenMetadata *server* config for the capstone.
+# om-app-values.yaml — OpenMetadata *server* config for the datamesh.
 #
 # OVERRIDE file, merged by Helm onto the upstream open-metadata/openmetadata
 # chart defaults (chart 2.0.5). Only the keys that differ from the chart
@@ -10,7 +10,7 @@
 #     pipelineServiceClientConfig.enabled both -> false. The server boots and
 #     serves the catalog/UI without any pipeline orchestrator; ingestion is run
 #     as one-off Jobs (r27b).
-#   * Backend = capstone CloudNativePG Postgres, NOT the bundled MySQL. The
+#   * Backend = datamesh CloudNativePG Postgres, NOT the bundled MySQL. The
 #     `database` block is flipped from the chart's MySQL defaults to Postgres
 #     and pointed at the existing cluster's read-write service. The
 #     `openmetadata` database + role and the referenced secret are provisioned
@@ -38,14 +38,14 @@ openmetadata:
     pipelineServiceClientConfig:
       enabled: false
 
-    # ── Backend database: reuse capstone Postgres ─────────────────────────
+    # ── Backend database: reuse datamesh Postgres ─────────────────────────
     # Flipped from the chart's MySQL defaults to PostgreSQL. Points at the
     # CloudNativePG read-write service. The password comes from the
     # `openmetadata-db-app-secret` that setup-openmetadata.sh creates (a name
     # distinct from the chart's own generated `openmetadata-db-secret`); the
-    # matching role + database are provisioned in the capstone-postgres cluster.
+    # matching role + database are provisioned in the datamesh-postgres cluster.
     database:
-      host: capstone-postgres-rw
+      host: datamesh-postgres-rw
       port: 5432
       driverClass: org.postgresql.Driver
       dbScheme: postgresql

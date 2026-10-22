@@ -11,11 +11,11 @@ By the end of this chapter you can:
 
 - Map each of Dehghani's four principles to the specific Kubernetes primitive that
   realizes it (namespaces/RBAC, Deployments/CRDs, operators, admission control).
-- Describe the three horizontal tiers of this capstone's architecture and which
+- Describe the three horizontal tiers of this final project's architecture and which
   protocol crosses each boundary.
-- Explain why this capstone runs on minikube with the docker driver and containerd
+- Explain why this final project runs on minikube with the docker driver and containerd
   runtime, and what trade-off a single-node cluster makes.
-- State how the capstone exposes host access (NodePorts published on `127.0.0.1` at
+- State how the final project exposes host access (NodePorts published on `127.0.0.1` at
   profile creation) and what command recreates the profile if the published ports
   need to change.
 
@@ -23,7 +23,7 @@ By the end of this chapter you can:
 
 The [previous page]({{ '/docs/01-concepts/' | relative_url }}) ended on a
 claim: a data mesh is a pattern, not a tool, and the tools are
-expressions of it. So why build the capstone on Kubernetes at all? Because the four
+expressions of it. So why build the final project on Kubernetes at all? Because the four
 principles map onto Kubernetes primitives unusually cleanly — cleanly enough that
 "implement a data mesh on Kubernetes" stops feeling like a translation exercise and
 starts feeling like the primitives were waiting for it. This page makes that mapping
@@ -84,12 +84,12 @@ the system, which is exactly what "computational governance" means.
 
 ## The shape of the system
 
-With the mapping in hand, here's the system this capstone builds. It has three
+With the mapping in hand, here's the system this final project builds. It has three
 horizontal tiers: **external clients** at the top, the **service mesh** running the
 domain services in the middle, and the **self-serve platform** providing shared
 infrastructure underneath.
 
-![Capstone architecture — data mesh on minikube]({{ '/assets/diagrams/17-capstone-data-mesh.svg' | relative_url }})
+![The final project's architecture — data mesh on minikube]({{ '/assets/diagrams/17-final-project-data-mesh.svg' | relative_url }})
 
 The diagram doubles as a map of the protocol decisions, which the
 [data planes page]({{ '/docs/05-data-planes/' | relative_url }}) develops
@@ -109,7 +109,7 @@ return to as the rest of the set works through the parts.
 
 ## A note on minikube specifically
 
-This capstone runs on minikube — a single-node Kubernetes cluster — which is the right
+This final project runs on minikube — a single-node Kubernetes cluster — which is the right
 choice for *learning* the pattern and wrong for running it in production. A single node
 means every tier shares one machine's resources, which keeps the whole mesh runnable on
 a laptop but also concentrates failure modes that a real multi-node cluster would
@@ -125,13 +125,13 @@ the runc runtime, sized by `MINIKUBE_MEMORY`, `MINIKUBE_CPUS` and `MINIKUBE_DISK
 
 ### Host access
 
-Host access follows the same single-node logic. The capstone's UIs and service
+Host access follows the same single-node logic. The final project's UIs and service
 endpoints are NodePorts published on `127.0.0.1` when the minikube profile is created
 (`--ports=127.0.0.1:<hostPort>:<nodePort>`), never SSH tunnels or port-forwarding. <!-- forbidden-ok -->
 
 The ports are fixed at creation, so changing the published set means recreating the
-profile with `./scripts/setup-capstone-profile.sh --replace`. `--replace` deletes and
-recreates the cluster, so run `./scripts/bootstrap-capstone.sh` again afterwards.
+profile with `./scripts/setup-datamesh-profile.sh --replace`. `--replace` deletes and
+recreates the cluster, so run `./scripts/bootstrap-datamesh.sh` again afterwards.
 
 Run the workshop in isolation: shut down CRC, other minikube profiles, and other
 workloads first, so the host ports are free. `./scripts/show-endpoints.sh` prints what
@@ -144,11 +144,11 @@ is published and reachable.
 - *Platform Engineering on Kubernetes* by Mauricio Salatino — the self-serve platform
   principle built out as an operating model, not just a set of operators.
 - *Cloud Native Patterns* by Cornelia Davis — the broader cloud-native platform
-  patterns this capstone's shared infrastructure tier follows.
+  patterns this final project's shared infrastructure tier follows.
 - [Kubernetes documentation](https://kubernetes.io/docs/) — namespaces, RBAC, CRDs,
   and admission control, straight from the source.
 - [minikube documentation](https://minikube.sigs.k8s.io/docs/) — driver and runtime
-  options, including the docker driver and containerd runtime this capstone uses.
+  options, including the docker driver and containerd runtime this final project uses.
 
 Next, the services themselves: what a data product looks like in this build, the
 order-service template the others follow, and how each one is packaged and shipped.

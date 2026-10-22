@@ -6,7 +6,7 @@
 # including from ZERO. With no traffic the gateway costs nothing; the first
 # query through the add-on's interceptor wakes it (the interceptor holds the
 # request until a replica is Ready), and sustained concurrency scales it out.
-# The §12 HTTP-add-on pattern, now on a capstone data product.
+# The §12 HTTP-add-on pattern, now on a datamesh data product.
 #
 # This is the OTHER half of "elastic data products" from the Kafka-lag scaler:
 # event consumers scale on backlog, synchronous services scale on request load.
@@ -29,10 +29,10 @@ apiVersion: http.keda.sh/v1alpha1
 kind: HTTPScaledObject
 metadata:
   name: graphql-gateway-http
-  namespace: capstone
+  namespace: datamesh
 spec:
   hosts:
-    - graphql-gateway.capstone        # Host header the interceptor routes on
+    - graphql-gateway.datamesh        # Host header the interceptor routes on
   scaleTargetRef:
     name: graphql-gateway             # Deployment to scale
     kind: Deployment

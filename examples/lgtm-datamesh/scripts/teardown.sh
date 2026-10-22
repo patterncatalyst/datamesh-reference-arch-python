@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# teardown.sh — stop the capstone minikube profile (and optionally delete it).
+# teardown.sh — stop the datamesh minikube profile (and optionally delete it).
 #
 # Usage:
 #   ./teardown.sh                     # stop only (preserves state)
@@ -8,7 +8,7 @@
 
 set -euo pipefail
 
-PROFILE_NAME="${MINIKUBE_PROFILE:-capstone}"
+PROFILE_NAME="${MINIKUBE_PROFILE:-datamesh}"
 
 REMOVE=0
 if [[ "${1:-}" == "--remove-profile" ]]; then
@@ -26,7 +26,7 @@ minikube stop -p "$PROFILE_NAME"
 if (( REMOVE )); then
     printf '==> Deleting %s profile (--remove-profile specified)\n' "$PROFILE_NAME"
     minikube delete -p "$PROFILE_NAME"
-    printf '==> Profile deleted. To recreate: ./setup-capstone-profile.sh\n'
+    printf '==> Profile deleted. To recreate: ./setup-datamesh-profile.sh\n'
 else
     printf '==> Profile stopped. To restart: minikube start -p %s\n' "$PROFILE_NAME"
     printf '==> To delete entirely: ./teardown.sh --remove-profile\n'

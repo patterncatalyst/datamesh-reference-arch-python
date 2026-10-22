@@ -9,9 +9,9 @@ This is the active decision log for the data-mesh reference architecture as
 a standalone repo. Each significant architectural or editorial choice gets a
 numbered entry below, with rationale and rejected alternatives.
 
-The historical decisions from the project's earlier life as the §17 capstone
+The historical decisions from the project's earlier life as the §17 final project
 of `patterncatalyst/minikube-on-fedora` are preserved in
-`_plans/archive/capstone-decisions.md`. New decisions specific to this
+`_plans/archive/final-project-decisions.md`. New decisions specific to this
 repo's standalone life start from DRA-001 below to avoid number-collisions
 with the archive's CAP-NNN series.
 
@@ -33,10 +33,10 @@ specifically people learning minikube) was a mismatch with the parent
 project's title.
 
 **Decision.** Fork the data-mesh content into its own repo:
-`patterncatalyst/datamesh-reference-arch-python`. The capstone-era pages
+`patterncatalyst/datamesh-reference-arch-python`. The final-project-era pages
 become this repo's primary content collection. The runnable example tree
 moves to `examples/lgtm-datamesh/`. Presentations and assets come along.
-The historical decision log lives at `_plans/archive/capstone-decisions.md`
+The historical decision log lives at `_plans/archive/final-project-decisions.md`
 as the audit trail of how the implementation was built.
 
 **Consequences.**
@@ -57,7 +57,7 @@ as the audit trail of how the implementation was built.
 
 **Status:** decided; implemented at `examples/lgtm-datamesh/openshift/helm/datamesh/`.
 
-**Context.** The minikube path this capstone uses elsewhere in the reading set
+**Context.** The minikube path this final project uses elsewhere in the reading set
 (Chapter 3) ships one umbrella Helm chart built around plain-Kubernetes
 assumptions — pinned `runAsUser` values, NodePort exposure, an external local
 registry. OpenShift's SCC, Route, and registry model (documented in this
@@ -194,7 +194,7 @@ credentials for images that never need to leave the cluster.
 **Status:** decided; recorded in `Chart.yaml` and this appendix's
 "document-only counterparts" section.
 
-**Context.** The full minikube stack this capstone documents elsewhere
+**Context.** The full minikube stack this final project documents elsewhere
 includes the live core (seven services, Postgres, Kafka, Apicurio) plus
 OpenMetadata, Prefect, the full LGTM observability stack, KEDA, and Istio.
 Sizing a single CRC instance to run all of that concurrently with OpenShift's
@@ -423,7 +423,7 @@ plainly that "tracing is off" for this chart — the OTEL_* env vars are
 omitted because no LGTM stack is deployed. This appendix's platform tier
 changes that: it deploys an observability backend and wants that
 "tracing is off" default reversed, but a full split Loki+Grafana+Tempo+Mimir
-deployment (the shape `charts/capstone/`'s minikube path and the
+deployment (the shape `charts/datamesh/`'s minikube path and the
 `modernizing-enterprise-applications` repo's earlier, pre-all-in-one history
 both used in places) is more moving parts than this reference build's
 platform tier needs, and the live core already runs un-instrumented — there
@@ -477,7 +477,7 @@ alerts) exists yet in this build to justify the cost.
 
 **Status:** decided; implemented at `openshift/platform/keda/`.
 
-**Context.** The minikube capstone scales two workloads with KEDA: core
+**Context.** The minikube final project scales two workloads with KEDA: core
 KEDA's Kafka-lag trigger scales `notification-service` on consumer-group
 backlog, and the separate `kedacore/keda-add-ons-http` Helm chart scales
 `graphql-gateway` on in-flight HTTP request concurrency, including from
@@ -526,8 +526,8 @@ supportability guarantee only covers what the operator itself ships.
 **Status:** decided; implemented at `openshift/platform/prefect/`.
 
 **Context.** Prefect 3.x OSS needs a Postgres backend for flow/task-run
-state. The minikube capstone's `charts/capstone/values.yaml` `prefect` block
-already documents the same choice there ("shares the capstone-postgres
+state. The minikube final project's `charts/datamesh/values.yaml` `prefect` block
+already documents the same choice there ("shares the datamesh-postgres
 cluster, separate database"), rather than bundling Prefect's own Postgres
 instance — consistent with this chart's existing DRA-003 stance of one
 shared Postgres per cluster.
@@ -581,7 +581,7 @@ on a live cluster.
 **not applied to a live cluster** — authored offline, same posture as
 DRA-010's Istio placeholders.
 
-**Context.** The minikube capstone's OpenMetadata deploy (CAP-022,
+**Context.** The minikube final project's OpenMetadata deploy (CAP-022,
 `examples/lgtm-datamesh/openmetadata/`, `scripts/setup-openmetadata.sh`)
 already established the shape this chart ports: MySQL and Airflow disabled,
 a single-node Bitnami OpenSearch for search, Postgres reused as the backend
@@ -746,10 +746,10 @@ and admission was the extra hardening fields this decision removes.
 ## DRA-017 — Host access: NodePorts published on 127.0.0.1 at profile creation
 
 **Status:** decided; implemented in `examples/lgtm-datamesh/demos/lib/endpoints.sh`,
-`scripts/setup-capstone-profile.sh`, and `scripts/show-endpoints.sh`; enforced by
+`scripts/setup-datamesh-profile.sh`, and `scripts/show-endpoints.sh`; enforced by
 `scripts/forbidden-syntax.sh`.
 
-**Context.** Host access to the capstone minikube cluster (profile `capstone`,
+**Context.** Host access to the final project's minikube cluster (profile `datamesh`,
 rootless podman) used SSH tunnels and `kubectl port-forward`. <!-- forbidden-ok -->
 Both break or disconnect: a forwarded connection pins one pod and dies when it
 is replaced, and a tunnel process drops when the cluster idles or is under <!-- forbidden-ok -->
@@ -758,7 +758,7 @@ load. The failures surfaced as flaky smokes and dead UIs, not as clear errors
 
 **Decision.** Every host-facing service is a fixed NodePort, and the profile
 publishes each one to the host when it is created:
-`minikube start -p capstone --ports=127.0.0.1:<hostPort>:<nodePort>,...`. The
+`minikube start -p datamesh --ports=127.0.0.1:<hostPort>:<nodePort>,...`. The
 host:nodePort pairs come from the single map in
 `examples/lgtm-datamesh/demos/lib/endpoints.sh`. Host ports and URLs are
 unchanged (Grafana stays at `http://127.0.0.1:3000`). Every pair carries the
@@ -781,9 +781,9 @@ status table of what is published and reachable.
 **Consequences.**
 
 - Published ports are fixed at creation. Adding a port means recreating the
-  profile; `setup-capstone-profile.sh` refuses an older profile without the
-  ports, and `./scripts/setup-capstone-profile.sh --replace` recreates it
-  (`--replace` deletes the cluster; re-run `./scripts/bootstrap-capstone.sh` afterwards).
+  profile; `setup-datamesh-profile.sh` refuses an older profile without the
+  ports, and `./scripts/setup-datamesh-profile.sh --replace` recreates it
+  (`--replace` deletes the cluster; re-run `./scripts/bootstrap-datamesh.sh` afterwards).
 - `scripts/forbidden-syntax.sh` runs in CI and fails on tunnel and <!-- forbidden-ok -->
   port-forward wording, the retired helper names, and `--ports` values without <!-- forbidden-ok -->
   a `127.0.0.1:` prefix. A line that must mention them (stating the
@@ -797,9 +797,9 @@ status table of what is published and reachable.
 
 ## DRA-018 — In-node runtime: CRI-O with crun on the rootless-podman driver
 
-**Status:** Superseded by DRA-019 (2026-10-08): the minikube capstone moved to Docker Engine + containerd.
+**Status:** Superseded by DRA-019 (2026-10-08): the minikube final project moved to Docker Engine + containerd.
 
-**Context.** The capstone profile ran `--driver=podman --container-runtime=containerd`. That mixes OCI runtimes: rootless podman runs the node container with crun, while containerd inside the node runs pods with runc. A fresh profile on minikube v1.38.1 also showed two node-image problems, independent of the runtime choice:
+**Context.** The datamesh profile ran `--driver=podman --container-runtime=containerd`. That mixes OCI runtimes: rootless podman runs the node container with crun, while containerd inside the node runs pods with runc. A fresh profile on minikube v1.38.1 also showed two node-image problems, independent of the runtime choice:
 
 - The node image starts Docker once at first boot, before minikube masks it. Docker 29 enables IP forwarding in the node's network namespace and sets the iptables `FORWARD` policy to `DROP`. kindnet expects `ACCEPT`, so every pod-to-pod and pod-to-Service packet is dropped. CoreDNS times out and the Istio ingress gateway never becomes Ready.
 - Under CRI-O with crun, `minikube addons enable` fails its paused-container check, because that check calls `runc list` and `/run/runc` does not exist.
@@ -808,9 +808,9 @@ status table of what is published and reachable.
 **Decision.**
 
 - One OCI runtime end to end: podman driver, CRI-O in the node, crun under both. minikube's CRI-O defaults to `default_runtime = "crun"`.
-- `setup-capstone-profile.sh` enables addons in `minikube start --addons=metrics-server,registry,storage-provisioner-rancher`, not with `minikube addons enable`.
+- `setup-datamesh-profile.sh` enables addons in `minikube start --addons=metrics-server,registry,storage-provisioner-rancher`, not with `minikube addons enable`.
 - `local-path` (the Rancher local-path provisioner, which creates volume directories `0777`) is the default StorageClass; `standard` stays available but is no longer the default.
-- `ensure_node_forwarding` (in `demos/lib/endpoints.sh`) resets the node's `FORWARD` policy to `ACCEPT` when it finds `DROP`. `setup-capstone-profile.sh` runs it after creating or starting the profile, and `cluster-up.sh` runs it after every start. The rule lives in the node container's network namespace, not on the host.
+- `ensure_node_forwarding` (in `demos/lib/endpoints.sh`) resets the node's `FORWARD` policy to `ACCEPT` when it finds `DROP`. `setup-datamesh-profile.sh` runs it after creating or starting the profile, and `cluster-up.sh` runs it after every start. The rule lives in the node container's network namespace, not on the host.
 
 **Rejected alternatives.**
 
@@ -820,7 +820,7 @@ status table of what is published and reachable.
 
 **Consequences.**
 
-- Existing profiles created with containerd must be recreated: `./scripts/setup-capstone-profile.sh --replace` (deletes the cluster; re-run `./scripts/bootstrap-capstone.sh` afterwards).
+- Existing profiles created with containerd must be recreated: `./scripts/setup-datamesh-profile.sh --replace` (deletes the cluster; re-run `./scripts/bootstrap-datamesh.sh` afterwards).
 - If a future node image stops starting Docker at boot, `ensure_node_forwarding` becomes a no-op.
 - Any script that enables an addon later must pass it at start, or will hit the paused-check failure.
 
@@ -836,7 +836,7 @@ status table of what is published and reachable.
 
 - Start flags: `--driver=docker --container-runtime=containerd --addons=metrics-server`, with sizing from `MINIKUBE_MEMORY` (24g), `MINIKUBE_CPUS` (16) and `MINIKUBE_DISK` (80g). One OCI runtime, runc, end to end.
 - Docker Engine is required: native docker-ce on Linux; the scripts are supported on Fedora and RHEL hosts (bare metal or VM), and a VM-based engine such as Docker Desktop is an option, never a requirement. The setup pre-flight rejects rootless Docker, `MINIKUBE_ROOTLESS`, and profiles created with another driver or runtime.
-- Images are built with Docker Engine and loaded with `minikube image load` via `scripts/build-image.sh`. No registry. Names are `capstone/<svc>:v1` with `imagePullPolicy: Never`, not `IfNotPresent`, so a missing image fails fast instead of falling through to `docker.io/capstone/*`. `build-image.sh` restarts the Deployments that use a rebuilt image.
+- Images are built with Docker Engine and loaded with `minikube image load` via `scripts/build-image.sh`. No registry. Names are `datamesh/<svc>:v1` with `imagePullPolicy: Never`, not `IfNotPresent`, so a missing image fails fast instead of falling through to `docker.io/datamesh/*`. `build-image.sh` restarts the Deployments that use a rebuilt image.
 - `ensure_node_forwarding` stays as a guard, with a runtime-neutral comment; it is a no-op if the `FORWARD` policy is already `ACCEPT`.
 - The default `standard` StorageClass is used. If CloudNativePG `initdb` reports `Permission denied`, the fallback is local-path (`storage-provisioner-rancher`).
 - Podman is scoped to the optional CRC appendix: per-command `--tls-verify`, host DNS for `*.apps-crc.testing`, and Red Hat tooling.
@@ -848,12 +848,12 @@ status table of what is published and reachable.
 - Require Docker Desktop: not available or wanted on Linux; Docker Engine is enough.
 - Keep the registry addon: it is non-persistent, and VM-based engines cannot push to a loopback registry.
 - `minikube docker-env`: works only with the docker runtime, not containerd.
-- `imagePullPolicy: IfNotPresent`: a missing image would fall through to `docker.io/capstone/*`.
+- `imagePullPolicy: IfNotPresent`: a missing image would fall through to `docker.io/datamesh/*`.
 - Docker for the CRC push: the appendix follows Red Hat's podman tooling.
 
 **Consequences.**
 
-- Profiles created with podman must be recreated: `./scripts/setup-capstone-profile.sh --replace`, then re-run `./scripts/bootstrap-capstone.sh`.
+- Profiles created with podman must be recreated: `./scripts/setup-datamesh-profile.sh --replace`, then re-run `./scripts/bootstrap-datamesh.sh`.
 - Membership in the `docker` group is root-equivalent on the host.
 - CI gate scan 5 in `scripts/forbidden-syntax.sh` enforces the podman scope.
 - Live verification (2026-10-08/09): passed on Docker Engine 29.8.0 provided by Docker Desktop with the docker driver and containerd 2.2.1; see `_plans/reconciliation.md`. `ensure_node_forwarding` did not fire (the node's `FORWARD` policy was already `ACCEPT`). The live run also surfaced three fixes now in the scripts: bootstrap's service list ordering, endpoint checks accepting `LoadBalancer` Services, and `build-image.sh` waiting for its rollouts and for replaced pods to terminate. gRPC clients set `GRPC_DNS_RESOLVER=native`. A native (non-VM) Docker Engine run is still to do.
@@ -898,10 +898,10 @@ ports what applies here.
 | OpenTelemetry distro / OTLP exporter | unpinned | 0.66b1 / 1.45.1 |
 | CRC appendix: postgres, kafka, otel-lgtm, Prefect | `postgres:16-alpine`, `kafka:3.8.0`, `otel-lgtm:0.8.1`, `prefect:3-latest` | `postgres:18.6-alpine`, `kafka:4.3.1`, `otel-lgtm:0.36.0`, `prefect:3.8.8-python3.14` |
 
-- **Kubernetes.** `setup-capstone-profile.sh` passes `--kubernetes-version`
+- **Kubernetes.** `setup-datamesh-profile.sh` passes `--kubernetes-version`
   (override with `KUBE_VERSION`) and refuses an existing profile whose driver,
   runtime or Kubernetes version differs; `--replace` recreates it.
-- **Istio.** The capstone `setup-istio.sh` checks that `istioctl` on PATH
+- **Istio.** The final project's `setup-istio.sh` checks that `istioctl` on PATH
   matches `ISTIO_VERSION` in the repo-root `scripts/setup-istio.sh`, because
   the binary and `~/.local/share/istio-current` are shared with other repos.
 - **KEDA HTTP.** `interceptor.readinessTimeout=180s` replaces the deprecated
@@ -923,12 +923,12 @@ ports what applies here.
   committed gRPC stubs were generated for.
 - **Host ports.** Unchanged. This repo already publishes Prometheus on 9091
   (Cockpit owns 9090 on Fedora Server and RHEL), so the parent repo's
-  9090 → 19090 move does not apply. The profile name stays `capstone`.
+  9090 → 19090 move does not apply. The profile name stays `datamesh`.
 - **Demos** (live-run fixes from the parent repo): the Kafka demos hold
   notification-service at one replica with `autoscaling.keda.sh/paused-replicas`
   (`demos/lib/keda.sh`) and release it on exit; `demo-order.sh` deploys
   inventory-service before ordering. Already present here: `GRPC_DNS_RESOLVER=native`,
-  the walkthrough's OpenMetadata check in the `capstone` namespace, and an
+  the walkthrough's OpenMetadata check in the `datamesh` namespace, and an
   in-stock SKU. The walkthrough's trace act enters through the interceptor, so
   it needs no gateway hold. There is no Jaeger in this stack.
 - **CRC appendix.** Image pins move to the newest stable tags. Operator
@@ -947,9 +947,9 @@ ports what applies here.
 
 **Consequences.**
 
-- An existing `capstone` profile on another Kubernetes version must be
-  recreated: `./scripts/setup-capstone-profile.sh --replace`, then
-  `./scripts/bootstrap-capstone.sh`.
+- An existing `datamesh` profile on another Kubernetes version must be
+  recreated: `./scripts/setup-datamesh-profile.sh --replace`, then
+  `./scripts/bootstrap-datamesh.sh`.
 - A CRC install on postgres 16 needs a fresh PVC; Postgres 18 can't open a 16
   data directory.
 - OpenSearch is held one minor back until OpenMetadata or its dependencies

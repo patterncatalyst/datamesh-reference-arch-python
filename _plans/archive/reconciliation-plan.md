@@ -2098,7 +2098,7 @@ have to derive them.
          every other service follows.
 
          **Decisions captured this iteration** (in the new
-         `_plans/capstone-decisions.md`):
+         `_plans/final-project-decisions.md`):
          - CAP-001 Poetry for Python dependency management
          - CAP-002 CloudNativePG operator, installed separately
            (cluster-wide install called out as a teaching point)
@@ -2111,7 +2111,7 @@ have to derive them.
          - plus the ten r19 decisions back-filled as CAP-R19-1..10
 
          **What r21 ships:**
-         - `_plans/capstone-decisions.md` — ADR-lite decision log,
+         - `_plans/final-project-decisions.md` — ADR-lite decision log,
            single source of truth for capstone choices
          - `examples/17-capstone/scripts/setup-postgres-operator.sh` —
            installs CloudNativePG via helm; prints the cluster-wide
@@ -2195,11 +2195,11 @@ have to derive them.
 
          > Two merges: (1) append the r21a entry to Section D of
          > `_plans/reconciliation-plan.md`; (2) add CAP-007 to
-         > `_plans/capstone-decisions.md`.
+         > `_plans/final-project-decisions.md`.
 
          ---
 
-         ## For `_plans/capstone-decisions.md` — add CAP-007
+         ## For `_plans/final-project-decisions.md` — add CAP-007
 
          ## CAP-007 — Build images on the host with podman, then `minikube image load`
 
@@ -2293,11 +2293,11 @@ have to derive them.
 
            > Two small merges: (1) append the r21b entry to Section D of
            > `_plans/reconciliation-plan.md`; (2) append the note below to CAP-005 in
-           > `_plans/capstone-decisions.md`.
+           > `_plans/final-project-decisions.md`.
 
            ---
 
-           ## For `_plans/capstone-decisions.md` — append to CAP-005's consequences
+           ## For `_plans/final-project-decisions.md` — append to CAP-005's consequences
 
            - **r21b amendment:** the UBI 9 python-312 image's default user (1001)
              cannot write to `/opt/venv` (`/opt` is root-owned), which broke the build
@@ -2348,7 +2348,7 @@ have to derive them.
              # Decision log + reconciliation additions — r21c
 
              > Three merges:
-             > 1. Revise CAP-007 and add CAP-009, CAP-010 in `_plans/capstone-decisions.md`
+             > 1. Revise CAP-007 and add CAP-009, CAP-010 in `_plans/final-project-decisions.md`
              > 2. Append the r21c entry to Section D of `_plans/reconciliation-plan.md`
              >    and promote the r21 rows to `verified (Fedora 44)`
              > 3. Splice the §17 friction callout into `_docs/17-capstone.md`
@@ -2356,7 +2356,7 @@ have to derive them.
 
              ---
 
-             ## For `_plans/capstone-decisions.md`
+             ## For `_plans/final-project-decisions.md`
 
              ### CAP-007 (revised in r21c) — image distribution via the in-cluster registry
 
@@ -3359,7 +3359,7 @@ final reader shouldn't see. Items:
   `presentation/` with the Data Mesh 101 deck + 15 paired SVG/Excalidraw diagrams
   under `data-mesh-101/`, and a README capturing the Red Hat design system
   (palette/fonts/layout) and the diagram→section mapping. Added
-  `_plans/capstone-roadmap.md` (phases A–E with the user's refinements: A/B as
+  `_plans/final-project-roadmap.md` (phases A–E with the user's refinements: A/B as
   backable-out demos, C as a one-page→section-set restructure, D as a deck reusing
   the 101 design system, E's demo-vision acceptance criteria). No code/cluster
   surface — groundwork only. Verify: site builds with the new `presentation/`

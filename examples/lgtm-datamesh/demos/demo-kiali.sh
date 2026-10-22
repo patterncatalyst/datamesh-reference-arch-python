@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# demo-kiali.sh — verify Kiali (CAP-0NN) is up and wired to the capstone
+# demo-kiali.sh — verify Kiali (CAP-0NN) is up and wired to the datamesh
 # observability stack: the deployment is Ready, the API answers, Prometheus is
-# reachable from Kiali's point of view, and the `capstone` namespace is visible
+# reachable from Kiali's point of view, and the `datamesh` namespace is visible
 # to the graph.
 #
 # This checks the PLUMBING, not a pretty graph — it confirms Kiali can render
@@ -26,7 +26,7 @@ source "${SCRIPT_DIR}/lib/endpoints.sh"
 
 ISTIO_SYSTEM="istio-system"
 OBS_NS="observability"
-APP_NS="capstone"
+APP_NS="datamesh"
 KIALI_PORT="$TP_KIALI"
 KIALI_WEBROOT="/kiali"   # must match server.web_root in setup-kiali.sh (addon probe path)
 
@@ -68,7 +68,7 @@ wait_ready kiali "$ISTIO_SYSTEM" 180 || fail "kiali did not become Ready"
 printf '    ✓ kiali is Ready\n'
 
 # ─── 2. Confirm the single-stack wiring landed in the ConfigMap ──────────────
-step "Checking Kiali is wired to the capstone Prometheus (single-stack)"
+step "Checking Kiali is wired to the datamesh Prometheus (single-stack)"
 CFG="$(kubectl get configmap kiali -n "$ISTIO_SYSTEM" -o jsonpath='{.data.config\.yaml}' 2>/dev/null)"
 [[ -n "$CFG" ]] || fail "kiali ConfigMap has no config.yaml key (version mismatch? see VERIFY-POINTS)"
 if printf '%s' "$CFG" | grep -q "prometheus-server.${OBS_NS}"; then
@@ -82,10 +82,10 @@ step "Checking the Kiali endpoint and probing its API"
 ensure_endpoint kiali
 wait_http "http://127.0.0.1:${KIALI_PORT}${KIALI_WEBROOT}/healthz" 20 || true
 curl -fsS "http://127.0.0.1:${KIALI_PORT}${KIALI_WEBROOT}/healthz" >/dev/null 2>&1 \
-    || fail "Kiali /healthz did not respond on the published NodePort (run ./scripts/show-endpoints.sh; if the port is missing, ./scripts/setup-capstone-profile.sh --replace, which deletes the cluster; re-run ./scripts/bootstrap-capstone.sh afterwards)"
+    || fail "Kiali /healthz did not respond on the published NodePort (run ./scripts/show-endpoints.sh; if the port is missing, ./scripts/setup-datamesh-profile.sh --replace, which deletes the cluster; re-run ./scripts/bootstrap-datamesh.sh afterwards)"
 printf '    ✓ Kiali /healthz responds\n'
 
-# ─── 4. Kiali can see the capstone namespace ─────────────────────────────────
+# ─── 4. Kiali can see the datamesh namespace ─────────────────────────────────
 step "Confirming Kiali sees the $APP_NS namespace"
 NS_JSON="$(curl -fsS "http://127.0.0.1:${KIALI_PORT}${KIALI_WEBROOT}/api/namespaces" 2>/dev/null || echo "")"
 [[ -n "$NS_JSON" ]] || fail "Kiali /api/namespaces returned nothing"
@@ -111,7 +111,7 @@ else
 fi
 
 # ─── Done ────────────────────────────────────────────────────────────────────
-step "PASS — Kiali is up, wired to the capstone stack, and sees the $APP_NS namespace."
+step "PASS — Kiali is up, wired to the datamesh stack, and sees the $APP_NS namespace."
 printf '\nView the live topology (run a demo first to create traffic):\n'
 printf '  ./scripts/show-endpoints.sh   # then open http://127.0.0.1:%s%s\n' "$KIALI_PORT" "$KIALI_WEBROOT"
 printf '  open http://127.0.0.1:%s%s/   (Graph → namespace: %s)\n' "$KIALI_PORT" "$KIALI_WEBROOT" "$APP_NS"

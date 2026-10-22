@@ -1,4 +1,4 @@
-# prometheus-values.yaml — lean, single-node Prometheus for the capstone (r29,
+# prometheus-values.yaml — lean, single-node Prometheus for the datamesh (r29,
 # CAP-027). This is NOT a production monitoring setup: short retention, no
 # persistence, and only the components we actually use. The point is to SEE the
 # cluster — workload replica counts (the KEDA scaling signal) and Istio request

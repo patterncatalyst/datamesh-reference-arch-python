@@ -1,4 +1,4 @@
-"""inventory-service — a §17 capstone data product.
+"""inventory-service — a §17 final project data product.
 
 r23 scope: REST health surface + a gRPC server implementing
 InventoryService.CheckStock, backed by the `stock` table in the service's
@@ -42,7 +42,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="inventory-service",
     version="0.2.0",
-    description="inventory-service data product for the §17 capstone — REST health + gRPC CheckStock.",
+    description="inventory-service data product for the §17 final project — REST health + gRPC CheckStock.",
     lifespan=lifespan,
 )
 

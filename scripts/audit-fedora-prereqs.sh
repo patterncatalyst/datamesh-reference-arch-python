@@ -56,7 +56,7 @@ if command -v docker >/dev/null 2>&1; then
         echo "          (sudo usermod -aG docker \$USER, then log in again)"
     fi
 else
-    echo "  STATUS: ⚠ docker not installed — required for the minikube capstone"
+    echo "  STATUS: ⚠ docker not installed — required for the minikube final project"
 fi
 
 section "Red Hat appendix (CRC) tools — optional"
@@ -120,7 +120,7 @@ for m in ip_tables iptable_nat ip6_tables br_netfilter overlay; do
     fi
 done
 
-section "docker default-pids-limit (capstone node runs ~2000+ tasks — CAP-040)"
+section "docker default-pids-limit (final-project node runs ~2000+ tasks — CAP-040)"
 DAEMON_JSON=/etc/docker/daemon.json
 PIDS_LIMIT=""
 if [[ -r "$DAEMON_JSON" ]]; then
@@ -129,11 +129,11 @@ if [[ -r "$DAEMON_JSON" ]]; then
 fi
 if [[ -z "$PIDS_LIMIT" ]]; then
     echo "  default-pids-limit not set in ${DAEMON_JSON} (Docker default applies: unlimited)"
-    echo "  STATUS: ✓ OK for the full meshed capstone"
+    echo "  STATUS: ✓ OK for the full meshed final project"
 else
     echo "  default-pids-limit = ${PIDS_LIMIT} (0 or -1 = unlimited)"
     if (( PIDS_LIMIT <= 0 || PIDS_LIMIT >= 8192 )); then
-        echo "  STATUS: ✓ OK for the full meshed capstone"
+        echo "  STATUS: ✓ OK for the full meshed final project"
     else
         echo "  STATUS: ⚠ the node would cap TOTAL processes across all pods at ${PIDS_LIMIT}."
         echo "          Raise it in ${DAEMON_JSON} (\"default-pids-limit\": -1) and"
@@ -161,7 +161,7 @@ if command -v minikube >/dev/null 2>&1; then
     if [[ "$(printf '%s\n' "v1.39.0" "$MK_VERSION" | sort -V | head -1)" == "v1.39.0" ]]; then
         echo "  STATUS: ✓ OK (>= 1.39.0)"
     else
-        echo "  STATUS: ⚠ older than 1.39.0 — setup-capstone-profile.sh refuses it (Kubernetes v1.36.5 needs 1.39.0)."
+        echo "  STATUS: ⚠ older than 1.39.0 — setup-datamesh-profile.sh refuses it (Kubernetes v1.36.5 needs 1.39.0)."
         echo "          Install a current minikube (e.g. to ~/.local/bin, which"
         echo "          precedes /usr/local/bin on PATH)."
     fi

@@ -23,7 +23,7 @@ oc get scaledobject -n datamesh
 
 ## Why there's no HTTP-scaled object here
 
-The minikube capstone also scales `graphql-gateway` on in-flight HTTP
+The minikube datamesh also scales `graphql-gateway` on in-flight HTTP
 request volume via the **KEDA HTTP add-on** (`http.keda.sh/v1alpha1`
 `HTTPScaledObject`, installed by the separate `kedacore/keda-add-ons-http`
 Helm chart — see `examples/lgtm-datamesh/keda/gateway-httpscaledobject.yaml`

@@ -20,17 +20,17 @@
 #   ORDER_URL      e.g. http://127.0.0.1:8080   (published NodePort 30080)
 #   GATEWAY_URL    e.g. http://127.0.0.1:8081   (published NodePort 30081, KEDA interceptor)
 #   GATEWAY_HOST   Host header routing the interceptor to the gateway
-#                  (default graphql-gateway.capstone) — required because the
+#                  (default graphql-gateway.datamesh) — required because the
 #                  gateway is KEDA-scaled-to-zero and only reachable via the
 #                  interceptor, which routes by Host.
-#   PROTO_PATH     e.g. proto/capstone/inventory/v1/inventory.proto
+#   PROTO_PATH     e.g. proto/datamesh/inventory/v1/inventory.proto
 
 set -euo pipefail
 
 APICURIO_URL="${APICURIO_URL:?set APICURIO_URL}"
 ORDER_URL="${ORDER_URL:?set ORDER_URL}"
 GATEWAY_URL="${GATEWAY_URL:?set GATEWAY_URL}"
-GATEWAY_HOST="${GATEWAY_HOST:-graphql-gateway.capstone}"
+GATEWAY_HOST="${GATEWAY_HOST:-graphql-gateway.datamesh}"
 PROTO_PATH="${PROTO_PATH:?set PROTO_PATH}"
 GROUP="${APICURIO_GROUP:-default}"
 

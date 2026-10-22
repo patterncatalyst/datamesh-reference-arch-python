@@ -20,9 +20,9 @@ class Settings(BaseSettings):
 
     pg_host: str = "127.0.0.1"
     pg_port: int = 5432
-    pg_user: str = "capstone_app"
+    pg_user: str = "datamesh_app"
     pg_password: str = "changeme"
-    pg_database: str = "capstone"
+    pg_database: str = "datamesh"
 
     host: str = "0.0.0.0"
     port: int = 8080
@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     inventory_grpc_addr: str = "inventory-service:50051"
 
     # Kafka (r25). order-service publishes order.placed events here.
-    kafka_bootstrap: str = "capstone-kafka-kafka-bootstrap:9092"
+    kafka_bootstrap: str = "datamesh-kafka-kafka-bootstrap:9092"
     kafka_order_topic: str = "order-placed"
 
     # Apicurio schema registry (r25b). order.placed is registered + serialized

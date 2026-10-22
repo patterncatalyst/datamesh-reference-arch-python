@@ -6,12 +6,12 @@
 # Does NOT run ingestion — that's scripts/ingest-openmetadata.sh. This proves
 # the result, over the server API (via the published NodePort, the demo-openmetadata.sh
 # pattern):
-#   * the Database Service  capstone-postgres  exists
-#   * the Messaging Service capstone-kafka      exists
+#   * the Database Service  datamesh-postgres  exists
+#   * the Messaging Service datamesh-kafka      exists
 #   * the three spine entities exist:
-#       - table  capstone-postgres.capstone.orders.orders
-#       - topic  capstone-kafka.order-placed
-#       - table  capstone-postgres.capstone.notifications.notifications
+#       - table  datamesh-postgres.datamesh.orders.orders
+#       - topic  datamesh-kafka.order-placed
+#       - table  datamesh-postgres.datamesh.notifications.notifications
 #   * lineage on the topic has an upstream (orders) AND a downstream
 #     (notifications) edge — i.e. orders -> order-placed -> notifications
 #
@@ -20,7 +20,7 @@
 #   ./demos/demo-om-lineage.sh
 #
 # Prerequisites:
-#   - capstone profile running, kubectl context = capstone
+#   - datamesh profile running, kubectl context = datamesh
 #   - scripts/setup-openmetadata.sh AND scripts/ingest-openmetadata.sh have run
 #
 # VERIFY-POINTS (OpenMetadata 2.0.5 API; confirm at build time):
@@ -33,16 +33,16 @@ set -uo pipefail   # NOT -e: failures are handled so we can diagnose
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/endpoints.sh"
 
-NS="capstone"
-PROFILE="capstone"
+NS="datamesh"
+PROFILE="datamesh"
 LOCAL_PORT="$TP_OM"
 OM="http://127.0.0.1:${LOCAL_PORT}"
 ADMIN_EMAIL="admin@open-metadata.org"
 ADMIN_PASSWORD="admin"   # demo default (r27)
 
-ORDERS_FQN="capstone-postgres.capstone.orders.orders"
-TOPIC_FQN="capstone-kafka.order-placed"
-NOTIFS_FQN="capstone-postgres.capstone.notifications.notifications"
+ORDERS_FQN="datamesh-postgres.datamesh.orders.orders"
+TOPIC_FQN="datamesh-kafka.order-placed"
+NOTIFS_FQN="datamesh-postgres.datamesh.notifications.notifications"
 
 TOKEN=""
 
@@ -99,12 +99,12 @@ printf '    ✓ authenticated\n'
 # ─── Services ────────────────────────────────────────────────────────────────
 
 step "Confirming the ingested services exist"
-om_get "/api/v1/services/databaseServices/name/capstone-postgres" >/dev/null \
-    || fail "Database Service 'capstone-postgres' not found — did om-ingest-postgres run?"
-printf '    ✓ database service capstone-postgres\n'
-om_get "/api/v1/services/messagingServices/name/capstone-kafka" >/dev/null \
-    || fail "Messaging Service 'capstone-kafka' not found — did om-ingest-kafka run?"
-printf '    ✓ messaging service capstone-kafka\n'
+om_get "/api/v1/services/databaseServices/name/datamesh-postgres" >/dev/null \
+    || fail "Database Service 'datamesh-postgres' not found — did om-ingest-postgres run?"
+printf '    ✓ database service datamesh-postgres\n'
+om_get "/api/v1/services/messagingServices/name/datamesh-kafka" >/dev/null \
+    || fail "Messaging Service 'datamesh-kafka' not found — did om-ingest-kafka run?"
+printf '    ✓ messaging service datamesh-kafka\n'
 
 # ─── Spine entities ──────────────────────────────────────────────────────────
 

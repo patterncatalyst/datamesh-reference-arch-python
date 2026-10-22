@@ -1,4 +1,4 @@
-"""order-service — the §17 capstone's first data product.
+"""order-service — the §17 final project's first data product.
 
 r21: REST + Postgres. r23: gRPC stock check against inventory before
 persisting. r25: publishes an `order.placed` event to Kafka after persisting,
@@ -49,7 +49,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="order-service",
     version="0.3.0",
-    description="Order data product for the §17 capstone data mesh.",
+    description="Order data product for the §17 final project data mesh.",
     lifespan=lifespan,
 )
 

@@ -3,20 +3,20 @@
 
 DECISION D (CAP-023): lineage is declared explicitly via the first-class
 lineage REST API (PUT /api/v1/lineage), not inferred. OpenMetadata derives
-lineage automatically only from query logs / dbt, which the capstone doesn't
+lineage automatically only from query logs / dbt, which the datamesh doesn't
 have; and a Table→Topic→Table chain crosses entity types, which the API
 handles cleanly. This runs as the THIRD ingestion Job, after the Postgres and
 Kafka Jobs, because the three entities must already exist to be linked.
 
 The spine (one directed edge per producer/consumer relationship):
 
-    capstone-postgres.capstone.orders.orders            (Table, order-service)
+    datamesh-postgres.datamesh.orders.orders            (Table, order-service)
         │  produces
         ▼
-    capstone-kafka.order-placed                          (Topic)
+    datamesh-kafka.order-placed                          (Topic)
         │  consumed by
         ▼
-    capstone-postgres.capstone.notifications.notifications  (Table, notification-svc)
+    datamesh-postgres.datamesh.notifications.notifications  (Table, notification-svc)
 
 Stdlib only (urllib/json), so it runs in the ingestion image unchanged.
 Idempotent: PUT /api/v1/lineage upserts an edge, so re-running is a no-op.
@@ -40,9 +40,9 @@ import urllib.request
 HOST = os.environ.get("OM_HOST", "http://openmetadata:8585")
 TOKEN = os.environ.get("OM_JWT", "")
 
-ORDERS_FQN = "capstone-postgres.capstone.orders.orders"
-TOPIC_FQN = "capstone-kafka.order-placed"
-NOTIFS_FQN = "capstone-postgres.capstone.notifications.notifications"
+ORDERS_FQN = "datamesh-postgres.datamesh.orders.orders"
+TOPIC_FQN = "datamesh-kafka.order-placed"
+NOTIFS_FQN = "datamesh-postgres.datamesh.notifications.notifications"
 
 
 def _headers() -> dict:
