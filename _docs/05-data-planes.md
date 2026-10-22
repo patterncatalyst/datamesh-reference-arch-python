@@ -5,6 +5,17 @@ description: The async backbone of Kafka events and the read layer of GraphQL co
 duration: 25 min
 ---
 
+## Learning objectives
+
+By the end of this chapter you can:
+
+- Match each of the four protocols — REST, gRPC, GraphQL, and events — to the job it's best suited for, and explain the "fitness, not hierarchy" framing.
+- Distinguish gateway orchestration from true subgraph federation and state the trade-off this capstone accepts by choosing orchestration.
+- Trace the `order.placed` event flow from producer to consumers and explain why the producer doesn't block on any of them.
+- Explain why the synchronous read layer and the asynchronous event backbone are complementary planes rather than competing ones.
+
+## Why this matters
+
 The [services]({{ '/docs/03-services-and-data-products/' | relative_url }})
 each expose a contract, and the
 [catalog]({{ '/docs/04-contracts-and-catalog/' | relative_url }}) makes
@@ -12,12 +23,12 @@ them discoverable. This page is about how data actually *moves* between them —
 planes the mesh runs on. There are two: a **synchronous read layer** (REST, gRPC, and
 a GraphQL gateway composing across them) and an **asynchronous event backbone** (the
 streaming spine that lets domains react to each other). The capstone uses all of them
-on purpose, and the purpose is the point.
+because each one fits a different kind of data movement.
 
 ## Protocols by fitness, not by hierarchy
 
 It would be simpler to pick one protocol and use it everywhere. The capstone
-deliberately doesn't, because the honest lesson is that each protocol is *best at a
+doesn't, because each protocol is *best at a
 different job*, and a data mesh exercises all those jobs. This isn't a ranking where
 one protocol wins; it's a matter of fitness for context:
 
@@ -58,11 +69,15 @@ simpler **gateway orchestration** approach instead: one stateless gateway expose
 unified graph, and its resolvers fetch from the services over their *existing* REST and
 gRPC interfaces, with no GraphQL added to the domain services at all.
 
-The reason is honesty about what the capstone is — a learning implementation. Gateway
+### Why orchestration, not federation, here
+
+The capstone is a learning implementation. Gateway
 orchestration demonstrates the *value* GraphQL adds (one client query, multiple
 backends, client-shaped response) with one new service and zero changes to the five
 domain services, and it makes the protocol comparison vivid because the resolvers call
-REST and gRPC right next to each other. The trade-off worth stating: true federation is
+REST and gRPC right next to each other.
+
+The trade-off: true federation is
 what you'd reach for in production, because it preserves domain ownership of the graph
 — with orchestration, the gateway has some knowledge of how to reach each domain. For
 teaching the shape, orchestration is the right call; for a production mesh, federation
@@ -77,8 +92,9 @@ waits. The other plane is the opposite shape, and it's what actually keeps a mes
 operational/analytical loop closed. When an order is placed, several domains need to
 react — inventory adjusts stock, payment processes, notification informs the customer —
 but the order service shouldn't block waiting on any of them, and it certainly
-shouldn't call them in a synchronous chain that fails if one is down. Instead it emits
-an event, and the interested domains consume it on their own schedule.
+shouldn't call them in a synchronous chain that fails if one is down.
+
+Instead it emits an event, and the interested domains consume it on their own schedule.
 
 ![Domain events and change-data-capture feeding the analytical side]({{ '/assets/diagrams/17-ingestion-streaming-sourcing.svg' | relative_url }})
 
@@ -87,7 +103,9 @@ the canonical pattern with the smallest real flow: order-service emits an
 `order.placed` event, keyed by order id, and notification-service consumes it. That one
 flow is the whole "something happened, downstreams react" shape in miniature — the
 producer doesn't know or care who's listening, and consumers can be added without
-touching the producer. Widen it and you get the full choreography: inventory and
+touching the producer.
+
+Widen it and you get the full choreography: inventory and
 payment also react to `order.placed`, shipping reacts to `payments.processed`, and
 notification listens across all of them.
 
@@ -106,9 +124,17 @@ The synchronous and asynchronous planes aren't competitors; they're complementar
 a mesh needs both. Reads compose current state when a consumer asks for it. Events
 propagate change when something happens. REST crosses the boundary, gRPC moves between
 services, GraphQL shapes the composite, and the event backbone carries the reactions.
-Each protocol earns its place by being best at its job — which is the whole argument
+Each protocol is best at its job — which is the whole argument
 for using all of them rather than forcing one to do everything.
 
 With data moving across both planes, the next concern is how the mesh evolves safely
 while it's running: shipping a new version of a product's contract without breaking the
 consumers depending on it.
+
+## For deeper coverage
+
+- *Data Mesh* by Zhamak Dehghani — polyglot access and the synchronous/asynchronous planes a mesh runs on.
+- *Designing Data-Intensive Applications, 2nd ed.* by Martin Kleppmann & Chris Riccomini — event-driven architecture and the derived-data reasoning behind the backbone.
+- *Cloud Native Patterns* by Cornelia Davis — composing services at the edge versus internally.
+- [grpc.io documentation](https://grpc.io/docs/) — gRPC for internal, low-latency service-to-service calls.
+- [Strawberry GraphQL](https://strawberry.rocks/) — the library behind the gateway's composed graph.

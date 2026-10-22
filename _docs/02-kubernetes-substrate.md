@@ -5,8 +5,24 @@ description: Why Kubernetes is a natural substrate for a data mesh, and how the 
 duration: 15 min
 ---
 
+## Learning objectives
+
+By the end of this chapter you can:
+
+- Map each of Dehghani's four principles to the specific Kubernetes primitive that
+  realizes it (namespaces/RBAC, Deployments/CRDs, operators, admission control).
+- Describe the three horizontal tiers of this capstone's architecture and which
+  protocol crosses each boundary.
+- Explain why this capstone runs on minikube with the docker driver and containerd
+  runtime, and what trade-off a single-node cluster makes.
+- State how the capstone exposes host access (NodePorts published on `127.0.0.1` at
+  profile creation) and what command recreates the profile if the published ports
+  need to change.
+
+## Why this matters
+
 The [previous page]({{ '/docs/01-concepts/' | relative_url }}) ended on a
-claim worth taking seriously: a data mesh is a pattern, not a tool, and the tools are
+claim: a data mesh is a pattern, not a tool, and the tools are
 expressions of it. So why build the capstone on Kubernetes at all? Because the four
 principles map onto Kubernetes primitives unusually cleanly — cleanly enough that
 "implement a data mesh on Kubernetes" stops feeling like a translation exercise and
@@ -44,7 +60,7 @@ The data product becomes a first-class, declarable thing rather than an informal
 collection of scripts.
 
 **Self-serve data platform → operators and shared cluster infrastructure.** This is
-where Kubernetes earns its place most clearly. An *operator* packages the knowledge of
+where Kubernetes operators deliver the most value for a self-serve platform. An *operator* packages the knowledge of
 how to run a complex stateful system — Kafka, Postgres, autoscaling, a service mesh —
 into a controller that reconciles a simple declarative request into a running system.
 A domain team that needs Kafka doesn't learn to operate Kafka; it asks the platform's
@@ -97,20 +113,42 @@ This capstone runs on minikube — a single-node Kubernetes cluster — which is
 choice for *learning* the pattern and wrong for running it in production. A single node
 means every tier shares one machine's resources, which keeps the whole mesh runnable on
 a laptop but also concentrates failure modes that a real multi-node cluster would
-spread out. Where those single-node realities bite — resource ceilings, node-level
-decay, the operational care a long-lived single-node cluster needs — they're collected
-as operational gotchas rather than mixed into the conceptual material here, because
-they're particular to this deployment choice rather than to data mesh as a pattern. The
-profile is a Docker container (the docker driver) running containerd with the runc
-runtime, sized by `MINIKUBE_MEMORY`, `MINIKUBE_CPUS` and `MINIKUBE_DISK`.
+spread out.
+
+Where those single-node realities bite — resource ceilings, node-level decay, the
+operational care a long-lived single-node cluster needs — they're collected as
+operational gotchas rather than mixed into the conceptual material here, because
+they're particular to this deployment choice rather than to data mesh as a pattern.
+
+The profile itself is a Docker container (the docker driver) running containerd with
+the runc runtime, sized by `MINIKUBE_MEMORY`, `MINIKUBE_CPUS` and `MINIKUBE_DISK`.
+
+### Host access
 
 Host access follows the same single-node logic. The capstone's UIs and service
 endpoints are NodePorts published on `127.0.0.1` when the minikube profile is created
 (`--ports=127.0.0.1:<hostPort>:<nodePort>`), never SSH tunnels or port-forwarding. <!-- forbidden-ok -->
-The ports are fixed at creation, so changing the set means recreating the profile with
-`./scripts/setup-capstone-profile.sh --replace`. `--replace` deletes and recreates the cluster, so run `./scripts/bootstrap-capstone.sh` again afterwards. Run the workshop in isolation: shut down
-CRC, other minikube profiles, and other workloads first, so the host ports are free.
-`./scripts/show-endpoints.sh` prints what is published and reachable.
+
+The ports are fixed at creation, so changing the published set means recreating the
+profile with `./scripts/setup-capstone-profile.sh --replace`. `--replace` deletes and
+recreates the cluster, so run `./scripts/bootstrap-capstone.sh` again afterwards.
+
+Run the workshop in isolation: shut down CRC, other minikube profiles, and other
+workloads first, so the host ports are free. `./scripts/show-endpoints.sh` prints what
+is published and reachable.
+
+## For deeper coverage
+
+- *Kubernetes Patterns* by Bilgin Ibryam & Roland Huß — the primitive-by-primitive
+  treatment (namespaces, operators, CRDs) this chapter's mapping draws on.
+- *Platform Engineering on Kubernetes* by Mauricio Salatino — the self-serve platform
+  principle built out as an operating model, not just a set of operators.
+- *Cloud Native Patterns* by Cornelia Davis — the broader cloud-native platform
+  patterns this capstone's shared infrastructure tier follows.
+- [Kubernetes documentation](https://kubernetes.io/docs/) — namespaces, RBAC, CRDs,
+  and admission control, straight from the source.
+- [minikube documentation](https://minikube.sigs.k8s.io/docs/) — driver and runtime
+  options, including the docker driver and containerd runtime this capstone uses.
 
 Next, the services themselves: what a data product looks like in this build, the
 order-service template the others follow, and how each one is packaged and shipped.

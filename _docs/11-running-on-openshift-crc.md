@@ -5,6 +5,18 @@ description: "The same seven-service data mesh, redeployed to OpenShift Local: a
 duration: 40 min
 ---
 
+## Learning objectives
+
+By the end of this chapter you can:
+
+- Explain which Kubernetes assumptions break on OpenShift — SCC/UID handling, ingress, the image registry — and how this chart's design responds to each.
+- Size, set up, and start OpenShift Local (CRC), then build and push the seven service images to its integrated registry.
+- Deploy the Helm chart, verify the live core through its two Routes, and interpret the expected app-pod crash-loop-then-converge startup pattern.
+- Bring up the optional platform tier (service mesh, autoscaling, observability, orchestration, catalog) and read what's actually verified live for each layer.
+- Distinguish the two real deploy-time snags this appendix hit (disk pressure, a `printf` quoting bug) from the SCC design, which held on the first try.
+
+## Why this matters
+
 [Chapter 3]({{ '/docs/02-kubernetes-substrate/' | relative_url }}) built the case for
 Kubernetes as the mesh's substrate and brought the capstone up on minikube via Helm —
 NodePorts published to loopback, a local image registry. That's a real deployment, and
@@ -30,7 +42,7 @@ that gets it running.
 One scoping note up front, visible in the chart's own `Chart.yaml`: this is the **live
 core** of the capstone — the seven services, Postgres, Kafka, and Apicurio — not the
 full minikube stack. OpenMetadata, Prefect, the LGTM observability stack, KEDA
-autoscaling, and the Istio mesh are intentionally out of this chart *by default*. A
+autoscaling, and the Istio mesh are out of this chart *by default*. A
 later section of this appendix, "The full platform tier, live," brings all five of
 those layers up on top of this same core as an **opt-in** addition — applied via
 `openshift/platform/install-platform.sh` plus two chart flags
@@ -125,7 +137,9 @@ The seven Python services are built for exactly this. Their `services/<svc>/Cont
 images already declare `USER 1001:0` — an arbitrary UID in group `0`, with the
 application's files group-readable and group-writable — which is precisely what
 `restricted-v2` expects: it doesn't care *which* UID a pod runs as, only that the pod
-isn't demanding one it assigned instead. So the fix for the app Deployments is to **drop
+isn't demanding one it assigned instead.
+
+So the fix for the app Deployments is to **drop
 `runAsUser` entirely** and let OpenShift pick. `templates/app-deployment.yaml` sets
 `runAsNonRoot: true` and nothing else UID-related — no `runAsUser` key appears anywhere
 in the pod's `securityContext`. Whatever UID `restricted-v2` assigns, the image already
@@ -135,7 +149,9 @@ Postgres and Kafka are the exception, and the chart treats them as one. Their up
 images hardcode specific non-root UIDs that own their data directories — Postgres as
 `70`, the Apache Kafka image as `1000` — so dropping `runAsUser` for them would be wrong:
 whatever UID `restricted-v2` assigned instead wouldn't own `/var/lib/postgresql/data` or
-`/var/lib/kafka/data`, and the containers would fail to start. For these two, the chart
+`/var/lib/kafka/data`, and the containers would fail to start.
+
+For these two, the chart
 grants an SCC that *allows* their UID instead of letting the default one assign a
 different one. `templates/serviceaccount-infra.yaml` creates a ServiceAccount,
 `datamesh-infra`, and binds it to the `nonroot-v2` SCC; `postgres.yaml` and `kafka.yaml`
@@ -242,7 +258,7 @@ whether it owns a Postgres schema, whether it's a Kafka participant needing a gr
 shutdown window, whether it needs an Alembic migration init container ahead of the app
 container, and its resource tier. `templates/app-deployment.yaml` then ranges over that
 map once, and the interesting part is the conditionals built from it — this is where
-"the template is driven by data" earns its keep:
+"the template is driven by data" pays off:
 
 {% raw %}
 ```yaml
@@ -278,18 +294,18 @@ map once, and the interesting part is the conditionals built from it — this is
 Every service in this system ships `/health` as its liveness check and `/healthz` as its
 readiness check — all seven are `probe: http` in practice, but the conditional exists
 because the chart is carried over from a sibling project where some services shipped
-without a health-check library and needed a bare TCP probe instead; it costs nothing to
+without a health-check library and needed a bare TCP probe instead. It costs nothing to
 keep the branch here even though every current service takes the `http` path.
 
-`notification-service` adds one more wrinkle worth calling out: `migrate: true` adds an
+`notification-service` adds one more wrinkle: `migrate: true` adds an
 `initContainer` running `alembic upgrade head` against the same database before the
 `uvicorn` container starts, so the schema exists before the app issues a single query —
 no `CREATE TABLE` happens on the hot path.
 
 The shared environment contract — the Kafka bootstrap address, the Apicurio URL, the
 gRPC coordinate for `inventory-service`, the gateway's downstream REST URL — is one
-ConfigMap, `templates/configmap-app.yaml`. The one detail worth noting is that every
-in-cluster address it builds is namespace-relative:
+ConfigMap, `templates/configmap-app.yaml`. Every in-cluster address it builds is
+namespace-relative:
 
 {% raw %}
 ```yaml
@@ -306,11 +322,15 @@ anything else — without a single hardcoded string to edit.
 Postgres and Kafka are plain StatefulSets, not operator-managed CRs — `templates/postgres.yaml`
 and `templates/kafka.yaml` don't assume the CloudNativePG or Strimzi operators are
 installed on the target cluster, since this is meant to run on a bare CRC instance with
-nothing pre-installed beyond OpenShift itself. Kafka runs single-broker KRaft (no
+nothing pre-installed beyond OpenShift itself.
+
+Kafka runs single-broker KRaft (no
 ZooKeeper), self-referencing its own pod-stable DNS (`kafka-0.kafka.<ns>.svc...:9093`) as
 its quorum voter, with `publishNotReadyAddresses: true` on its headless Service — a
 single-node KRaft broker has to resolve its own controller address to become ready in
-the first place, so the Service has to advertise it before it's marked ready. Both
+the first place, so the Service has to advertise it before it's marked ready.
+
+Both
 StatefulSets run under `datamesh-infra` with `fsGroup` set to match their UID, so their
 PersistentVolumeClaims are writable from the first mount.
 
@@ -389,7 +409,9 @@ That's the live run, twelve minutes after `helm upgrade --install`: all ten work
 `shipping-service` are exactly the convergence described above, not a defect —
 those four happened to lose the race against `postgres-0` reaching `Ready` on this
 particular run; `graphql-gateway`, `order-service`, and `notification-service` happened
-to win it. Re-running the same `helm install` against a fresh `crc start` will likely
+to win it.
+
+Re-running the same `helm install` against a fresh `crc start` will likely
 distribute the restarts across a different subset of services — which four crash-loop
 is a function of scheduling order and Postgres's own startup time, not something the
 chart controls or needs to.
@@ -399,10 +421,14 @@ that to be fine. `notification-service`'s migrate init container, and every serv
 database connection on first boot, depend on Postgres and Kafka already being reachable.
 A pod that starts before its StatefulSet dependency is `Ready` fails fast — a DNS lookup
 with no ready endpoints behind it, then connection refused — and restarts on the normal
-back-off schedule. As `postgres-0` and `kafka-0` reach `1/1`, each service recovers on
+back-off schedule.
+
+As `postgres-0` and `kafka-0` reach `1/1`, each service recovers on
 its next attempt. The restart counts you see in `oc get pods` are the scar tissue of that
 ordering, not a sign anything is actually broken; the end state is all green regardless
-of how many restarts it took to get there. (If you want a clean start with no restart
+of how many restarts it took to get there.
+
+(If you want a clean start with no restart
 churn, install the infra StatefulSets' templates first and wait for them before letting
 the app Deployments roll out — but the self-healing path above is what a plain `helm
 install` does, and it converges on its own.)
@@ -428,9 +454,9 @@ $ curl -sk https://graphql-gateway-datamesh.apps-crc.testing/healthz
 
 And a real query through the gateway spanning two or more of the underlying products —
 the point of a GraphQL gateway is composing reads across services the caller never talks
-to directly, so the query worth running is one that can only succeed if that composition
-actually works, for example an order placed through `order-service` with its live stock
-level attached from `inventory-service`:
+to directly. So the query worth running is one that can only succeed if that composition
+actually works — for example, an order placed through `order-service` with its live
+stock level attached from `inventory-service`:
 
 ```sh
 curl -sk https://$(oc get route graphql-gateway -n datamesh -o jsonpath='{.spec.host}')/graphql \
@@ -443,7 +469,7 @@ curl -sk https://$(oc get route graphql-gateway -n datamesh -o jsonpath='{.spec.
 ```
 
 The top-level `order` fields — `customerId`, `itemSku`, `quantity`, `status`, `amount` —
-come straight from `order-service`'s own Postgres row; the nested `stock` object is a
+come straight from `order-service`'s own Postgres row. The nested `stock` object is a
 second, independent hop the gateway makes over gRPC to `inventory-service`'s `:50051`
 port to resolve `quantityOnHand`/`available` for that same SKU. A 200 with both halves
 populated — the order half and the `stock` half — confirms the Route, the SCC-assigned
@@ -472,8 +498,8 @@ platform tier described below.
 ### What broke on live apply
 
 Two things went wrong on the actual run against CRC, neither in the chart's design —
-both in the tooling around it — plus one thing worth stating plainly because it did
-*not* break: the SCC assignment this appendix spent most of its length justifying.
+both in the tooling around it. One thing did *not* break: the SCC assignment this
+appendix spent most of its length justifying.
 
 **1. All ten pods stuck `Pending` behind a `disk-pressure` taint.** Partway through
 `helm upgrade --install`, every pod sat `Pending` with a
@@ -482,6 +508,7 @@ problem — `oc describe node` wasn't short on memory or CPU. The cause was the 
 push that happens just before deployment: `build-and-push.sh` had already pushed all
 nine images (seven app images plus the mirrored `postgres`/`kafka` infra images) into
 the integrated registry, and that registry's storage lives on the CRC node's own disk.
+
 CRC's *default* VM disk is a modest ~32 GB, and nine images pushed into it was enough
 to cross the kubelet's disk-pressure eviction threshold (27 GB used on a 32 GB disk).
 Once a node is under `DiskPressure`, the scheduler taints it and nothing new schedules —
@@ -507,7 +534,9 @@ final step prints a one-line hint for the `--mirror-infra` flag described earlie
 this appendix. That hint line is passed to `printf` with a leading `--mirror-infra ...`
 string, which `printf` parses as an option flag rather than a format string — an exit
 code `2` with no images actually affected, since the build-and-push loop itself had
-already completed and returned before the hint line ran. The fix is the standard
+already completed and returned before the hint line ran.
+
+The fix is the standard
 `printf`-no-longer-takes-flags-after-this idiom, `printf -- '%s\n' "..."`, which forces
 everything after `--` to be treated as data. Purely cosmetic: by the time the script
 exits non-zero, the registry already has all nine images, which `oc get istag -n
@@ -517,7 +546,9 @@ datamesh` confirms independent of the script's own exit status.
 OpenShift" section above — drop `runAsUser` for the seven Python app images and let
 `restricted-v2` assign a UID, pin `runAsUser` for Postgres and Kafka under a
 `datamesh-infra` ServiceAccount bound to `nonroot-v2` — held exactly as designed on the
-first deploy, no iteration needed. The live SCC/UID table earlier in this appendix is
+first deploy, no iteration needed.
+
+The live SCC/UID table earlier in this appendix is
 the proof: all seven app pods landed on `restricted-v2` with the same OpenShift-assigned
 UID, `1000650000` (the images' `USER 1001:0` made them agnostic to whichever UID that
 turned out to be), while `postgres-0` kept its required `70` and `kafka-0` its required
@@ -528,8 +559,10 @@ the admission model this appendix is actually about.
 ## The full platform tier, live
 
 The live core above is the Helm chart's whole job — but this appendix also brings up
-the five layers that chart deliberately leaves out, as an **opt-in platform tier** on
-top of that same core. None of this changes the core's default behavior: a plain `helm
+the five layers that chart leaves out, as an **opt-in platform tier** on
+top of that same core.
+
+None of this changes the core's default behavior: a plain `helm
 upgrade --install datamesh openshift/helm/datamesh` still renders exactly the chart
 described above, with no mesh labels and no OTEL environment variables anywhere in it —
 both `mesh.enabled` and `observability.otlp.enabled` default to `false` in
@@ -554,7 +587,9 @@ plus a matching `IstioCNI` CR, not a raw `istioctl install`. Injection is a
 pod-template **LABEL**, `istio.io/rev`, set on the seven app Deployments (and the
 order-service canary) behind the chart's `mesh.enabled` flag — Sail's revisioned
 injection webhook doesn't reliably fire on the classic `sidecar.istio.io/inject`
-*annotation* the minikube overlay uses. Postgres, Kafka, and Apicurio stay unlabeled,
+*annotation* the minikube overlay uses.
+
+Postgres, Kafka, and Apicurio stay unlabeled,
 unmeshed infrastructure, which is exactly what the live sidecar counts show: the seven
 app pods carry `2/2` (app container plus Envoy), the three infra pods stay `1/1`.
 
@@ -563,7 +598,9 @@ scoped exception: a second `PeerAuthentication`, `graphql-gateway-permissive`, s
 `PERMISSIVE` for just the gateway. The OpenShift Route fronting the gateway is not
 mesh-aware and arrives as plaintext, and `STRICT` namespace-wide rejected that edge
 traffic outright (502s from the Route) before the gateway-scoped exception was carved
-out — the live lesson behind this appendix's newest decision entry. Every other hop in
+out — the live lesson behind this appendix's newest decision entry.
+
+Every other hop in
 the mesh — service to service, all mesh-internal — stays `STRICT`.
 
 The v1/v2 canary itself runs as a **mesh-internal** `VirtualService`/`DestinationRule`
@@ -610,7 +647,9 @@ directories as UID 0, so its pod needs `runAsUser: 0`, which forces it onto the
 outright. The non-obvious part: adding a `seccompProfile` or `capabilities` block to
 that same `securityContext` — the kind of change that reads as pure hardening — makes
 `anyuid` **reject** the pod instead of admitting it, because its allowed
-seccomp-profile list is empty. That rejection doesn't surface as a loud SCC-denial
+seccomp-profile list is empty.
+
+That rejection doesn't surface as a loud SCC-denial
 event; it silently drops the pod back onto `restricted-v2`'s randomly assigned UID,
 where Grafana can't write `/data` and the pod hangs forever at "Waiting for Grafana to
 start up...", with nothing pointing at the real cause. `runAsUser: 0` alone — no
@@ -621,7 +660,7 @@ ingesting per-service traces: `graphql-gateway`, `order-service`, `inventory-ser
 and `notification-service` each produced recent traces during the capture window
 (`payment-service` produced none in that window).
 
-**Honest limit, stated plainly:** those are per-service traces, not one stitched
+**Limit:** those are per-service traces, not one stitched
 cross-service trace. The gateway's downstream HTTP/gRPC calls don't propagate a W3C
 `traceparent` header, so each service roots its own trace instead of continuing the
 caller's — an application-instrumentation gap, not something OpenShift or the mesh
@@ -704,7 +743,7 @@ spec:
 Its symmetric partner on the build side is **OpenShift Pipelines** (Tekton): the
 `podman build`/`push` loop in `build-and-push.sh` becomes a `Pipeline` triggered on
 push, so a commit to a service's source produces a new image in the internal registry
-without a human running the script. Both are deliberately left as starting points rather
+without a human running the script. Both are left as starting points rather
 than part of the verified deploy in this appendix — each needs its operator installed
 (OpenShift GitOps, OpenShift Pipelines), and GitOps additionally needs this repo
 reachable from the cluster. Neither was applied for this appendix's verification pass.
@@ -766,7 +805,7 @@ endpoint. The full capture is committed at
   grant are all in place and simply unproven because the server image never pulled.
   (`examples/lgtm-datamesh/openshift/evidence/openmetadata-verification.txt`)
 
-**Honest limits, carried forward:**
+**Limits carried forward:**
 
 - Observability's per-service traces are **not** stitched into one cross-service
   trace — the services don't propagate a W3C `traceparent` header across their
@@ -794,3 +833,12 @@ the assigned app UID will differ per cluster, but the SCC names, the infra UIDs,
 200s should not. Re-confirm the platform tier by re-running `install-platform.sh` on
 top of a resized instance and re-capturing the same evidence files under
 `examples/lgtm-datamesh/openshift/evidence/`.*
+
+## For deeper coverage
+
+- [OpenShift documentation](https://docs.openshift.com/) — Security Context Constraints, Routes, and the integrated image registry this appendix is built around.
+- [OpenShift Local (CRC) documentation](https://crc.dev/) — sizing, setup, and the `crc` CLI.
+- [Strimzi documentation](https://strimzi.io/documentation/) — the Kafka-on-Kubernetes operator model that AMQ Streams, referenced throughout this appendix, is built on.
+- [Istio documentation](https://istio.io/latest/docs/) — mTLS and the `VirtualService`/`DestinationRule` traffic shaping the platform tier's mesh section uses.
+- [KEDA documentation](https://keda.sh/docs/) — the upstream API the Custom Metrics Autoscaler operator packages.
+- *Platform Engineering on Kubernetes* by Mauricio Salatino — operator-based platform capabilities (OperatorHub/OLM) and SCCs as policy, the pattern this appendix's chart is built around.

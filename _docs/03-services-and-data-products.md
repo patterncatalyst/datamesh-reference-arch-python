@@ -5,6 +5,18 @@ description: The services, the order-service template, and the anatomy of a data
 duration: 30 min
 ---
 
+## Learning objectives
+
+By the end of this chapter you can:
+
+- Map a data product's ports, transformation, and metadata onto a concrete domain-service boundary.
+- Enumerate the five domain services plus the gateway and the protocol each one exposes.
+- Trace the walking-skeleton build order for order-service, from image to a running pod with a real API round trip.
+- Apply the multi-stage, non-root container packaging pattern shared by all six images.
+- Load a locally built image into the minikube profile's containerd store and explain why `imagePullPolicy: Never` matters there.
+
+## Why this matters
+
 With the [principles]({{ '/docs/01-concepts/' | relative_url }}) and the
 [Kubernetes mapping]({{ '/docs/02-kubernetes-substrate/' | relative_url }})
 in place, this page gets concrete: what the data products in this capstone actually
@@ -31,7 +43,7 @@ way to make domain ownership real rather than aspirational.
 
 ## The domain
 
-The domain is order-placement-through-fulfillment, modeled deliberately small so the
+The domain is order-placement-through-fulfillment, modeled small so the
 architecture stays legible. There are **five domain services**, each a bounded context
 owning its data and its contract, plus **one gateway** that composes reads across them
 (the gateway is a read-layer convenience, not a domain data product — six images in
@@ -72,13 +84,16 @@ schema. It starts speaking only REST, and gRPC, GraphQL, and event publishing ge
 layered on in later steps — but the deployment spine is proven first with the simplest
 possible surface.
 
+### Packaging the image
+
 A couple of packaging choices carry across all six images. Dependencies are managed
 with a lockfile so builds are reproducible, and the lockfile is exported into the image
-rather than carrying the dependency manager into the runtime. The image itself is
-multi-stage: a builder stage resolves dependencies, and a slim runtime stage copies
-only the resolved environment and the application code, runs as a non-root user, and
-serves the app. Standard production hygiene — the capstone just applies it from the
-start rather than retrofitting it.
+rather than carrying the dependency manager into the runtime.
+
+The image itself is multi-stage: a builder stage resolves dependencies, and a slim
+runtime stage copies only the resolved environment and the application code, runs as a
+non-root user, and serves the app. Standard production hygiene — the capstone just
+applies it from the start rather than retrofitting it.
 
 ## The one part that fights back: getting images to the kubelet
 
@@ -89,12 +104,16 @@ on your host. An image you build locally is invisible to the kubelet until you p
 there, and a pod that can't find its image fails in ways that look like a broken
 cluster.
 
-The capstone's answer is deliberately simple: **build with Docker Engine, then load the
+### Build with Docker Engine, then load the image
+
+The capstone's answer is simple: **build with Docker Engine, then load the
 image into the profile with `minikube image load`**. There is no registry to run and no
 addresses to reconcile, and it works the same on a native engine and on a VM-based one
 (Docker Desktop, for example). That portability is the reason for the choice:
 pushing to a registry on the host's loopback only works when the engine's daemon shares
 the host's network, which a VM-based engine's does not.
+
+### Tags and pull policy
 
 Images are tagged `capstone/<svc>:v1` and the charts set `imagePullPolicy: Never`. The
 policy matters in both directions. If an image was never loaded, the pod fails at once
@@ -112,3 +131,11 @@ friction.)
 
 With a service shipped and running, the next question is how products describe
 themselves so others can find and trust them — contracts and the catalog.
+
+## For deeper coverage
+
+- *Data Mesh* by Zhamak Dehghani — the architectural quantum and why a data product's boundary should match a service's boundary.
+- *Cloud Native Patterns* by Cornelia Davis — packaging and runtime patterns for services that double as data products.
+- *Kubernetes Patterns* by Bilgin Ibryam & Roland Huß — container image and workload patterns behind the build-load-deploy sequence.
+- [Kubernetes documentation](https://kubernetes.io/docs/) — image pull policies and the kubelet's image lifecycle.
+- [FastAPI](https://fastapi.tiangolo.com/) — the framework order-service and its siblings are built on.

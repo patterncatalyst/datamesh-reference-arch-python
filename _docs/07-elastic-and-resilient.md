@@ -5,14 +5,28 @@ description: Scaling to demand and to zero with KEDA, and the cloud-native recov
 duration: 20 min
 ---
 
+## Learning objectives
+
+By the end of this chapter you can:
+
+- Explain why CPU/memory autoscaling is a poor proxy for data-product demand and what KEDA scales on instead.
+- Distinguish consumer-lag scaling (notification-service) from HTTP-request scaling (the gateway), and say why each scaler fits its product.
+- Explain why the HTTP scaler sits on the gateway rather than on the canaried order-service.
+- Describe what "recoverable by construction" means for a data product running on Kubernetes.
+- Explain why elasticity and resilience are self-serve platform capabilities rather than something each domain builds itself.
+
+## Why this matters
+
 A data product's demand isn't constant. A read gateway is busy when consumers are
 querying and idle otherwise; an event consumer has work only when events are flowing.
 Provisioning every product for its peak, all the time, wastes resources; provisioning
-for the average means falling over at the peak. This page is about the platform
-handling that automatically — scaling products to match demand, including down to
-*zero* when there's none — and about the other half of operating under real conditions:
-recovering when something fails. Both are **self-serve platform** capabilities: a
-domain team gets elasticity and resilience from the platform rather than building them.
+for the average means falling over at the peak.
+
+This page is about the platform handling that automatically — scaling products to
+match demand, including down to *zero* when there's none — and about the other half of
+operating under real conditions: recovering when something fails. Both are **self-serve
+platform** capabilities: a domain team gets elasticity and resilience from the platform
+rather than building them.
 
 ## Scaling to demand — and to zero
 
@@ -31,8 +45,7 @@ have many such products, each materializing only when something actually asks fo
 That's a different economics from "every service holds a baseline of resources forever,"
 and it's particularly apt for a mesh of many domain products with uneven, bursty demand.
 
-This capstone wires up **two** scalers, deliberately of different kinds, on two
-different products:
+This capstone wires up **two** scalers of different kinds, on two different products:
 
 - **Consumer-lag scaling on notification-service.** notification-service is an
   event consumer — its real workload is the backlog of events waiting in its consumer
@@ -48,7 +61,7 @@ different products:
 
 ![Scaling on HTTP request volume with the KEDA HTTP add-on]({{ '/assets/diagrams/12-keda-http-addon.svg' | relative_url }})
 
-There's a deliberate placement decision worth noting: the HTTP scaler goes on the
+The HTTP scaler goes on the
 gateway, *not* on order-service, because order-service is where the
 [canary]({{ '/docs/06-progressive-delivery-mtls/' | relative_url }}) lives,
 and HTTP-scaling a service whose traffic is being split by weight would have the two
@@ -70,11 +83,13 @@ resolves the moment a request hits the gateway.
 The other half of operating under real conditions is what happens when things break —
 and on a real system, things break. The cloud-native answer isn't "prevent all
 failure"; it's "make recovery cheap and automatic." Kubernetes provides a great deal of
-this for free, and a data mesh inherits it: a crashed pod is restarted, a failed
+this without extra application code, and a data mesh inherits it: a crashed pod is restarted, a failed
 deployment is rolled back, a node's workloads are rescheduled, and declarative state
 means the system continuously reconciles back toward what you asked for rather than
-drifting away from it. A data product deployed this way is *recoverable by
-construction* — you can kill it and the platform brings it back.
+drifting away from it.
+
+A data product deployed this way is *recoverable by construction* — you can kill it
+and the platform brings it back.
 
 That property is worth designing *toward*, not just relying on. A product that recovers
 cleanly is one that doesn't hold critical state only in memory, that can be restarted
@@ -92,11 +107,12 @@ single-node cluster well turns out to require real care: knowing when to let the
 platform self-heal versus when to cycle a node, recognizing the difference between a
 workload failure and an infrastructure failure beneath it, and giving stateful
 workloads enough resources to recover rather than just to run. Those operational lessons
-are specific and hard-won, and they're collected as gotchas rather than mixed in here —
-but the conceptual point stands: a mesh built on a platform that reconciles toward
-declared state is far more resilient than one held together by manual operations, and
-that resilience is something the domains get from the platform rather than each
-building their own.
+are specific and hard-won, and they're collected as gotchas rather than mixed in here.
+
+The conceptual point stands regardless: a mesh built on a platform that reconciles
+toward declared state is far more resilient than one held together by manual
+operations, and that resilience is something the domains get from the platform rather
+than each building their own.
 
 ## Elastic and resilient, from the platform
 
@@ -111,3 +127,10 @@ just its deployment.
 Last, the capability that makes all of this observable: seeing what the mesh is
 actually doing — its metrics, its traces, and the live view of traffic moving between
 products.
+
+## For deeper coverage
+
+- *Kubernetes Patterns* by Bilgin Ibryam & Roland Huß — autoscaling and self-healing patterns on Kubernetes.
+- *Cloud Native Patterns* by Cornelia Davis — elasticity and recoverability as platform-provided properties.
+- *Platform Engineering on Kubernetes* by Mauricio Salatino — self-serve platform capabilities and what domains should and shouldn't operate themselves.
+- [KEDA documentation](https://keda.sh/docs/) — scalers, `ScaledObject`s, and the HTTP add-on used in this chapter.

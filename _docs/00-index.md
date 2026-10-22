@@ -5,13 +5,27 @@ description: "The map — what this reference builds, the reading order, and a l
 duration: 5 min
 ---
 
+## Learning objectives
+
+By the end of this chapter you can:
+
+- Name the four movements the reference set is organized into and which pages fall
+  into each one.
+- Pick the reading order that matches how you want to use the set — straight through,
+  or jumping to one topic.
+- Identify the three pages that cover the pattern's shape if you only have time for a
+  few.
+- Locate the page that answers a specific question without re-reading the whole set.
+
+## Why this matters
+
 This is the reading guide for the data-mesh reference — the map of what the set covers
 and the order to read it in. The reference builds one working system end to end: a data
 mesh of services that own their data as products, talk over a deliberate mix of
 protocols, evolve their contracts safely, scale to demand, and stay observable
 throughout.
 
-The set is written to be read straight through the first time — each page picks up where
+The set is written to be read straight through the first time. Each page picks up where
 the last left off, and the cross-references assume you've seen the earlier material. If
 you're returning to find one thing, the descriptions below will point you at the right
 page.
@@ -50,7 +64,7 @@ the value it delivers and the implementation pieces that realize it.
   The synchronous read layer (REST, gRPC, a GraphQL gateway) and the asynchronous event
   backbone — and why the capstone uses all of them.
 - [**7 · Progressive delivery & mTLS**]({{ '/docs/06-progressive-delivery-mtls/' | relative_url }}) —
-  Evolving a contract in the open with a v1→v2 canary, mTLS for free, and the decision to
+  Evolving a contract in the open with a v1→v2 canary, mTLS with no application changes, and the decision to
   mesh selectively rather than namespace-wide.
 - [**8 · Elastic & resilient**]({{ '/docs/07-elastic-and-resilient/' | relative_url }}) —
   Scaling to demand and to zero with KEDA, and the cloud-native recoverability the
@@ -75,3 +89,15 @@ to avoid. Those three cover the shape of the thing without the full implementati
 depth.
 
 Start with [concepts & principles]({{ '/docs/01-concepts/' | relative_url }}).
+
+## For deeper coverage
+
+- *Data Mesh* by Zhamak Dehghani — the full argument this reference implements, including
+  the history and the operating-model shifts this set only summarizes.
+- *Designing Data-Intensive Applications, 2nd ed.* by Martin Kleppmann & Chris
+  Riccomini — the data-systems foundations (storage, replication, consistency) that sit
+  underneath every data product in this build.
+- *Cloud Native Patterns* by Cornelia Davis — the platform patterns this reference's
+  self-serve tier draws on.
+- *Kubernetes Patterns* by Bilgin Ibryam & Roland Huß — the Kubernetes-native building
+  blocks the implementation pages rely on throughout.
