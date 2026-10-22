@@ -45,7 +45,7 @@ have many such products, each materializing only when something actually asks fo
 That's a different economics from "every service holds a baseline of resources forever,"
 and it's particularly apt for a mesh of many domain products with uneven, bursty demand.
 
-This capstone wires up **two** scalers of different kinds, on two different products:
+This final project wires up **two** scalers of different kinds, on two different products:
 
 - **Consumer-lag scaling on notification-service.** notification-service is an
   event consumer — its real workload is the backlog of events waiting in its consumer
@@ -68,7 +68,7 @@ and HTTP-scaling a service whose traffic is being split by weight would have the
 mechanisms fighting over the same pods. The gateway is a natural synchronous-read load
 target with no such conflict. Matching each scaler to the right product — lag-based for
 the consumer, request-based for the gateway, and neither on the canaried service — is
-the kind of fitting-the-mechanism-to-the-workload judgment the whole capstone keeps
+the kind of fitting-the-mechanism-to-the-workload judgment the whole final project keeps
 returning to.
 
 ![Why the HTTP scaler goes on the gateway and not on the canaried order-service — matching the scaler to the workload]({{ '/assets/diagrams/17-keda-http.svg' | relative_url }})
@@ -100,7 +100,7 @@ backbone lets a consumer that was down catch up on the backlog it missed, and
 declarative deployment means re-applying the desired state is always a valid recovery
 move.
 
-The capstone runs on a single node, which makes recoverability both more visible and
+The final project runs on a single node, which makes recoverability both more visible and
 more demanding than a multi-node cluster would — a single node concentrates the failure
 modes that several nodes would spread out and absorb. Operating a long-lived
 single-node cluster well turns out to require real care: knowing when to let the

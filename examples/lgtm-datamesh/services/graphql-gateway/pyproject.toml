@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "graphql-gateway"
 version = "0.1.0"
-description = "Federated GraphQL read layer for the §17 capstone — orchestrates order (REST) + inventory (gRPC)"
+description = "Federated GraphQL read layer for the §17 final project — orchestrates order (REST) + inventory (gRPC)"
 authors = ["patterncatalyst"]
 readme = "README.md"
 package-mode = false

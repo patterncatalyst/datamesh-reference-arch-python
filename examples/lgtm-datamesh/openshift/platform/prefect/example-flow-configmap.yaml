@@ -9,7 +9,7 @@ metadata:
   namespace: datamesh
   labels:
     app.kubernetes.io/name: prefect-example-flow
-    app.kubernetes.io/part-of: capstone
+    app.kubernetes.io/part-of: datamesh
 data:
   flow.py: |
     """Tiny 2-task flow to prove the datamesh Prefect server+worker wiring

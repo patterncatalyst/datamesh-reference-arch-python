@@ -35,7 +35,7 @@ rm -rf "$STAGING"
 mkdir -p "$STAGING"
 
 step "Generating Python stubs"
-PROTO_FILE="$ROOT/proto/capstone/inventory/v1/inventory.proto"
+PROTO_FILE="$ROOT/proto/datamesh/inventory/v1/inventory.proto"
 OUT="$ROOT/$STAGING"
 if command -v buf >/dev/null 2>&1; then
     printf '    using buf\n'
@@ -61,7 +61,7 @@ else
       - dnf:           sudo dnf install pipx && pipx install grpcio-tools"
 fi
 
-[[ -d "$STAGING/capstone" ]] || fail "generation produced no capstone/ package in $STAGING"
+[[ -d "$STAGING/datamesh" ]] || fail "generation produced no datamesh/ package in $STAGING"
 
 step "Distributing stubs to services: ${SERVICES[*]}"
 for svc in "${SERVICES[@]}"; do
@@ -69,11 +69,11 @@ for svc in "${SERVICES[@]}"; do
     [[ -d "services/${svc}" ]] || fail "service dir services/${svc} not found"
     rm -rf "$dest"
     mkdir -p "$dest"
-    cp -r "$STAGING/capstone" "$dest/capstone"
+    cp -r "$STAGING/datamesh" "$dest/datamesh"
     # Add __init__.py at each package level so the tree is importable even
     # without relying on implicit namespace packages.
     find "$dest" -type d -exec sh -c 'touch "$1/__init__.py"' _ {} \;
-    printf '    ✓ %s\n' "$dest/capstone/inventory/v1/"
+    printf '    ✓ %s\n' "$dest/datamesh/inventory/v1/"
 done
 
 rm -rf "$STAGING"
@@ -82,8 +82,8 @@ step "Done"
 cat <<EOF
 
 Stubs written to:
-  services/inventory-service/gen/capstone/inventory/v1/
-  services/order-service/gen/capstone/inventory/v1/
+  services/inventory-service/gen/datamesh/inventory/v1/
+  services/order-service/gen/datamesh/inventory/v1/
 
 Each contains inventory_pb2.py (messages) and inventory_pb2_grpc.py
 (InventoryServiceServicer for the server, InventoryServiceStub for the client).

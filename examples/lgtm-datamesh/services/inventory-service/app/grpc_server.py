@@ -2,7 +2,7 @@
 
 The generated stubs live in the service's `gen/` tree (committed by
 scripts/gen-protos.sh, option b). We add that tree to sys.path so the
-package `capstone.inventory.v1` is importable both in the container
+package `datamesh.inventory.v1` is importable both in the container
 (/opt/app-root/src/gen) and locally (services/inventory-service/gen).
 
 The server runs in the same asyncio event loop as the FastAPI app, started
@@ -21,7 +21,7 @@ if _GEN not in sys.path:
     sys.path.insert(0, _GEN)
 
 import grpc  # noqa: E402
-from capstone.inventory.v1 import (  # noqa: E402
+from datamesh.inventory.v1 import (  # noqa: E402
     inventory_pb2,
     inventory_pb2_grpc,
 )

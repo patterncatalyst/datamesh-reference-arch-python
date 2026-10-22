@@ -1,21 +1,21 @@
-# postgres.yaml — OpenMetadata ingestion workflow: the capstone Postgres source.
+# postgres.yaml — OpenMetadata ingestion workflow: the datamesh Postgres source.
 #
 # Run by the openmetadata/ingestion image as `metadata ingest -c <this>`,
 # inside a one-off Kubernetes Job (CAP-022 chose Jobs over Airflow; CAP-023
-# packages them). This catalogs every service schema in the `capstone`
+# packages them). This catalogs every service schema in the `datamesh`
 # database — orders, notifications, and the other domain products — as Table
-# entities under a single Database Service named `capstone-postgres`.
+# entities under a single Database Service named `datamesh-postgres`.
 #
 # Two placeholders are substituted by the Job at runtime, NOT stored here:
-#   __PG_PASSWORD__  ← key `password` of the CNPG secret `capstone-postgres-app`
+#   __PG_PASSWORD__  ← key `password` of the CNPG secret `datamesh-postgres-app`
 #   __OM_JWT__       ← an admin bearer token the Job fetches in-cluster
 # Keeping them out of the file means no credential is committed to the repo or
 # baked into the ConfigMap.
 #
-# Connection facts (all verified against the capstone charts):
-#   * read-write Service  capstone-postgres-rw:5432
-#   * database            capstone
-#   * login role          capstone_app  (owns every service schema — CAP-003 —
+# Connection facts (all verified against the datamesh charts):
+#   * read-write Service  datamesh-postgres-rw:5432
+#   * database            datamesh
+#   * login role          datamesh_app  (owns every service schema — CAP-003 —
 #                          so one role reads them all)
 #
 # VERIFY-POINTS (OpenMetadata 2.0.5 connector schema; confirm at build time —
@@ -27,22 +27,22 @@
 
 source:
   type: postgres
-  serviceName: capstone-postgres
+  serviceName: datamesh-postgres
   serviceConnection:
     config:
       type: Postgres
-      username: capstone_app
+      username: datamesh_app
       authType:
         password: __PG_PASSWORD__
-      hostPort: capstone-postgres-rw:5432
-      database: capstone
+      hostPort: datamesh-postgres-rw:5432
+      database: datamesh
       sslMode: require
   sourceConfig:
     config:
       type: DatabaseMetadata
       # Ingest only the product schemas; skip Postgres' own system schemas.
       # (The `openmetadata` operational database is a separate database and is
-      # never reached because `database: capstone` scopes ingestion to one db —
+      # never reached because `database: datamesh` scopes ingestion to one db —
       # the catalog does not catalog itself.)
       schemaFilterPattern:
         excludes:

@@ -20,14 +20,14 @@
 
 set -uo pipefail
 
-PROFILE="capstone"; NS="capstone"
+PROFILE="datamesh"; NS="datamesh"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
 source "${ROOT}/demos/lib/endpoints.sh"
 source "${ROOT}/demos/lib/images.sh"
 source "${ROOT}/demos/lib/keda.sh"
-PG_RELEASE="capstone-postgres"; PG_CHART="charts/capstone/charts/postgres"
-KAFKA_RELEASE="capstone-kafka"; KAFKA_CHART="charts/capstone/charts/kafka"; KAFKA_CR="capstone-kafka"
-APICURIO_RELEASE="apicurio"; APICURIO_CHART="charts/capstone/charts/apicurio"
+PG_RELEASE="datamesh-postgres"; PG_CHART="charts/datamesh/charts/postgres"
+KAFKA_RELEASE="datamesh-kafka"; KAFKA_CHART="charts/datamesh/charts/kafka"; KAFKA_CR="datamesh-kafka"
+APICURIO_RELEASE="apicurio"; APICURIO_CHART="charts/datamesh/charts/apicurio"
 LOCAL_ORDER=$TP_ORDER; LOCAL_NOTIF=$TP_NOTIF   # 8080 order-service, 8083 notification-service
 PURGE_DB=0; [[ "${1:-}" == "--purge-db" ]] && PURGE_DB=1
 
@@ -59,12 +59,12 @@ check_received() {
 }
 
 # ── image guard ────────────────────────────────────────────────────────────
-step "Sanity: chart image.repository is capstone/<svc> with pullPolicy Never"
+step "Sanity: chart image.repository is datamesh/<svc> with pullPolicy Never"
 for svc in "${DEPLOY[@]}"; do
-    if chart_repo_ok "charts/capstone/charts/${svc}/values.yaml" "$svc"; then
+    if chart_repo_ok "charts/datamesh/charts/${svc}/values.yaml" "$svc"; then
         printf '    ✓ %s → %s\n' "$svc" "$(image_ref "$svc")"
     else
-        fail "${svc} chart must use image.repository capstone/${svc} with pullPolicy Never"
+        fail "${svc} chart must use image.repository datamesh/${svc} with pullPolicy Never"
     fi
 done
 minikube status -p "$PROFILE" >/dev/null 2>&1 || fail "profile '$PROFILE' not running"
@@ -100,7 +100,7 @@ done
 # ── deploy (notification rollout success == migration init container ran) ─────
 for svc in "${DEPLOY[@]}"; do
     step "Deploying ${svc}"
-    helm upgrade --install "$svc" "charts/capstone/charts/${svc}" -n "$NS" >/dev/null || fail "${svc} install failed"
+    helm upgrade --install "$svc" "charts/datamesh/charts/${svc}" -n "$NS" >/dev/null || fail "${svc} install failed"
     kubectl rollout status "deployment/${svc}" -n "$NS" --timeout=150s || fail "${svc} rollout failed"
 done
 printf '    ✓ notification-service rolled out — its `migrate` init container (alembic upgrade head) succeeded\n'
@@ -108,7 +108,7 @@ printf '    ✓ notification-service rolled out — its `migrate` init container
 # ── confirm the table exists (migration really created it) ────────────────────
 step "Verifying the notifications table exists in Postgres"
 PG_PRIMARY="$(kubectl get pods -n "$NS" -l "cnpg.io/cluster=${PG_RELEASE},cnpg.io/instanceRole=primary" -o jsonpath='{.items[0].metadata.name}')"
-TBL="$(kubectl exec -n "$NS" "$PG_PRIMARY" -c postgres -- psql -d capstone -tAqc \
+TBL="$(kubectl exec -n "$NS" "$PG_PRIMARY" -c postgres -- psql -d datamesh -tAqc \
     "select to_regclass('notifications.notifications')" 2>/dev/null || echo '')"
 [[ "$TBL" == "notifications.notifications" ]] || fail "notifications.notifications table not found (got: '${TBL}')"
 printf '    ✓ table notifications.notifications present\n'

@@ -66,7 +66,7 @@ permalink: /setup/
 
         <h3>inotify limits</h3>
         <p>
-            The capstone runs many controllers; Fedora's default 128
+            The final project runs many controllers; Fedora's default 128
             instances is not enough.
         </p>
 <pre><code>sudo sh -c 'printf "fs.inotify.max_user_instances = 512\nfs.inotify.max_user_watches = 524288\n" \
@@ -81,7 +81,7 @@ sudo sysctl -p /etc/sysctl.d/99-kubernetes.conf</code></pre>
     <div class="container" style="max-width: 42rem;">
         <h2 class="section-heading">Container engine</h2>
         <p>
-            The capstone runs on Docker Engine: native docker-ce on Linux,
+            The final project runs on Docker Engine: native docker-ce on Linux,
             with the daemon running and your user in the
             <code>docker</code> group. Install it from
             <a href="https://docs.docker.com/engine/install/" rel="noopener">docs.docker.com/engine/install</a>,
@@ -97,21 +97,21 @@ docker info</code></pre>
 
         <h3>VM-based engines</h3>
         <p>
-            The capstone scripts are supported on Fedora and RHEL hosts (bare metal
+            The final-project scripts are supported on Fedora and RHEL hosts (bare metal
             or VM). A VM-based engine such as Docker Desktop can provide the engine instead. It
             is an option, not a requirement. Its VM must be sized to at least 28 GB of memory;
             set <code>MINIKUBE_CPUS</code> and <code>MINIKUBE_MEMORY</code> to
             fit it, as described below.
         </p>
 
-        <h3>Upgrading from an earlier (rootless podman) capstone profile</h3> <!-- forbidden-ok -->
+        <h3>Upgrading from an earlier (rootless podman) datamesh profile</h3> <!-- forbidden-ok -->
         <p> <!-- forbidden-ok -->
             An earlier release created the profile with rootless podman. Delete that profile first, <!-- forbidden-ok -->
             then clear the setting, then run setup: <!-- forbidden-ok -->
         </p>
-<pre><code>MINIKUBE_ROOTLESS=true minikube delete -p capstone <!-- forbidden-ok -->
+<pre><code>MINIKUBE_ROOTLESS=true minikube delete -p datamesh <!-- forbidden-ok -->
 minikube config unset rootless <!-- forbidden-ok -->
-./scripts/setup-capstone-profile.sh</code></pre>
+./scripts/setup-datamesh-profile.sh</code></pre>
 
         <h3>Fitting minikube to the engine</h3>
         <p>
@@ -168,7 +168,7 @@ cp ~/.local/share/istio-current/bin/istioctl ~/.local/bin/</code></pre>
 
         <h3>Bring the whole system up</h3>
 <pre><code>cd examples/lgtm-datamesh
-./scripts/bootstrap-capstone.sh</code></pre>
+./scripts/bootstrap-datamesh.sh</code></pre>
         <p>
             Images are built with Docker Engine and loaded into the node with
             <code>minikube image load</code>; there is no registry. Bootstrap runs 10 tiers: minikube profile, Istio,
@@ -223,13 +223,13 @@ cp ~/.local/share/istio-current/bin/istioctl ~/.local/bin/</code></pre>
         <p>
             The tools run inside the cluster and are exposed as NodePort
             services published on <code>127.0.0.1</code> when the
-            <code>capstone</code> minikube profile is created. Nothing runs in
+            <code>datamesh</code> minikube profile is created. Nothing runs in
             the background and nothing needs starting per demo. Ports are
             fixed at creation; an older profile without them is refused by
-            <code>setup-capstone-profile.sh</code> and recreated with
-            <code>./scripts/setup-capstone-profile.sh --replace</code>.
+            <code>setup-datamesh-profile.sh</code> and recreated with
+            <code>./scripts/setup-datamesh-profile.sh --replace</code>.
             <code>--replace</code> deletes and recreates the cluster, so run
-            <code>./scripts/bootstrap-capstone.sh</code> again afterwards.
+            <code>./scripts/bootstrap-datamesh.sh</code> again afterwards.
             Run the workshop in isolation: shut down CRC, other minikube
             profiles, and other workloads first so the host ports are free.
             To see which endpoints are published and reachable:
@@ -260,7 +260,7 @@ cp ~/.local/share/istio-current/bin/istioctl ~/.local/bin/</code></pre>
         <p>
             Grafana default credentials are <code>admin</code> / the value
             from
-            <code>kubectl get secret grafana -n capstone -o jsonpath='{.data.admin-password}' | base64 -d</code>.
+            <code>kubectl get secret grafana -n datamesh -o jsonpath='{.data.admin-password}' | base64 -d</code>.
         </p>
     </div>
 </section>

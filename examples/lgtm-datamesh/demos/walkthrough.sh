@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# walkthrough.sh — the capstone's replayable presenter walkthrough (Phase E).
+# walkthrough.sh — the datamesh's replayable presenter walkthrough (Phase E).
 #
 # Five acts, each shelling out to an existing demo script with narration
 # between them. Presenter-driven: Enter to advance between acts so you control
@@ -22,7 +22,7 @@
 # (kedacore/http-add-on#1668) that blocked the interceptor path in v0.12.2 and
 # v0.14.0 was fixed upstream in v0.15.0; the KEDA HTTP add-on is now at v0.16.0
 # (setup-keda.sh). The trace act therefore wakes the gateway the real way — a
-# request through the interceptor (Host: graphql-gateway.capstone) over the
+# request through the interceptor (Host: graphql-gateway.datamesh) over the
 # published NodePort. It runs demo-trace-flow.sh.
 #
 # Usage:
@@ -37,12 +37,12 @@ set -uo pipefail
 # ─── Setup ───────────────────────────────────────────────────────────────────
 
 # resolve repo paths regardless of where this is invoked from, then cd to the
-# capstone root so the demo scripts see the relative paths they expect.
+# datamesh root so the demo scripts see the relative paths they expect.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CAPSTONE_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-cd "$CAPSTONE_ROOT"
+DATAMESH_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+cd "$DATAMESH_ROOT"
 
-NS="capstone"
+NS="datamesh"
 OBS_NS="observability"
 ISTIO_SYSTEM="istio-system"
 
@@ -63,7 +63,7 @@ PREFLIGHT=1
 
 usage() {
     cat <<'USAGE'
-walkthrough.sh — the capstone's five-act presenter walkthrough
+walkthrough.sh — the datamesh's five-act presenter walkthrough
 
   ./demos/walkthrough.sh                     # all five acts, Enter to advance
   ./demos/walkthrough.sh --only ACT          # run one act in isolation
@@ -180,9 +180,9 @@ preflight() {
     check "kubectl reachable" \
           "kubectl version --request-timeout=5s >/dev/null 2>&1" \
           "is the cluster up? try: ./scripts/cluster-up.sh"
-    check "capstone namespace exists" \
+    check "datamesh namespace exists" \
           "ns_exists $NS" \
-          "run the full bring-up: ./scripts/bootstrap-capstone.sh"
+          "run the full bring-up: ./scripts/bootstrap-datamesh.sh"
 
     if want_act trace || want_act lineage || want_act topology; then
         check "Tempo Ready" \
@@ -198,10 +198,10 @@ preflight() {
         # the request through the interceptor wakes it.
         check "graphql-gateway Deployment exists" \
               "kubectl -n $NS get deploy graphql-gateway >/dev/null 2>&1" \
-              "helm upgrade --install graphql-gateway charts/capstone/charts/graphql-gateway -n $NS   (or re-run bootstrap-capstone.sh)"
+              "helm upgrade --install graphql-gateway charts/datamesh/charts/graphql-gateway -n $NS   (or re-run bootstrap-datamesh.sh)"
         check "graphql-gateway Service exists" \
               "kubectl -n $NS get svc graphql-gateway >/dev/null 2>&1" \
-              "kubectl -n $NS get svc graphql-gateway   (or re-run bootstrap-capstone.sh)"
+              "kubectl -n $NS get svc graphql-gateway   (or re-run bootstrap-datamesh.sh)"
     fi
     if want_act trace || want_act canary || want_act topology; then
         check "Prometheus Ready" \
@@ -224,12 +224,12 @@ preflight() {
               "./scripts/setup-openmetadata.sh"
         check "OpenMetadata ingestion has run (catalog populated)" \
               "kubectl get job -n $NS om-ingest-postgres om-ingest-kafka om-declare-lineage --no-headers 2>/dev/null | wc -l | grep -q '^3$'" \
-              "./scripts/ingest-openmetadata.sh   (or re-run bootstrap-capstone.sh, which now does this)"
+              "./scripts/ingest-openmetadata.sh   (or re-run bootstrap-datamesh.sh, which now does this)"
     fi
     if want_act topology; then
         check "Kiali Ready (CAP-042)" \
               "ready_by_label $ISTIO_SYSTEM 'app.kubernetes.io/name=kiali'" \
-              "./scripts/setup-kiali.sh   (or re-run bootstrap-capstone.sh, which now does this)"
+              "./scripts/setup-kiali.sh   (or re-run bootstrap-datamesh.sh, which now does this)"
     fi
 
     if (( fail > 0 )); then
@@ -271,7 +271,7 @@ prompt_enter "press Enter to start"
 # Drive one GraphQL query through the gateway and confirm the fan-out trace
 # (graphql-gateway → order-service REST → inventory gRPC) lands in Tempo. The
 # gateway is KEDA-scaled-to-zero and woken the REAL way — a request routed
-# through the KEDA HTTP interceptor (Host: graphql-gateway.capstone) over the
+# through the KEDA HTTP interceptor (Host: graphql-gateway.datamesh) over the
 # published NodePort. This act IS demos/demo-trace-flow.sh.
 
 if want_act trace; then
@@ -280,7 +280,7 @@ if want_act trace; then
     narrate "we drive a single query through graphql-gateway"
     narrate "the resolver makes a REST call to order-service and a gRPC call to inventory-service"
     narrate "all three spans land in Tempo, stitched by a shared trace id"
-    info "entry path: the KEDA HTTP interceptor wakes the gateway from zero (Host: graphql-gateway.capstone)"
+    info "entry path: the KEDA HTTP interceptor wakes the gateway from zero (Host: graphql-gateway.datamesh)"
     info "underlying script: demos/demo-trace-flow.sh"
     prompt_enter "press Enter to run"
     run_act "trace" ./demos/demo-trace-flow.sh || exit 1
@@ -311,7 +311,7 @@ fi
 if want_act canary; then
     if ! kubectl get deployment order-service -n "$NS" >/dev/null 2>&1; then
         info "order-service not deployed — restoring for canary act"
-        helm upgrade --install order-service charts/capstone/charts/order-service -n "$NS" >/dev/null
+        helm upgrade --install order-service charts/datamesh/charts/order-service -n "$NS" >/dev/null
         kubectl rollout status deploy/order-service -n "$NS" --timeout=120s >/dev/null
     fi
 fi
@@ -357,13 +357,13 @@ fi
 if want_act topology; then
     act_header "topology" "Live mesh topology in Kiali" \
       "Kiali's traffic graph is the live view of the mesh: products, the edges between them, and — if the canary is up — the split rendered as parallel paths."
-    narrate "first, confirm Kiali itself is healthy and sees the capstone namespace"
+    narrate "first, confirm Kiali itself is healthy and sees the datamesh namespace"
     info "underlying script: demos/demo-kiali.sh"
     prompt_enter "press Enter to verify Kiali"
     run_act "topology (smoke)" ./demos/demo-kiali.sh || exit 1
 
     narrate "Kiali is already published on 127.0.0.1 (./scripts/show-endpoints.sh)"
-    info "  http://127.0.0.1:20001/kiali   (Graph → namespace: capstone)"
+    info "  http://127.0.0.1:20001/kiali   (Graph → namespace: datamesh)"
 
     narrate "to make EDGES appear in the graph, generate some traffic:"
     info "  in another shell:  for i in {1..40}; do ./demos/demo-trace-flow.sh >/dev/null; done"

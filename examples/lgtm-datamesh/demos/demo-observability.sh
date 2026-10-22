@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
 # demo-observability.sh — verify the metrics stack (r29, CAP-027) is actually
-# working: Prometheus is up and scraping (kube-state-metrics gives us capstone
+# working: Prometheus is up and scraping (kube-state-metrics gives us datamesh
 # workload metrics; the Istio series exists), and Grafana is up with the
-# capstone dashboard provisioned.
+# datamesh dashboard provisioned.
 #
 # This checks the PLUMBING, not pretty graphs — it confirms the data is flowing
 # so the dashboard has something to draw. Run the scaling/canary demos to make
@@ -61,15 +61,15 @@ step "Checking the Prometheus endpoint ($PROM_PORT → prometheus-server)"
 ensure_endpoint prometheus
 wait_http "http://127.0.0.1:${PROM_PORT}/-/ready" 15 || true
 
-step "Confirming kube-state-metrics gives us capstone workload replicas"
-# kube_deployment_spec_replicas for capstone deployments proves both that
+step "Confirming kube-state-metrics gives us datamesh workload replicas"
+# kube_deployment_spec_replicas for datamesh deployments proves both that
 # kube-state-metrics is up AND that Prometheus is scraping it. This is the series
 # the dashboard's scaling panel draws.
 PROM_Q="http://127.0.0.1:${PROM_PORT}/api/v1/query"
-result="$(curl -sG "$PROM_Q" --data-urlencode 'query=kube_deployment_spec_replicas{namespace="capstone"}' 2>/dev/null)"
+result="$(curl -sG "$PROM_Q" --data-urlencode 'query=kube_deployment_spec_replicas{namespace="datamesh"}' 2>/dev/null)"
 printf '%s' "$result" | grep -q '"result":\[{' \
-    || fail "Prometheus returned no kube_deployment_spec_replicas for namespace=capstone (is kube-state-metrics scraping? are the services deployed?)"
-printf '    ✓ Prometheus has capstone replica metrics (kube-state-metrics scraping)\n'
+    || fail "Prometheus returned no kube_deployment_spec_replicas for namespace=datamesh (is kube-state-metrics scraping? are the services deployed?)"
+printf '    ✓ Prometheus has datamesh replica metrics (kube-state-metrics scraping)\n'
 
 step "Confirming the Istio request series is present (order-service is meshed)"
 # The series should EXIST even at 0 req/s once the sidecar has reported once.
@@ -97,10 +97,10 @@ printf '%s' "$health" | grep -q '"database": *"ok"' \
 GRAF_USER="$(kubectl get secret grafana -n "$NS" -o jsonpath='{.data.admin-user}' 2>/dev/null | base64 -d)"
 GRAF_PASS="$(kubectl get secret grafana -n "$NS" -o jsonpath='{.data.admin-password}' 2>/dev/null | base64 -d)"
 code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 \
-    -u "${GRAF_USER}:${GRAF_PASS}" "http://127.0.0.1:${GRAF_PORT}/api/dashboards/uid/capstone-scaling" 2>/dev/null)"
+    -u "${GRAF_USER}:${GRAF_PASS}" "http://127.0.0.1:${GRAF_PORT}/api/dashboards/uid/datamesh-scaling" 2>/dev/null)"
 [[ "$code" == "200" ]] \
-    || fail "Grafana dashboard 'capstone-scaling' not provisioned (HTTP $code from the dashboards API)"
-printf '    ✓ Grafana healthy and the "Capstone — Scaling & Traffic" dashboard is provisioned\n'
+    || fail "Grafana dashboard 'datamesh-scaling' not provisioned (HTTP $code from the dashboards API)"
+printf '    ✓ Grafana healthy and the "Datamesh — Scaling & Traffic" dashboard is provisioned\n'
 
 step "SUCCESS"
 printf 'Metrics stack verified. Open the dashboard and drive a demo to watch it move:\n'

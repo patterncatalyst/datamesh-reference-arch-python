@@ -79,7 +79,7 @@ the workload.
 What's verified to work end to end:
 
 - **Host:** Fedora 44 with native Docker Engine (docker-ce) as the container runtime
-- **Memory:** 64 GB RAM (the `capstone` minikube profile uses 24 GB; the
+- **Memory:** 64 GB RAM (the `datamesh` minikube profile uses 24 GB; the
   rest is host headroom for IDEs, browsers, and host services)
 - **Disk:** 1 TB total, with about 100 GB free under the Docker data root (/var/lib/docker) for image cache and persistent
   volumes
@@ -106,7 +106,7 @@ or an engine that cannot be given that much memory.
 
 ```bash
 cd examples/lgtm-datamesh
-./scripts/bootstrap-capstone.sh
+./scripts/bootstrap-datamesh.sh
 ```
 
 Ten steps; ~25 minutes on a warm cache, longer on the first run while
@@ -147,7 +147,7 @@ The high-level map of the repo:
   document the current demo state including any deferred upstream issues.
 - **`_plans/`** is decision-log and reconciliation tracking. Active
   decisions live in `_plans/decisions.md` (DRA-001 forward); historical
-  decisions from when this lived as the §17 capstone of
+  decisions from when this lived as the §17 final project of
   `minikube-on-fedora` are preserved at `_plans/archive/` for the audit
   trail.
 
@@ -163,6 +163,6 @@ runnable examples that match existing patterns are welcome as direct PRs.
 
 If you're proposing a non-minikube runtime (e.g. EKS or OpenShift
 local), the most useful contribution is a sibling to
-`examples/lgtm-datamesh/scripts/bootstrap-capstone.sh` that does the
+`examples/lgtm-datamesh/scripts/bootstrap-datamesh.sh` that does the
 runtime-specific setup, plus a `README.md` documenting any deltas. The
 existing bootstrap can serve as the template.

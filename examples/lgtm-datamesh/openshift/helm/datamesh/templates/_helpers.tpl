@@ -1,9 +1,9 @@
 {{/*
 Common labels applied to every object, following the k8s recommended label set
-the charts/capstone subcharts already use (app.kubernetes.io/part-of: capstone).
+the charts/datamesh subcharts already use (app.kubernetes.io/part-of: datamesh).
 */}}
 {{- define "datamesh.labels" -}}
-app.kubernetes.io/part-of: capstone
+app.kubernetes.io/part-of: datamesh
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
 {{- end -}}

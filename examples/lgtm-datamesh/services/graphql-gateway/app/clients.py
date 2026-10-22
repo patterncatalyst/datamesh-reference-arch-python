@@ -2,10 +2,10 @@
 
 The gateway federates by *calling* the services it composes:
   - order-service over REST (httpx)
-  - inventory-service over gRPC (the committed capstone.inventory.v1 stubs)
+  - inventory-service over gRPC (the committed datamesh.inventory.v1 stubs)
 
 The gRPC stubs live in the gateway's committed `gen/` tree (option b,
-CAP-013); we add it to sys.path so `capstone.inventory.v1` imports in the
+CAP-013); we add it to sys.path so `datamesh.inventory.v1` imports in the
 container and locally.
 
 This is exactly where the protocol comparison (CAP-012) becomes concrete:
@@ -24,7 +24,7 @@ if _GEN not in sys.path:
 
 import grpc  # noqa: E402
 import httpx  # noqa: E402
-from capstone.inventory.v1 import (  # noqa: E402
+from datamesh.inventory.v1 import (  # noqa: E402
     inventory_pb2,
     inventory_pb2_grpc,
 )

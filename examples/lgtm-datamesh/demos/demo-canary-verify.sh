@@ -19,7 +19,7 @@
 #   ./demos/demo-canary-verify.sh
 #
 # Prerequisites:
-#   - capstone profile running, kubectl context = capstone
+#   - datamesh profile running, kubectl context = datamesh
 #   - scripts/setup-istio.sh has run (Istio installed, namespace injection on)
 #   - order-service (v1) deployed via the umbrella chart WITH the r26 selector
 #     (version=v1). If the live Deployment predates r26, this smoke detects the
@@ -31,8 +31,8 @@
 
 set -uo pipefail
 
-NS="capstone"
-PROFILE="capstone"
+NS="datamesh"
+PROFILE="datamesh"
 ISTIO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../istio" && pwd)"
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/endpoints.sh"
 LOCAL_PORT="$TP_INGRESS"
@@ -99,7 +99,7 @@ kubectl get deployment istiod -n istio-system >/dev/null 2>&1 \
     || fail "Istio not installed — run scripts/setup-istio.sh first"
 kubectl get deployment order-service -n "$NS" >/dev/null 2>&1 \
     || fail "order-service (v1) not deployed — install it first:
-       helm upgrade --install order-service charts/capstone/charts/order-service -n $NS"
+       helm upgrade --install order-service charts/datamesh/charts/order-service -n $NS"
 
 # Selector migration check (r26 immutability): v1 Deployment must select version=v1.
 SEL_VERSION="$(kubectl get deployment order-service -n "$NS" \
@@ -107,7 +107,7 @@ SEL_VERSION="$(kubectl get deployment order-service -n "$NS" \
 if [[ "$SEL_VERSION" != "v1" ]]; then
     fail "order-service Deployment predates r26 (selector lacks version=v1). One-time migration:
        kubectl delete deployment order-service -n $NS
-       helm upgrade --install order-service charts/capstone/charts/order-service -n $NS
+       helm upgrade --install order-service charts/datamesh/charts/order-service -n $NS
      then re-run this smoke. (Deployment selectors are immutable, so v1 must be recreated.)"
 fi
 printf '    ✓ v1 selector carries version=v1\n'
@@ -142,7 +142,7 @@ apply_weights 90 10
 step "Checking the published istio-ingressgateway endpoint (host ${LOCAL_PORT})"
 ensure_endpoint ingress
 wait_http "${GW}/version" 30 \
-    || fail "ingress gateway not reachable on ${GW} (run ./scripts/show-endpoints.sh; if the port is missing, ./scripts/setup-capstone-profile.sh --replace, which deletes the cluster; re-run ./scripts/bootstrap-capstone.sh afterwards)"
+    || fail "ingress gateway not reachable on ${GW} (run ./scripts/show-endpoints.sh; if the port is missing, ./scripts/setup-datamesh-profile.sh --replace, which deletes the cluster; re-run ./scripts/bootstrap-datamesh.sh afterwards)"
 
 step "Driving ${REQUESTS} requests at the 90/10 split"
 measure_split "90/10" 1 30      # ~10 expected; generous band for 100 samples

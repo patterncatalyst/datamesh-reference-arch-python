@@ -17,14 +17,14 @@
 
 set -uo pipefail
 
-PROFILE="capstone"; NS="capstone"
+PROFILE="datamesh"; NS="datamesh"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
 source "${ROOT}/demos/lib/endpoints.sh"
 source "${ROOT}/demos/lib/images.sh"
-PG_RELEASE="capstone-postgres"; PG_CHART="charts/capstone/charts/postgres"
-KAFKA_RELEASE="capstone-kafka"; KAFKA_CHART="charts/capstone/charts/kafka"; KAFKA_CR="capstone-kafka"
-APICURIO_RELEASE="apicurio"; APICURIO_CHART="charts/capstone/charts/apicurio"
-PROTO_PATH="proto/capstone/inventory/v1/inventory.proto"
+PG_RELEASE="datamesh-postgres"; PG_CHART="charts/datamesh/charts/postgres"
+KAFKA_RELEASE="datamesh-kafka"; KAFKA_CHART="charts/datamesh/charts/kafka"; KAFKA_CR="datamesh-kafka"
+APICURIO_RELEASE="apicurio"; APICURIO_CHART="charts/datamesh/charts/apicurio"
+PROTO_PATH="proto/datamesh/inventory/v1/inventory.proto"
 GROUP="default"
 LOCAL_ORDER=$TP_ORDER; LOCAL_GW=$TP_GATEWAY; LOCAL_APIC=$TP_APICURIO   # 8080 order, 8081 gateway-via-interceptor, 8084 apicurio
 PURGE_DB=0; [[ "${1:-}" == "--purge-db" ]] && PURGE_DB=1
@@ -45,12 +45,12 @@ fail() {
 }
 
 # ── image guard ────────────────────────────────────────────────────────────
-step "Sanity: chart image.repository is capstone/<svc> with pullPolicy Never"
+step "Sanity: chart image.repository is datamesh/<svc> with pullPolicy Never"
 for svc in "${DEPLOY[@]}"; do
-    if chart_repo_ok "charts/capstone/charts/${svc}/values.yaml" "$svc"; then
+    if chart_repo_ok "charts/datamesh/charts/${svc}/values.yaml" "$svc"; then
         printf '    ✓ %s → %s\n' "$svc" "$(image_ref "$svc")"
     else
-        fail "${svc} chart must use image.repository capstone/${svc} with pullPolicy Never"
+        fail "${svc} chart must use image.repository datamesh/${svc} with pullPolicy Never"
     fi
 done
 [[ -f "$PROTO_PATH" ]] || fail "proto not found at ${PROTO_PATH} — run ./scripts/gen-protos.sh? (the .proto is committed)"
@@ -86,7 +86,7 @@ done
 (( pg_ready )) || fail "Postgres primary did not become Ready"
 for svc in "${DEPLOY[@]}"; do
     step "Deploying ${svc}"
-    helm upgrade --install "$svc" "charts/capstone/charts/${svc}" -n "$NS" >/dev/null || fail "${svc} install failed"
+    helm upgrade --install "$svc" "charts/datamesh/charts/${svc}" -n "$NS" >/dev/null || fail "${svc} install failed"
     kubectl rollout status "deployment/${svc}" -n "$NS" --timeout=120s || fail "${svc} rollout failed"
 done
 

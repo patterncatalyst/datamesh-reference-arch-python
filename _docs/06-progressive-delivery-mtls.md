@@ -21,7 +21,7 @@ Data products evolve. A product that can never change its contract is a product 
 will build on for long — but a product that changes its contract *carelessly* breaks
 every consumer downstream. This page is about evolving safely: shifting traffic
 gradually between an old and a new version of a product's contract, with the service
-mesh both routing the split and securing the traffic. It's also where the capstone
+mesh both routing the split and securing the traffic. It's also where the final project
 makes an architectural decision that the rest of the set has been alluding to —
 to mesh **selectively** rather than meshing everything — and explains why, from
 experience.
@@ -31,7 +31,7 @@ experience.
 ## Canarying a contract, not just a binary
 
 The interesting thing to canary in a data mesh isn't a new build of the same service —
-it's a new version of the *contract*. This capstone takes order-service through a
+it's a new version of the *contract*. This final project takes order-service through a
 v1→v2 change: v2 adds a `currency` field to the order response, the canonical
 "evolve the contract without breaking clients" move. v1 keeps serving the old shape; v2
 serves the new one; and Istio splits live traffic between them by weight, so you can
@@ -60,7 +60,7 @@ This was verified end to end: with the split set to 90/10, a run of 100 requests
 the expected band, both subsets healthy in the mesh. The contract evolved in the open,
 under controlled traffic, exactly as the pattern intends.
 
-![The capstone's mesh in canary mode — sidecars beside each product, mTLS between them, weights moving traffic from v1 to v2]({{ '/assets/diagrams/17-service-mesh.svg' | relative_url }})
+![The final project's mesh in canary mode — sidecars beside each product, mTLS between them, weights moving traffic from v1 to v2]({{ '/assets/diagrams/17-service-mesh.svg' | relative_url }})
 
 ## mTLS without code changes
 
@@ -78,7 +78,7 @@ Here's the architectural choice this page exists to make, and it runs against th
 convenient default. Istio offers a one-label switch — mark a namespace
 `istio-injection=enabled` and *every* pod created in it gets a sidecar automatically.
 It's tempting: one label, whole-namespace mTLS, nothing to think about per workload.
-The capstone's position, learned the hard way, is that namespace-wide injection is the
+The final project's position, learned the hard way, is that namespace-wide injection is the
 wrong default for a mesh that contains more than just mesh-appropriate services — and
 that you should instead opt specific workloads *into* the mesh.
 
@@ -108,7 +108,7 @@ a job, or anything else — workloads that have nothing to do with the mesh are 
 coupled to its health.
 
 Selective injection contains that blast radius: only the
-workloads that actually need the mesh depend on it. So the capstone meshes the services
+workloads that actually need the mesh depend on it. So the final project meshes the services
 that participate in mesh-managed traffic — the ones doing the canary, the ones that
 benefit from mTLS and traffic management — and keeps the database, the batch jobs, and
 other operator-managed infrastructure *out* of the mesh by opting them out explicitly.
@@ -116,7 +116,7 @@ other operator-managed infrastructure *out* of the mesh by opting them out expli
 The trade-off is real:
 namespace-wide injection is simpler to reason about and gives blanket mTLS
 with one label, while selective injection is more work to configure and means you have
-to decide, per workload, whether it belongs in the mesh. The capstone takes that
+to decide, per workload, whether it belongs in the mesh. The final project takes that
 configuration cost in exchange for resilience and correctness — because the failures
 above aren't hypothetical, they're what happens otherwise.
 

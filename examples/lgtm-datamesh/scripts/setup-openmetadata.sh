@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #
 # setup-openmetadata.sh — deploy OpenMetadata (the data catalog) into the
-# capstone cluster, lean single-node shape (CAP-022).
+# datamesh cluster, lean single-node shape (CAP-022).
 #
 # What this does, in order:
 #   1. Provisions a dedicated `openmetadata` database + login role inside the
-#      EXISTING capstone-postgres (CloudNativePG) cluster — OpenMetadata reuses
+#      EXISTING datamesh-postgres (CloudNativePG) cluster — OpenMetadata reuses
 #      our Postgres as its backend rather than standing up a separate MySQL.
 #   2. Creates the Kubernetes Secret holding that role's password, which the
 #      OpenMetadata server chart reads.
@@ -17,9 +17,9 @@
 # releases. Idempotent — re-running upgrades in place and re-provisions safely.
 #
 # Prerequisites:
-#   * capstone profile running, kubectl context = capstone
+#   * datamesh profile running, kubectl context = datamesh
 #   * CloudNativePG operator installed (./setup-postgres-operator.sh) AND the
-#     capstone-postgres Cluster already bootstrapped (the postgres subchart;
+#     datamesh-postgres Cluster already bootstrapped (the postgres subchart;
 #     e.g. after a smoke that deploys Postgres). This script provisions INTO
 #     that running cluster.
 #
@@ -34,9 +34,9 @@ set -euo pipefail
 
 # ─── Configuration ───────────────────────────────────────────────────────────
 
-NS="capstone"
+NS="datamesh"
 OM_CHART_VERSION="2.0.5"           # pin both deps and server to this release
-PG_CLUSTER="capstone-postgres"     # the CloudNativePG Cluster name (postgres subchart)
+PG_CLUSTER="datamesh-postgres"     # the CloudNativePG Cluster name (postgres subchart)
 
 OM_DB="openmetadata"               # dedicated database for OpenMetadata's own store
 OM_ROLE="openmetadata"             # login role that owns it
@@ -69,9 +69,9 @@ for f in "$DEPS_VALUES" "$APP_VALUES"; do
 done
 
 current_context=$(kubectl config current-context 2>/dev/null || echo "")
-if [[ "$current_context" != "capstone" ]]; then
-    printf 'WARNING: current kubectl context is "%s", not "capstone".\n' "$current_context" >&2
-    printf 'Switch with: kubectl config use-context capstone\n' >&2
+if [[ "$current_context" != "datamesh" ]]; then
+    printf 'WARNING: current kubectl context is "%s", not "datamesh".\n' "$current_context" >&2
+    printf 'Switch with: kubectl config use-context datamesh\n' >&2
     printf 'Continue anyway? [y/N] ' >&2
     read -r answer
     [[ "$answer" =~ ^[Yy] ]] || exit 1
@@ -79,7 +79,7 @@ fi
 
 # Confirm the Postgres cluster is present and has a primary, since we provision
 # into it. The CNPG operator labels the primary pod cnpg.io/instanceRole=primary.
-printf '==> Locating the capstone-postgres primary\n'
+printf '==> Locating the datamesh-postgres primary\n'
 PG_PRIMARY="$(kubectl get pods -n "$NS" \
     -l "cnpg.io/cluster=${PG_CLUSTER},cnpg.io/instanceRole=primary" \
     -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")"
@@ -87,7 +87,7 @@ if [[ -z "$PG_PRIMARY" ]]; then
     printf 'ERROR: no primary pod for CloudNativePG cluster "%s" in namespace "%s".\n' \
         "$PG_CLUSTER" "$NS" >&2
     printf 'Install the operator (./setup-postgres-operator.sh) and bring up the\n' >&2
-    printf 'capstone-postgres Cluster (e.g. run a smoke that deploys Postgres) first.\n' >&2
+    printf 'datamesh-postgres Cluster (e.g. run a smoke that deploys Postgres) first.\n' >&2
     exit 1
 fi
 printf '    primary: %s\n' "$PG_PRIMARY"
@@ -147,7 +147,7 @@ helm upgrade --install openmetadata-dependencies open-metadata/openmetadata-depe
     --values "$DEPS_VALUES" \
     --wait --timeout 10m
 
-printf '==> Installing the OpenMetadata server (backend = capstone Postgres)\n'
+printf '==> Installing the OpenMetadata server (backend = datamesh Postgres)\n'
 helm upgrade --install openmetadata open-metadata/openmetadata \
     --namespace "$NS" \
     --version "$OM_CHART_VERSION" \

@@ -3,7 +3,7 @@
 {{- if $svc.route }}
 ---
 # OpenShift Route — the platform-native ingress. Replaces the NodePort
-# scheme charts/capstone/charts/<svc>/values.yaml's `service.nodePort` uses on
+# scheme charts/datamesh/charts/<svc>/values.yaml's `service.nodePort` uses on
 # minikube (NodePorts published to 127.0.0.1 at profile creation); on OpenShift,
 # Routes: the cluster's router (the
 # `ingress` cluster operator) gives this Service a real external hostname,

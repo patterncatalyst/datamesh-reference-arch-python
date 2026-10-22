@@ -3,14 +3,14 @@
 # verify-grafana.sh — automated test that all Grafana dashboards, datasources,
 # and panels are provisioned correctly.
 #
-# Run from examples/lgtm-datamesh/ with the capstone profile's published
+# Run from examples/lgtm-datamesh/ with the datamesh profile's published
 # NodePorts available (Grafana on http://127.0.0.1:3000):
 #   ./demos/verify-grafana.sh
 
 set -uo pipefail
 
 GRAFANA="http://127.0.0.1:3000"
-PASS="capstone"
+PASS="datamesh"
 AUTH="admin:${PASS}"
 
 step() { printf '\n==> %s\n' "$1"; }
@@ -66,19 +66,19 @@ else
     fail "No dashboards found"
 fi
 
-if echo "$dashboards" | python3 -c 'import sys,json; ds=json.load(sys.stdin); sys.exit(0 if any("capstone" in d.get("title","").lower() or "scaling" in d.get("title","").lower() for d in ds) else 1)' 2>/dev/null; then
-    ok "Capstone — Scaling & Traffic dashboard found"
+if echo "$dashboards" | python3 -c 'import sys,json; ds=json.load(sys.stdin); sys.exit(0 if any("datamesh" in d.get("title","").lower() or "scaling" in d.get("title","").lower() for d in ds) else 1)' 2>/dev/null; then
+    ok "Datamesh — Scaling & Traffic dashboard found"
 else
-    fail "Capstone — Scaling & Traffic dashboard missing"
+    fail "Datamesh — Scaling & Traffic dashboard missing"
 fi
 
 # ── 4. Panel verification ───────────────────────────────────────────────────
-step "Panel verification (Capstone — Scaling & Traffic)"
+step "Panel verification (Datamesh — Scaling & Traffic)"
 
-dash_detail="$(curl -4 -fsS --max-time 5 -u "$AUTH" "${GRAFANA}/api/dashboards/uid/capstone-scaling" 2>/dev/null)"
+dash_detail="$(curl -4 -fsS --max-time 5 -u "$AUTH" "${GRAFANA}/api/dashboards/uid/datamesh-scaling" 2>/dev/null)"
 
 if [[ -z "$dash_detail" ]] || echo "$dash_detail" | grep -q '"message"'; then
-    fail "Could not fetch dashboard capstone-scaling"
+    fail "Could not fetch dashboard datamesh-scaling"
 else
     panel_count="$(echo "$dash_detail" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(len(d.get("dashboard",{}).get("panels",[])))' 2>/dev/null)"
     if [[ "$panel_count" -ge 2 ]]; then

@@ -188,7 +188,7 @@ Before committing, weigh data size, organizational complexity,
 existing tooling, and culture, and be willing to conclude that a full mesh isn't the
 right fit — or that only some of its principles are.
 
-*In this build:* the capstone is a *learning* implementation — a small,
+*In this build:* the final project is a *learning* implementation — a small,
 runnable mesh that makes the principles concrete. It's sized to teach the shape, not
 to argue that every reader should run a mesh in production.
 

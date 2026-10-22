@@ -15,8 +15,8 @@
 # Known issues:
 # - Strimzi 1.x accepts ONLY the kafka.strimzi.io/v1 API; v1beta2
 #   custom resources are rejected. Kafka 3.x and ZooKeeper are gone, so
-#   Kafka CRs pin a 4.x version (the capstone uses 4.3.1, KRaft + KafkaNodePool)
-# - Strimzi 1.2 needs a recent Kubernetes; the capstone profile pins
+#   Kafka CRs pin a 4.x version (the final project uses 4.3.1, KRaft + KafkaNodePool)
+# - Strimzi 1.2 needs a recent Kubernetes; the datamesh profile pins
 #   v1.36.5, so we're fine
 # - The Cluster Operator can occasionally get stuck in a NotReady state
 #   on first install — if `helm install --wait` times out, check

@@ -19,9 +19,9 @@
 set -uo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/endpoints.sh"
 
-NS="capstone"
+NS="datamesh"
 OBS_NS="observability"
-HOST="graphql-gateway.capstone"
+HOST="graphql-gateway.datamesh"
 PROXY_SVC="keda-add-ons-http-interceptor-proxy"
 GQL_PORT="$TP_GATEWAY"
 TEMPO_PORT="$TP_TEMPO"
@@ -44,7 +44,7 @@ kubectl get svc tempo -n "$OBS_NS" >/dev/null 2>&1 \
 kubectl get deploy graphql-gateway -n "$NS" \
     -o jsonpath='{.spec.template.spec.containers[0].env[*].name}' 2>/dev/null \
     | grep -q OTEL_EXPORTER_OTLP_ENDPOINT \
-    || fail "graphql-gateway has no OTEL_* env — deploy the r29c chart (helm upgrade --install graphql-gateway charts/capstone/charts/graphql-gateway -n $NS) and rebuild its image"
+    || fail "graphql-gateway has no OTEL_* env — deploy the r29c chart (helm upgrade --install graphql-gateway charts/datamesh/charts/graphql-gateway -n $NS) and rebuild its image"
 printf '    ✓ interceptor, Tempo, and OTEL-enabled gateway present\n'
 
 # ─── Drive a GraphQL query through the interceptor ───────────────────────────

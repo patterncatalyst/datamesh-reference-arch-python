@@ -34,9 +34,9 @@ a field gets renamed, a type changes, and a consumer three domains away breaks w
 warning. The mesh's answer is to give every contract a versioned home in a single
 registry, regardless of its format.
 
-![Each service's contract surface — OpenAPI, Protobuf, schema, SDL]({{ '/assets/diagrams/17-capstone-contracts.svg' | relative_url }})
+![Each service's contract surface — OpenAPI, Protobuf, schema, SDL]({{ '/assets/diagrams/17-final-project-contracts.svg' | relative_url }})
 
-This capstone uses **Apicurio** as that registry, holding all four contract types as
+This final project uses **Apicurio** as that registry, holding all four contract types as
 their native artifacts: the event schemas, the gRPC Protobuf definitions, the REST
 OpenAPI documents, and the gateway's GraphQL SDL. One registry, every contract — so
 there's a single place to ask "what is this product's shape, and what version am I
@@ -47,7 +47,7 @@ depending on?"
 Here's the distinction that makes the registry more than a documentation folder, and
 it's worth getting clear because the two jobs have very different coupling.
 
-![How a contract flows — the runtime path versus the discovery path]({{ '/assets/diagrams/17-capstone-contract-flow.svg' | relative_url }})
+![How a contract flows — the runtime path versus the discovery path]({{ '/assets/diagrams/17-final-project-contract-flow.svg' | relative_url }})
 
 ### Runtime contracts
 
@@ -81,7 +81,7 @@ ultimately came from. That's the catalog's job.
 
 ![Contracts in the registry, discovery and lineage in the catalog]({{ '/assets/diagrams/17-contracts-registry-catalog.svg' | relative_url }})
 
-This capstone layers **OpenMetadata** on top as the catalog. It ingests from the
+This final project layers **OpenMetadata** on top as the catalog. It ingests from the
 registry (the contracts), from the database (the schemas each domain owns), and from
 the event backbone (the topics), and assembles the picture a consumer actually needs:
 the products that exist, their schemas, their owners, and — crucially — their

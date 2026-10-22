@@ -1,6 +1,6 @@
 {{- $dns := include "datamesh.dns" . -}}
 # Single-broker KRaft Kafka (no ZooKeeper). Plain StatefulSet — NOT the
-# Strimzi `Kafka`/`KafkaNodePool` CRs charts/capstone/charts/kafka/ uses, since
+# Strimzi `Kafka`/`KafkaNodePool` CRs charts/datamesh/charts/kafka/ uses, since
 # the Strimzi operator isn't assumed to be installed on the target OpenShift
 # cluster. Preserves the modernization appendix's live-apply fixes:
 # publishNotReadyAddresses (a single KRaft node must resolve its own
@@ -11,7 +11,7 @@
 # datamesh-infra (nonroot-v2) so uid 1000 is permitted on OpenShift.
 #
 # KAFKA_AUTO_CREATE_TOPICS_ENABLE=true stands in for the Strimzi KafkaTopic CR
-# (charts/capstone/charts/kafka/templates/topic.yaml) — order-service's first
+# (charts/datamesh/charts/kafka/templates/topic.yaml) — order-service's first
 # publish to `{{ .Values.kafka.topic }}` creates it.
 apiVersion: v1
 kind: Service
@@ -50,7 +50,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: kafka
-        app.kubernetes.io/part-of: capstone
+        app.kubernetes.io/part-of: datamesh
     spec:
       serviceAccountName: {{ .Values.infra.serviceAccountName }}
       securityContext:

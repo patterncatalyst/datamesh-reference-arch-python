@@ -5,7 +5,7 @@
 # (consumer group `notification-service`) and persists a notification per order.
 # This makes it an "elastic data product" — KEDA polls the group's lag and runs
 # exactly as many consumers as the backlog warrants, down to ZERO when the topic
-# is quiet. The §12 Kafka pattern, now applied to a capstone data product.
+# is quiet. The §12 Kafka pattern, now applied to a datamesh data product.
 #
 # Scale-to-zero works because KEDA reads lag directly from Kafka (committed
 # offset vs. log-end offset for the group) even when no consumer is running, so
@@ -20,7 +20,7 @@ apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: notification-service-scaler
-  namespace: capstone
+  namespace: datamesh
 spec:
   scaleTargetRef:
     name: notification-service        # the Deployment KEDA scales
@@ -33,9 +33,9 @@ spec:
       metadata:
         # FQDN, not the short name: the KEDA operator runs in the `keda`
         # namespace and resolves DNS relative to ITS namespace, so the short
-        # `capstone-kafka-kafka-bootstrap` (which works from inside `capstone`)
+        # `datamesh-kafka-kafka-bootstrap` (which works from inside `datamesh`)
         # fails with "no such host". The fully-qualified name always resolves.
-        bootstrapServers: capstone-kafka-kafka-bootstrap.capstone.svc.cluster.local:9092
+        bootstrapServers: datamesh-kafka-kafka-bootstrap.datamesh.svc.cluster.local:9092
         consumerGroup: notification-service
         topic: order-placed
         lagThreshold: "5"             # one replica per 5 messages of lag

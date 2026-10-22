@@ -10,7 +10,7 @@
 #   * the server answers its version API (proves it booted AND reached its
 #     Postgres backend — OpenMetadata won't serve without a working DB)
 #   * the version it reports is the pinned 2.0.5
-#   * the dedicated `openmetadata` database really exists in capstone-postgres
+#   * the dedicated `openmetadata` database really exists in datamesh-postgres
 #     and was populated by the server's migrations (sanity that Postgres reuse,
 #     not bundled MySQL, is what's backing it)
 #
@@ -19,7 +19,7 @@
 #   ./demos/demo-openmetadata.sh
 #
 # Prerequisites:
-#   - capstone profile running, kubectl context = capstone
+#   - datamesh profile running, kubectl context = datamesh
 #   - scripts/setup-openmetadata.sh has been run (OpenMetadata installed)
 
 set -uo pipefail   # NOT -e: failures are handled explicitly so we can diagnose
@@ -27,9 +27,9 @@ set -uo pipefail   # NOT -e: failures are handled explicitly so we can diagnose
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/endpoints.sh"
 
-NS="capstone"
-PROFILE="capstone"
-PG_CLUSTER="capstone-postgres"
+NS="datamesh"
+PROFILE="datamesh"
+PG_CLUSTER="datamesh-postgres"
 OM_DB="openmetadata"
 EXPECTED_VERSION="2.0.5"
 LOCAL_PORT="$TP_OM"
@@ -39,7 +39,7 @@ step() { printf '\n==> %s\n' "$1"; }
 
 dump_diagnostics() {
     step "DIAGNOSTIC DUMP (failure — resources left in place for inspection)"
-    printf '\n--- pods (capstone) ---\n'
+    printf '\n--- pods (datamesh) ---\n'
     kubectl get pods -n "$NS" -o wide 2>&1
     local pod
     pod=$(kubectl get pods -n "$NS" -l app.kubernetes.io/name=openmetadata \
@@ -100,7 +100,7 @@ step "Confirming the openmetadata database exists in ${PG_CLUSTER} and was popul
 PG_PRIMARY="$(kubectl get pods -n "$NS" \
     -l "cnpg.io/cluster=${PG_CLUSTER},cnpg.io/instanceRole=primary" \
     -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")"
-[[ -n "$PG_PRIMARY" ]] || fail "no capstone-postgres primary pod found"
+[[ -n "$PG_PRIMARY" ]] || fail "no datamesh-postgres primary pod found"
 
 # The server's migrations create many tables in the openmetadata database.
 # A non-zero count proves Postgres reuse is the live backend.

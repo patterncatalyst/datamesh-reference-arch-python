@@ -1,6 +1,6 @@
 {{- $root := . -}}
 # Apicurio Registry 3 — schema/contract registry (CAP-018). Port of
-# charts/capstone/charts/apicurio/, dropping the minikube NodePort
+# charts/datamesh/charts/apicurio/, dropping the minikube NodePort
 # scheme for a ClusterIP Service + Route. No storage env: the apicurio-registry
 # 3.x image defaults to the in-memory variant (order-service re-registers the
 # order.placed Avro schema on each restart, which is harmless for a demo).
@@ -20,7 +20,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: apicurio
-        app.kubernetes.io/part-of: capstone
+        app.kubernetes.io/part-of: datamesh
     spec:
       containers:
         - name: apicurio
@@ -34,7 +34,7 @@ spec:
             limits:   { memory: 1Gi }
           # startupProbe gives the Quarkus JVM ample time to boot (up to ~150s)
           # before liveness/readiness begin. TCP probe avoids guessing the
-          # health path (same as charts/capstone/charts/apicurio/).
+          # health path (same as charts/datamesh/charts/apicurio/).
           startupProbe:
             tcpSocket: { port: http }
             periodSeconds: 5

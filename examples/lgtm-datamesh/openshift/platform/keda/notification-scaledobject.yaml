@@ -4,7 +4,7 @@
 # Ported from examples/lgtm-datamesh/keda/notification-scaledobject.yaml
 # (the minikube/Strimzi version). The ScaledObject spec is identical KEDA
 # API (keda.sh/v1alpha1) — only the target names change:
-#   * namespace:        datamesh   (not capstone)
+#   * namespace:        datamesh   (not datamesh)
 #   * scaleTargetRef:    Deployment `notification-service` — same name, created
 #     by openshift/helm/datamesh/templates/app-deployment.yaml (the `services`
 #     map in values.yaml ranges over service names 1:1 into Deployment names).

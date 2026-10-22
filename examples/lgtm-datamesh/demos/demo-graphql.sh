@@ -6,7 +6,7 @@
 #
 # Flow:
 #   1. confirm committed gRPC stubs exist for the gateway
-#   2. sanity: charts use local capstone/<svc> images
+#   2. sanity: charts use local datamesh/<svc> images
 #   3. build + load inventory-service, order-service, graphql-gateway
 #   4. ensure Postgres Ready; deploy all three
 #   5. place an in-stock order via order-service REST to get an order id
@@ -18,11 +18,11 @@
 
 set -uo pipefail
 
-PROFILE="capstone"; NS="capstone"
+PROFILE="datamesh"; NS="datamesh"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
 source "${ROOT}/demos/lib/endpoints.sh"
 source "${ROOT}/demos/lib/images.sh"
-PG_RELEASE="capstone-postgres"; PG_CHART="charts/capstone/charts/postgres"
+PG_RELEASE="datamesh-postgres"; PG_CHART="charts/datamesh/charts/postgres"
 LOCAL_ORDER=$TP_ORDER; LOCAL_GQL=$TP_GATEWAY   # 8080 order-service, 8081 gateway via KEDA interceptor
 PURGE_DB=0; [[ "${1:-}" == "--purge-db" ]] && PURGE_DB=1
 
@@ -43,23 +43,23 @@ fail() {
 # ── 1. stubs present (gateway needs the inventory client stubs) ───────────────
 step "Checking for committed gRPC stubs"
 for svc in inventory-service order-service graphql-gateway; do
-    [[ -f "services/${svc}/gen/capstone/inventory/v1/inventory_pb2_grpc.py" ]] \
+    [[ -f "services/${svc}/gen/datamesh/inventory/v1/inventory_pb2_grpc.py" ]] \
         || fail "missing stubs for ${svc} — run ./scripts/gen-protos.sh"
 done
 printf '    ✓ stubs present\n'
 
 # ── 2. image-name guard ──────────────────────────────────────────────────
-step "Sanity: chart image.repository is capstone/<svc> with pullPolicy Never"
+step "Sanity: chart image.repository is datamesh/<svc> with pullPolicy Never"
 for svc in "${SERVICES[@]}"; do
-    if chart_repo_ok "charts/capstone/charts/${svc}/values.yaml" "$svc"; then
+    if chart_repo_ok "charts/datamesh/charts/${svc}/values.yaml" "$svc"; then
         printf '    ✓ %s → %s\n' "$svc" "$(image_ref "$svc")"
     else
-        fail "${svc} chart must use image.repository capstone/${svc} with pullPolicy Never"
+        fail "${svc} chart must use image.repository datamesh/${svc} with pullPolicy Never"
     fi
 done
 
 # ── 3. build + load all three ─────────────────────────────────────────────────
-minikube status -p "$PROFILE" >/dev/null 2>&1 || fail "profile '$PROFILE' not running — ./scripts/setup-capstone-profile.sh"
+minikube status -p "$PROFILE" >/dev/null 2>&1 || fail "profile '$PROFILE' not running — ./scripts/setup-datamesh-profile.sh"
 kubectl config use-context "$PROFILE" >/dev/null
 for svc in "${SERVICES[@]}"; do
     step "Building + loading ${svc}"
@@ -82,7 +82,7 @@ done
 
 for svc in inventory-service order-service graphql-gateway; do
     step "Deploying ${svc}"
-    helm upgrade --install "$svc" "charts/capstone/charts/${svc}" -n "$NS" || fail "${svc} install failed"
+    helm upgrade --install "$svc" "charts/datamesh/charts/${svc}" -n "$NS" || fail "${svc} install failed"
     kubectl rollout status "deployment/${svc}" -n "$NS" --timeout=120s || fail "${svc} rollout failed"
 done
 
@@ -91,7 +91,7 @@ step "Checking endpoints: order-service (${LOCAL_ORDER}) + gateway via the KEDA 
 ensure_endpoint order
 wait_http "http://127.0.0.1:${LOCAL_ORDER}/" 20 || true
 # graphql-gateway is KEDA-scaled-to-zero; wake it the real way — a request driven
-# through the HTTP interceptor (Host: graphql-gateway.capstone) — not a client-side forward.
+# through the HTTP interceptor (Host: graphql-gateway.datamesh) — not a client-side forward.
 wake_gateway "$NS" || printf '    ⚠ gateway not Available yet — will retry on the query\n'
 
 step "Placing an in-stock order (WIDGET-001 x2) via order-service REST"
@@ -113,7 +113,7 @@ for attempt in 1 2 3 4 5; do
         -H 'Content-Type: application/json' \
         -d "$GQL_QUERY")" && break
     # The gateway is KEDA-scaled-to-zero and reached THROUGH the HTTP interceptor
-    # (Host: graphql-gateway.capstone). A cold start — or a scale-down between the
+    # (Host: graphql-gateway.datamesh). A cold start — or a scale-down between the
     # rollout gate and this query — can 502 the first attempts; re-wake and retry.
     printf '    query attempt %d failed — waking the gateway through the interceptor and retrying\n' "$attempt"
     wake_gateway "$NS" || true

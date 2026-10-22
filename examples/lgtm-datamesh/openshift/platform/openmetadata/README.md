@@ -30,8 +30,8 @@ footnotes.
   `AIRFLOW_PASSWORD` env var needs to exist (see the file's own comment); the
   value is never read since pipelines are disabled.
 - `route.yaml` — edge Route to the server Service, port 8585.
-- `ingestion-job.yaml` — ConfigMap + Job that ingests the `capstone` Postgres
-  database's schemas (via the existing `datamesh-postgres-app` / `capstone_app`
+- `ingestion-job.yaml` — ConfigMap + Job that ingests the `datamesh` Postgres
+  database's schemas (via the existing `datamesh-postgres-app` / `datamesh_app`
   credential — a different database/role than OpenMetadata's own backend
   above), giving the catalog at least one asset.
 
@@ -46,7 +46,7 @@ footnotes.
   password — update both if that script's password ever changes.
 - Namespace `datamesh` and the `datamesh-postgres-app` Secret must already
   exist (they do — part of the verified core); `ingestion-job.yaml` uses that
-  existing credential to read the `capstone` app database.
+  existing credential to read the `datamesh` app database.
 
 ## Install order
 

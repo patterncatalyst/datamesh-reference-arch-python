@@ -25,7 +25,7 @@ Before running anything, verify these four prerequisites:
 2. **inotify limits** — raised above Fedora defaults
 3. **Tooling** — minikube >= 1.39.0, kubectl 1.36, helm, istioctl 1.31.1 + full Istio
    distribution (see [Required tooling](#required-tooling))
-4. **Bootstrap** — `./scripts/bootstrap-capstone.sh`
+4. **Bootstrap** — `./scripts/bootstrap-datamesh.sh`
 
 Once that's green, the presenter walkthrough exercises end-to-end
 behavior across five acts (trace, scale, canary, lineage, topology):
@@ -43,7 +43,7 @@ examples/lgtm-datamesh/
 ├── README.md                ← this file
 ├── README.archive.md        ← the original capstone-era README
 ├── charts/                  ← helm charts for every component
-│   └── capstone/            ← umbrella chart
+│   └── datamesh/            ← umbrella chart
 ├── scripts/                 ← bootstrap, setup-* helpers per component,
 │                              restore-baseline, teardown
 ├── proto/                   ← protobuf definitions for the gRPC services
@@ -73,13 +73,13 @@ RAM-constrained.
 | Requirement | Minimum | Notes |
 |-------------|---------|-------|
 | OS | Fedora 44 | Docker Engine (docker-ce) as the container runtime |
-| RAM | 64 GB | the `capstone` minikube profile uses 24 GB; rest is host headroom |
+| RAM | 64 GB | the `datamesh` minikube profile uses 24 GB; rest is host headroom |
 | Disk | 1 TB | about 100 GB free under the Docker data root (`/var/lib/docker`) |
 | CPU | 16 vCPU recommended | not strictly required but the stack is heavy |
 
 ### Container engine & host tuning
 
-The capstone runs on **Docker Engine** (native docker-ce). The
+The datamesh stack runs on **Docker Engine** (native docker-ce). The
 scripts are supported on Fedora and RHEL hosts (bare metal or VM). A VM-based
 engine such as Docker Desktop also works if its VM is sized for the node; it
 is never required.
@@ -88,22 +88,22 @@ Start flags: `--driver=docker --container-runtime=containerd
 host.
 Podman: used only by the optional OpenShift (CRC) appendix. <!-- forbidden-ok -->
 
-**Upgrading from an earlier (rootless podman) capstone profile.** <!-- forbidden-ok -->
+**Upgrading from an earlier (rootless podman) datamesh profile.** <!-- forbidden-ok -->
 Delete the old profile first, then clear the setting, then run setup: <!-- forbidden-ok -->
 
 ```bash
-MINIKUBE_ROOTLESS=true minikube delete -p capstone   # forbidden-ok
+MINIKUBE_ROOTLESS=true minikube delete -p datamesh   # forbidden-ok
 minikube config unset rootless                        # forbidden-ok
-./scripts/setup-capstone-profile.sh
+./scripts/setup-datamesh-profile.sh
 ```
 
 Profile sizing defaults can be overridden before bootstrap:
 
 ```bash
-MINIKUBE_CPUS=16 MINIKUBE_MEMORY=24g MINIKUBE_DISK=80g ./scripts/bootstrap-capstone.sh
+MINIKUBE_CPUS=16 MINIKUBE_MEMORY=24g MINIKUBE_DISK=80g ./scripts/bootstrap-datamesh.sh
 ```
 
-**inotify limits.** The capstone runs many controllers; Fedora's default
+**inotify limits.** The datamesh stack runs many controllers; Fedora's default
 of 128 instances is not enough:
 
 ```bash
@@ -146,7 +146,7 @@ The bootstrap script audits all prerequisites before doing any work.
 Bring the whole system up on a fresh minikube profile:
 
 ```bash
-./scripts/bootstrap-capstone.sh
+./scripts/bootstrap-datamesh.sh
 ```
 
 Bootstrap runs 10 tiers: minikube profile (images are then built and loaded with
@@ -181,7 +181,7 @@ between them. Press Enter to advance.
 ### Individual demos
 
 All demos assume you are in the `examples/lgtm-datamesh/` directory with
-kubectl context set to `capstone`.
+kubectl context set to `datamesh`.
 
 | Script | What it demonstrates | Principle | Tutorial page |
 |--------|---------------------|-----------|---------------|
@@ -212,12 +212,12 @@ kubectl context set to `capstone`.
 
 ### Observing the results
 
-Host access uses NodePorts published on `127.0.0.1` when the `capstone`
+Host access uses NodePorts published on `127.0.0.1` when the `datamesh`
 minikube profile is created (`--ports=127.0.0.1:<hostPort>:<nodePort>`,
 built from `demos/lib/endpoints.sh`). Nothing runs in the background and
 nothing needs to be started per demo. Ports are fixed at creation, so an
-older profile without them is refused by `scripts/setup-capstone-profile.sh`;
-recreate it with `./scripts/setup-capstone-profile.sh --replace`. `--replace` deletes and recreates the cluster, so run `./scripts/bootstrap-capstone.sh` again afterwards. Run the
+older profile without them is refused by `scripts/setup-datamesh-profile.sh`;
+recreate it with `./scripts/setup-datamesh-profile.sh --replace`. `--replace` deletes and recreates the cluster, so run `./scripts/bootstrap-datamesh.sh` again afterwards. Run the
 workshop in isolation: shut down CRC, other minikube profiles, and other
 workloads first so the host ports are free.
 
@@ -239,7 +239,7 @@ Default credentials:
 
 | Tool | User | Password |
 |------|------|----------|
-| Grafana | `admin` | `capstone` |
+| Grafana | `admin` | `datamesh` |
 | OpenMetadata | `admin@open-metadata.org` | `admin` |
 
 ## Restoring baseline
@@ -264,7 +264,7 @@ state.
   the same prerequisites as above, formatted for the web.
 - The [demo & example reference](/demos/) page — every demo mapped to
   its data-mesh principle with descriptions and source links.
-- The historical decision log (`_plans/archive/capstone-decisions.md`
+- The historical decision log (`_plans/archive/final-project-decisions.md`
   at the repo root) — every architectural choice from CAP-001 through
   CAP-047 with rationale and rejected alternatives.
 - The active decision log (`_plans/decisions.md` at the repo root) —

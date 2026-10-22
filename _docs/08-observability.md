@@ -57,7 +57,7 @@ the traffic flowing between products — and a Prometheus that scrapes them gets
 detailed picture of inter-product traffic without a single line of metrics code in the
 services.
 
-This capstone leans on exactly that: the metrics half of observability adds
+This final project leans on exactly that: the metrics half of observability adds
 *nothing* to the application code, because the mesh is already measuring the traffic it
 carries. Grafana then turns those metrics into the dashboards you'd actually watch —
 the gateway's request volume rising, KEDA spinning up replicas in response, the canary's
@@ -76,7 +76,7 @@ Distributed tracing assigns a request an identity that propagates as it crosses 
 boundaries, so the work each product does on its behalf becomes a connected tree of
 **spans** — one request, many products, one trace.
 
-This capstone collects traces in Tempo and instruments the **gateway** as the trace
+This final project collects traces in Tempo and instruments the **gateway** as the trace
 source. The gateway is the entry point for the federated
 read path, so a single GraphQL query there produces the most instructive trace there is
 in this system: an HTTP server span for the query itself, a REST client span for the
@@ -118,7 +118,7 @@ split and all.
 
 None of these is the system — they're the *instruments* through which you
 understand a system too distributed for any single vantage point to capture. That's the
-acceptance bar the capstone is built toward: not just that the mesh runs, but that you
+acceptance bar the final project is built toward: not just that the mesh runs, but that you
 can watch it run — see a request thread across products, see a product scale to meet
 demand, see a contract roll out version by version, and see where every product's data
 came from.

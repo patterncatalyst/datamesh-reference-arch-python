@@ -3,7 +3,7 @@
 # Reuses the core datamesh Postgres instance (openshift/helm/datamesh/templates/postgres.yaml,
 # Service `postgres`) rather than bundling a second Postgres — see
 # decisions.md DRA-013. The `prefect` database + a DEDICATED `prefect` login
-# role (NOT the shared `capstone_app` role the core app secret uses) are
+# role (NOT the shared `datamesh_app` role the core app secret uses) are
 # provisioned by ../install-platform.sh's `provision_prefect_db` — confirmed
 # by reading that script directly (PREFECT_DB=PREFECT_ROLE="prefect",
 # PREFECT_PASSWORD="prefect", a hardcoded demo value, same caveat as
@@ -29,7 +29,7 @@ metadata:
   namespace: datamesh
   labels:
     app.kubernetes.io/name: prefect-server
-    app.kubernetes.io/part-of: capstone
+    app.kubernetes.io/part-of: datamesh
 spec:
   replicas: 1
   selector:
@@ -39,7 +39,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: prefect-server
-        app.kubernetes.io/part-of: capstone
+        app.kubernetes.io/part-of: datamesh
     spec:
       containers:
         - name: prefect-server

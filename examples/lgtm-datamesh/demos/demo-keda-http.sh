@@ -19,12 +19,12 @@
 
 set -uo pipefail
 
-NS="capstone"
-PROFILE="capstone"
+NS="datamesh"
+PROFILE="datamesh"
 KEDA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../keda" && pwd)"
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/endpoints.sh"
 SEL="app.kubernetes.io/name=graphql-gateway"
-HOST="graphql-gateway.capstone"
+HOST="graphql-gateway.datamesh"
 LOCAL_PORT="$TP_GATEWAY"
 PROXY_SVC="keda-add-ons-http-interceptor-proxy"
 declare -a LOAD_PIDS=()
@@ -65,7 +65,7 @@ for t in kubectl curl; do command -v "$t" >/dev/null || fail "$t not in PATH"; d
 kubectl get svc "$PROXY_SVC" -n keda >/dev/null 2>&1 \
     || fail "KEDA HTTP add-on not installed (no $PROXY_SVC in keda ns) — run scripts/setup-keda.sh"
 kubectl get deployment graphql-gateway -n "$NS" >/dev/null 2>&1 \
-    || fail "graphql-gateway not deployed — helm upgrade --install graphql-gateway charts/capstone/charts/graphql-gateway -n $NS"
+    || fail "graphql-gateway not deployed — helm upgrade --install graphql-gateway charts/datamesh/charts/graphql-gateway -n $NS"
 
 step "Applying the HTTPScaledObject"
 kubectl apply -f "$KEDA_DIR/gateway-httpscaledobject.yaml" >/dev/null \

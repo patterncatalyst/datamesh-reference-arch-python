@@ -5,10 +5,10 @@ Phase A part 2. The review-service data product references products by `sku` —
 the identifier the inventory domain owns — so we connect them in OpenMetadata
 with a single directed edge:
 
-    capstone-postgres.capstone.inventory.stock   (Table, inventory-service)
+    datamesh-postgres.datamesh.inventory.stock   (Table, inventory-service)
         │  referenced by
         ▼
-    capstone-postgres.capstone.reviews.reviews    (Table, review-service)
+    datamesh-postgres.datamesh.reviews.reviews    (Table, review-service)
 
 This is kept SEPARATE from the permanent lineage.py (which declares the
 orders -> order-placed -> notifications spine) because review-service is a
@@ -37,8 +37,8 @@ import urllib.request
 HOST = os.environ.get("OM_HOST", "http://openmetadata:8585")
 TOKEN = os.environ.get("OM_JWT", "")
 
-PRODUCTS_FQN = "capstone-postgres.capstone.inventory.stock"
-REVIEWS_FQN = "capstone-postgres.capstone.reviews.reviews"
+PRODUCTS_FQN = "datamesh-postgres.datamesh.inventory.stock"
+REVIEWS_FQN = "datamesh-postgres.datamesh.reviews.reviews"
 
 
 def _headers() -> dict:

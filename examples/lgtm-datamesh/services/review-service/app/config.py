@@ -1,8 +1,8 @@
 """Configuration for review-service, sourced from environment variables.
 
 In-cluster, the Postgres connection comes from the CloudNativePG-generated
-Secret (`capstone-postgres-app`), surfaced as env vars by the helm subchart.
-Locally, the defaults allow running against a local Postgres (e.g. `docker run --rm -p 127.0.0.1:5432:5432 -e POSTGRES_USER=capstone_app -e POSTGRES_PASSWORD=changeme -e POSTGRES_DB=capstone postgres:16`).
+Secret (`datamesh-postgres-app`), surfaced as env vars by the helm subchart.
+Locally, the defaults allow running against a local Postgres (e.g. `docker run --rm -p 127.0.0.1:5432:5432 -e POSTGRES_USER=datamesh_app -e POSTGRES_PASSWORD=changeme -e POSTGRES_DB=datamesh postgres:16`).
 """
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -18,9 +18,9 @@ class Settings(BaseSettings):
     # Postgres connection. In-cluster these come from the CNPG app Secret.
     pg_host: str = "127.0.0.1"
     pg_port: int = 5432
-    pg_user: str = "capstone_app"
+    pg_user: str = "datamesh_app"
     pg_password: str = "changeme"
-    pg_database: str = "capstone"
+    pg_database: str = "datamesh"
 
     # Server
     host: str = "0.0.0.0"

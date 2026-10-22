@@ -16,7 +16,7 @@ metadata:
   namespace: datamesh
   labels:
     app.kubernetes.io/name: prefect-worker
-    app.kubernetes.io/part-of: capstone
+    app.kubernetes.io/part-of: datamesh
 spec:
   replicas: 1
   selector:
@@ -26,7 +26,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: prefect-worker
-        app.kubernetes.io/part-of: capstone
+        app.kubernetes.io/part-of: datamesh
     spec:
       containers:
         - name: prefect-worker

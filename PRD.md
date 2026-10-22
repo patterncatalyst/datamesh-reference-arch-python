@@ -233,7 +233,7 @@ end to end. Specifically:
 The reference ships ONE runnable example tree at
 `examples/lgtm-datamesh/`. Principal entry points:
 
-- **`scripts/bootstrap-capstone.sh`** — brings the whole system up on a
+- **`scripts/bootstrap-datamesh.sh`** — brings the whole system up on a
   fresh minikube profile in ten steps. Each step has a success criterion
   printed; the script stops on first failure with a fix hint.
 - **`demos/walkthrough.sh`** — the five-act presenter walkthrough that
@@ -325,7 +325,7 @@ schema registry, OpenMetadata, Prometheus, Tempo, Grafana, Kiali.
 Version pins live in the bootstrap and setup scripts; the reconciliation
 file tracks any deferred upgrades.
 
-The historical decision log at `_plans/archive/capstone-decisions.md`
+The historical decision log at `_plans/archive/final-project-decisions.md`
 captures every version choice with rationale.
 
 ---
@@ -345,7 +345,7 @@ captures every version choice with rationale.
 ## 11. Timeline and milestones
 
 This reference was extracted from
-`patterncatalyst/minikube-on-fedora`'s §17 capstone as of that repo's r28
+`patterncatalyst/minikube-on-fedora`'s §17 final project as of that repo's r28
 (June 2026). The original build's milestones (CAP-001 through CAP-047)
 are preserved in `_plans/archive/`. Forward milestones for this repo are
 tracked in `_plans/decisions.md` starting from DRA-001 (the extraction
@@ -375,8 +375,8 @@ itself).
 ## 13. Decision log pointer
 
 Active decisions live in `_plans/decisions.md`, numbered from DRA-001.
-Historical decisions from the capstone era live in
-`_plans/archive/capstone-decisions.md`, numbered CAP-001 through CAP-047.
+Historical decisions from the final-project era live in
+`_plans/archive/final-project-decisions.md`, numbered CAP-001 through CAP-047.
 The two series are deliberately distinct to keep the audit trail
 unambiguous.
 

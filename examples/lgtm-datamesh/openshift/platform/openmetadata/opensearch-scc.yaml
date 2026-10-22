@@ -24,7 +24,7 @@ metadata:
   namespace: datamesh
   labels:
     app.kubernetes.io/name: openmetadata-opensearch
-    app.kubernetes.io/part-of: capstone
+    app.kubernetes.io/part-of: datamesh
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -33,7 +33,7 @@ metadata:
   namespace: datamesh
   labels:
     app.kubernetes.io/name: openmetadata-opensearch
-    app.kubernetes.io/part-of: capstone
+    app.kubernetes.io/part-of: datamesh
 subjects:
   - kind: ServiceAccount
     name: openmetadata-opensearch

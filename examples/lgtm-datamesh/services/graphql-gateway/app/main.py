@@ -1,4 +1,4 @@
-"""graphql-gateway — the §17 capstone's federated read layer.
+"""graphql-gateway — the §17 final project's federated read layer.
 
 r24 scope: a single Strawberry GraphQL endpoint that composes reads across
 services — order-service (REST) and inventory-service (gRPC) — into one
@@ -28,7 +28,7 @@ from app.schema import schema
 app = FastAPI(
     title="graphql-gateway",
     version="0.1.0",
-    description="Federated GraphQL read layer for the §17 capstone (gateway orchestration).",
+    description="Federated GraphQL read layer for the §17 final project (gateway orchestration).",
 )
 
 graphql_app = GraphQLRouter(schema)

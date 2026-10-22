@@ -1,0 +1,60 @@
+# inventory-service subchart values.
+
+replicas: 1
+
+image:
+  # Image is loaded into the node by build-image.sh (minikube image load); no registry.
+  repository: datamesh/inventory-service
+  tag: v1
+  # Never: images are loaded into the node by build-image.sh (minikube image load) and never pulled; build-image.sh restarts the Deployment so a rebuilt :v1 is used.
+  pullPolicy: Never
+
+# http exposed as NodePort 30087, published on 127.0.0.1:8087 at profile
+# creation (map: demos/lib/endpoints.sh); gRPC stays in-cluster only.
+service:
+  type: NodePort
+  port: 80
+  targetPort: 8080
+  nodePort: 30087
+  # gRPC (r23): InventoryService.CheckStock
+  grpcPort: 50051
+
+# Postgres connection. The CloudNativePG operator generates a Secret named
+# "<cluster>-app" holding the app user's credentials; we reference it by key.
+postgres:
+  clusterName: datamesh-postgres
+  appSecret: datamesh-postgres-app
+  schema: inventory
+
+tracing:
+  enabled: true
+  otlpEndpoint: http://tempo.observability.svc.cluster.local:4318
+  otlpProtocol: http/protobuf
+  serviceName: inventory-service
+  sampleRatio: "1.0"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 192Mi
+  limits:
+    memory: 512Mi
+
+# /health is liveness; /healthz is readiness (checks Postgres).
+probes:
+  # r28: startupProbe gates liveness/readiness until the app has finished booting.
+  # Python services (imports + gRPC channels + schema build) can take 10-30s; a 5s
+  # liveness initialDelay was killing them mid-boot (and the gateway OOM-looped at
+  # 256Mi). 30 x 2s = 60s startup grace.
+  startup:
+    path: /health
+    failureThreshold: 30
+    periodSeconds: 2
+  liveness:
+    path: /health
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  readiness:
+    path: /healthz
+    initialDelaySeconds: 5
+    periodSeconds: 5

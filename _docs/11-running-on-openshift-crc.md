@@ -18,7 +18,7 @@ By the end of this chapter you can:
 ## Why this matters
 
 [Chapter 3]({{ '/docs/02-kubernetes-substrate/' | relative_url }}) built the case for
-Kubernetes as the mesh's substrate and brought the capstone up on minikube via Helm —
+Kubernetes as the mesh's substrate and brought the final project up on minikube via Helm —
 NodePorts published to loopback, a local image registry. That's a real deployment, and
 everything in the reading set up to the [summary]({{ '/docs/10-summary/' | relative_url }})
 assumes it. But "deploy it to Kubernetes" and "deploy it to OpenShift" are not the same
@@ -40,7 +40,7 @@ built to the three constraints OpenShift imposes, plus the build/push/deploy seq
 that gets it running.
 
 One scoping note up front, visible in the chart's own `Chart.yaml`: this is the **live
-core** of the capstone — the seven services, Postgres, Kafka, and Apicurio — not the
+core** of the final project — the seven services, Postgres, Kafka, and Apicurio — not the
 full minikube stack. OpenMetadata, Prefect, the LGTM observability stack, KEDA
 autoscaling, and the Istio mesh are out of this chart *by default*. A
 later section of this appendix, "The full platform tier, live," brings all five of
@@ -188,7 +188,7 @@ the hood.
 
 ### 2. Routes, not published NodePorts
 
-The minikube path this capstone uses elsewhere in the reading set exposes services via
+The minikube path this final project uses elsewhere in the reading set exposes services via
 NodePorts published to `127.0.0.1` when the profile is created, because minikube has no
 cluster-native router. OpenShift has one built in: a `Route` object hands a Service a
 real external hostname, served by the cluster's router, with nothing to publish on the

@@ -1,4 +1,4 @@
-# grafana-values.yaml — lean Grafana for the capstone (r29, CAP-027). Provisions
+# grafana-values.yaml — lean Grafana for the datamesh (r29, CAP-027). Provisions
 # the Prometheus datasource and one dashboard whose top panel is the whole point
 # of this section: desired vs ready replicas over time, so the KEDA scaling you
 # triggered in the demos becomes something you can actually watch (including the
@@ -7,12 +7,12 @@
 # Reach it after install with:
 #   NodePort 30300, published on 127.0.0.1:3000 at profile creation
 #   (map: demos/lib/endpoints.sh)
-#   open http://127.0.0.1:3000     (admin / capstone)
+#   open http://127.0.0.1:3000     (admin / datamesh)
 #
 # A Tempo datasource for traces is added in r29b.
 
 adminUser: admin
-adminPassword: capstone           # demo only — not a real secret
+adminPassword: datamesh           # demo only — not a real secret
 
 persistence:
   enabled: false                  # dashboards are provisioned from config, not saved state
@@ -55,22 +55,22 @@ dashboardProviders:
   dashboardproviders.yaml:
     apiVersion: 1
     providers:
-      - name: capstone
+      - name: datamesh
         orgId: 1
-        folder: Capstone
+        folder: Datamesh
         type: file
         disableDeletion: false
         editable: true
         options:
-          path: /var/lib/grafana/dashboards/capstone
+          path: /var/lib/grafana/dashboards/datamesh
 
 dashboards:
-  capstone:
+  datamesh:
     scaling:
       json: |
         {
-          "uid": "capstone-scaling",
-          "title": "Capstone — Scaling & Traffic",
+          "uid": "datamesh-scaling",
+          "title": "Datamesh — Scaling & Traffic",
           "schemaVersion": 39,
           "version": 1,
           "editable": true,
@@ -100,13 +100,13 @@ dashboards:
                 {
                   "refId": "A",
                   "datasource": { "type": "prometheus", "uid": "prometheus" },
-                  "expr": "kube_deployment_spec_replicas{namespace=\"capstone\", deployment=~\"graphql-gateway|notification-service\"}",
+                  "expr": "kube_deployment_spec_replicas{namespace=\"datamesh\", deployment=~\"graphql-gateway|notification-service\"}",
                   "legendFormat": "{{deployment}} desired"
                 },
                 {
                   "refId": "B",
                   "datasource": { "type": "prometheus", "uid": "prometheus" },
-                  "expr": "kube_deployment_status_replicas_ready{namespace=\"capstone\", deployment=~\"graphql-gateway|notification-service\"}",
+                  "expr": "kube_deployment_status_replicas_ready{namespace=\"datamesh\", deployment=~\"graphql-gateway|notification-service\"}",
                   "legendFormat": "{{deployment}} ready"
                 }
               ]

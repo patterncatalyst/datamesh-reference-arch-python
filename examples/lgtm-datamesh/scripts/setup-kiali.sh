@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
-# setup-kiali.sh — add Kiali (the mesh-visualization console) to the capstone
-# cluster, wired to the EXISTING capstone observability stack rather than
+# setup-kiali.sh — add Kiali (the mesh-visualization console) to the datamesh
+# cluster, wired to the EXISTING datamesh observability stack rather than
 # standing up its own (CAP-0NN). Run-once-per-cluster, idempotent.
 #
-# Why this exists: the capstone observability stack (setup-observability.sh) is
+# Why this exists: the datamesh observability stack (setup-observability.sh) is
 # Prometheus + Tempo + Grafana in the `observability` namespace. Kiali gives the
 # one thing that stack doesn't: a live mesh-topology graph — the products and the
 # traffic between them, the canary split included. The demo walkthrough's final
@@ -15,14 +15,14 @@
 # http://prometheus.istio-system:9090. We do NOT want a second Prometheus. So
 # this script applies ONLY the Kiali addon (not the full samples/addons/ bundle,
 # which would also install Prometheus, Grafana, Jaeger, and Loki), then patches
-# Kiali's ConfigMap so external_services points at the capstone's existing
+# Kiali's ConfigMap so external_services points at the datamesh's existing
 # Prometheus, Grafana, and Tempo in the `observability` namespace.
 #
 # What it does:
-#   1. Verifies the Istio dir (samples/addons/kiali.yaml) and the capstone
+#   1. Verifies the Istio dir (samples/addons/kiali.yaml) and the datamesh
 #      observability stack are present.
 #   2. Applies ONLY samples/addons/kiali.yaml into istio-system.
-#   3. Patches the kiali ConfigMap external_services → capstone Prometheus /
+#   3. Patches the kiali ConfigMap external_services → datamesh Prometheus /
 #      Grafana / Tempo, and restarts Kiali to pick it up.
 #   4. Waits for the Kiali deployment to be Ready.
 #
@@ -35,7 +35,7 @@
 #
 # Then verify + view:
 #   ./demos/demo-kiali.sh
-#   open http://127.0.0.1:20001/kiali   (Graph → namespace: capstone)
+#   open http://127.0.0.1:20001/kiali   (Graph → namespace: datamesh)
 
 set -euo pipefail
 
@@ -47,7 +47,7 @@ ISTIO_DIR="${ISTIO_DIR:-${HOME}/.local/share/istio-current}"
 # picks up a different Kiali.
 KIALI_IMAGE="${KIALI_IMAGE:-quay.io/kiali/kiali:v2.31.0}"
 
-# capstone observability service endpoints (single-stack wiring targets)
+# datamesh observability service endpoints (single-stack wiring targets)
 PROM_URL="http://prometheus-server.${OBS_NS}:80"
 GRAFANA_IN_URL="http://grafana.${OBS_NS}:80"
 GRAFANA_EXT_URL="http://127.0.0.1:3000"          # what a browser uses (published NodePort 30300)
@@ -60,9 +60,9 @@ step() { printf '\n==> %s\n' "$1"; }
 command -v kubectl >/dev/null 2>&1 || { printf 'ERROR: kubectl not in PATH.\n' >&2; exit 1; }
 
 current_context="$(kubectl config current-context 2>/dev/null || echo "")"
-if [[ "$current_context" != "capstone" ]]; then
-    printf 'WARNING: current kubectl context is "%s", not "capstone".\n' "$current_context" >&2
-    printf 'Switch with: kubectl config use-context capstone\n' >&2
+if [[ "$current_context" != "datamesh" ]]; then
+    printf 'WARNING: current kubectl context is "%s", not "datamesh".\n' "$current_context" >&2
+    printf 'Switch with: kubectl config use-context datamesh\n' >&2
     printf 'Continue anyway? [y/N] ' >&2
     read -r answer
     [[ "$answer" =~ ^[Yy] ]] || exit 1
@@ -93,12 +93,12 @@ step "Applying ONLY the Kiali addon (not the full samples/addons bundle)"
 printf '    source: %s\n' "$KIALI_MANIFEST"
 kubectl apply -f "$KIALI_MANIFEST"
 
-# ─── 2. Wire Kiali to the existing capstone observability stack ──────────────
+# ─── 2. Wire Kiali to the existing datamesh observability stack ──────────────
 # The addon ships a ConfigMap `kiali` whose key config.yaml contains the
-# external_services block. We overwrite that block to point at the capstone
+# external_services block. We overwrite that block to point at the datamesh
 # Prometheus / Grafana / Tempo instead of Kiali's bundled defaults.
 
-step "Wiring Kiali external_services → the capstone observability stack"
+step "Wiring Kiali external_services → the datamesh observability stack"
 printf '    prometheus: %s\n' "$PROM_URL"
 printf '    grafana:    %s (in-cluster) / %s (browser)\n' "$GRAFANA_IN_URL" "$GRAFANA_EXT_URL"
 printf '    tracing:    %s (Tempo)\n' "$TEMPO_URL"
@@ -159,9 +159,9 @@ kubectl rollout status deployment/kiali -n "$ISTIO_SYSTEM" --timeout=5m
 
 # ─── Done ────────────────────────────────────────────────────────────────────
 
-step "Kiali is installed and wired to the capstone observability stack."
+step "Kiali is installed and wired to the datamesh observability stack."
 printf '\nView the mesh topology (NodePort published on 127.0.0.1):\n'
-printf '  open http://127.0.0.1:20001/kiali      (Graph → namespace: capstone)\n'
+printf '  open http://127.0.0.1:20001/kiali      (Graph → namespace: datamesh)\n'
 printf '\nVerify:\n'
 printf '  ./demos/demo-kiali.sh\n'
 printf '\nNote: the live traffic graph only shows edges while traffic is flowing —\n'

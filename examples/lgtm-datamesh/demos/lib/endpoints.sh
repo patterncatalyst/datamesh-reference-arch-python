@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
-# endpoints.sh — the ONE source of truth for host access to the capstone cluster.
+# endpoints.sh — the ONE source of truth for host access to the datamesh cluster.
 #
 # Every host-facing service is a fixed NodePort. The minikube profile publishes
 # each NodePort to the host on loopback when the profile is created:
-#   minikube start -p capstone --ports=127.0.0.1:<hostPort>:<nodePort>,...
+#   minikube start -p datamesh --ports=127.0.0.1:<hostPort>:<nodePort>,...
 # so `http://127.0.0.1:<hostPort>` reaches the Service directly. No helper
 # process runs and nothing needs to be brought up per demo.
 #
@@ -17,8 +17,8 @@
 # add a service, add one row to _endpoint_row, its name to ENDPOINT_NAMES, and
 # (if it's one of our charts) set its Service nodePort to the matching value.
 # Published ports are fixed at profile creation: changing the map requires
-# recreating the profile (./scripts/setup-capstone-profile.sh --replace), which
-# deletes and recreates the cluster, so run ./scripts/bootstrap-capstone.sh again.
+# recreating the profile (./scripts/setup-datamesh-profile.sh --replace), which
+# deletes and recreates the cluster, so run ./scripts/bootstrap-datamesh.sh again.
 #
 # Safe to `source` under `set -euo pipefail`: only definitions, no side effects.
 
@@ -45,7 +45,7 @@ TP_INVENTORY=8087;    NP_INVENTORY=30087
 TP_INGRESS=8088;      NP_INGRESS=30088   # istio-ingressgateway :80
 TP_KAFKAUI=8089;      NP_KAFKAUI=30089   # Kafka UI (topic/schema browser)
 
-EP_PROFILE="${MINIKUBE_PROFILE:-capstone}"
+EP_PROFILE="${MINIKUBE_PROFILE:-datamesh}"
 
 ENDPOINT_NAMES=(grafana prometheus tempo tempo-otlp kiali openmetadata apicurio
                 kafka-ui order gateway notification review inventory ingress)
@@ -59,14 +59,14 @@ _endpoint_row() {
         tempo)        echo "$TP_TEMPO $NP_TEMPO observability tempo Tempo" ;;
         tempo-otlp)   echo "$TP_TEMPO_OTLP $NP_TEMPO_OTLP observability tempo Tempo-OTLP" ;;
         kiali)        echo "$TP_KIALI $NP_KIALI istio-system kiali Kiali" ;;
-        openmetadata) echo "$TP_OM $NP_OM capstone openmetadata OpenMetadata" ;;
-        apicurio)     echo "$TP_APICURIO $NP_APICURIO capstone apicurio Apicurio" ;;
-        kafka-ui)     echo "$TP_KAFKAUI $NP_KAFKAUI capstone kafka-ui Kafka-UI" ;;
-        order)        echo "$TP_ORDER $NP_ORDER capstone order-service order-service" ;;
+        openmetadata) echo "$TP_OM $NP_OM datamesh openmetadata OpenMetadata" ;;
+        apicurio)     echo "$TP_APICURIO $NP_APICURIO datamesh apicurio Apicurio" ;;
+        kafka-ui)     echo "$TP_KAFKAUI $NP_KAFKAUI datamesh kafka-ui Kafka-UI" ;;
+        order)        echo "$TP_ORDER $NP_ORDER datamesh order-service order-service" ;;
         gateway)      echo "$TP_GATEWAY $NP_GATEWAY keda keda-add-ons-http-interceptor-proxy gateway-interceptor" ;;
-        notification) echo "$TP_NOTIF $NP_NOTIF capstone notification-service notification-service" ;;
-        review)       echo "$TP_REVIEW $NP_REVIEW capstone review-service review-service" ;;
-        inventory)    echo "$TP_INVENTORY $NP_INVENTORY capstone inventory-service inventory-service" ;;
+        notification) echo "$TP_NOTIF $NP_NOTIF datamesh notification-service notification-service" ;;
+        review)       echo "$TP_REVIEW $NP_REVIEW datamesh review-service review-service" ;;
+        inventory)    echo "$TP_INVENTORY $NP_INVENTORY datamesh inventory-service inventory-service" ;;
         ingress)      echo "$TP_INGRESS $NP_INGRESS istio-system istio-ingressgateway istio-ingressgateway" ;;
         *) return 1 ;;
     esac
@@ -177,8 +177,8 @@ assert_host_ports_free() {
 
 # _port_bindings_json → PortBindings JSON of the profile container (empty on error)
 _port_bindings_json() {
-    # The capstone profile is a docker-driver container named after the profile
-    # (setup-capstone-profile.sh); its published ports live in HostConfig.
+    # The datamesh profile is a docker-driver container named after the profile
+    # (setup-datamesh-profile.sh); its published ports live in HostConfig.
     docker container inspect --format '{{json .HostConfig.PortBindings}}' "$EP_PROFILE" 2>/dev/null || true
 }
 
@@ -251,8 +251,8 @@ check_published_ports() {
         printf 'endpoints: profile "%s" does not publish the required ports:\n' "$EP_PROFILE"
         printf '%s' "$msg"
         printf 'Ports are fixed when the profile is created and cannot be added to a running one.\n'
-        printf 'Recreate it with: ./scripts/setup-capstone-profile.sh --replace\n'
-        printf '(--replace deletes and recreates the cluster; run ./scripts/bootstrap-capstone.sh again afterwards.)\n'
+        printf 'Recreate it with: ./scripts/setup-datamesh-profile.sh --replace\n'
+        printf '(--replace deletes and recreates the cluster; run ./scripts/bootstrap-datamesh.sh again afterwards.)\n'
     } >&2
     return 1
 }
@@ -277,8 +277,8 @@ ensure_endpoint() {
         if ! published_ports | grep -qx "${np} ${hp}"; then
             printf 'endpoints: %s: 127.0.0.1:%s -> nodePort %s is not published by profile "%s"\n' \
                 "$name" "$hp" "$np" "$EP_PROFILE" >&2
-            printf 'Recreate it with: ./scripts/setup-capstone-profile.sh --replace\n' >&2
-            printf '(--replace deletes and recreates the cluster; run ./scripts/bootstrap-capstone.sh again afterwards.)\n' >&2
+            printf 'Recreate it with: ./scripts/setup-datamesh-profile.sh --replace\n' >&2
+            printf '(--replace deletes and recreates the cluster; run ./scripts/bootstrap-datamesh.sh again afterwards.)\n' >&2
             overall=1; continue
         fi
         out="$(kubectl --context "$EP_PROFILE" get svc -n "$ns" "$svc" \
@@ -324,12 +324,12 @@ wait_http() {
 }
 
 # wake_gateway — wake the KEDA-scaled-to-zero graphql-gateway the REAL way, by
-# driving a request through the HTTP interceptor (Host: graphql-gateway.capstone),
+# driving a request through the HTTP interceptor (Host: graphql-gateway.datamesh),
 # then waiting for the Deployment to be Available. Verifies the gateway endpoint
 # first. Echoes nothing; returns 0 if the gateway is Available.
-GATEWAY_HOST="graphql-gateway.capstone"
+GATEWAY_HOST="graphql-gateway.datamesh"
 wake_gateway() {
-    local ns="${1:-capstone}"
+    local ns="${1:-datamesh}"
     ensure_endpoint gateway || return 1
     wait_http "http://127.0.0.1:${TP_GATEWAY}/" 15 || true
     # Pre-warm: this request's job is to trigger scale-from-zero; response and

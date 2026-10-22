@@ -1,7 +1,7 @@
-# Deploying the capstone data mesh to OpenShift
+# Deploying the datamesh data mesh to OpenShift
 
-This directory is the **OpenShift counterpart** to [`charts/capstone/`](../charts/capstone/).
-The `charts/capstone/` umbrella chart runs the full §17 capstone stack — 7
+This directory is the **OpenShift counterpart** to [`charts/datamesh/`](../charts/datamesh/).
+The `charts/datamesh/` umbrella chart runs the full §17 final project stack — 7
 data-product services, Strimzi Kafka, CloudNativePG Postgres, Apicurio,
 OpenMetadata, Prefect, the LGTM observability stack, KEDA autoscaling, and
 Istio — on minikube. This tree runs only the **live core** of that system —
@@ -36,9 +36,9 @@ openshift/
 └── evidence/                  # live CRC verification output (captured separately)
 ```
 
-## What changes from `charts/capstone/` → OpenShift
+## What changes from `charts/datamesh/` → OpenShift
 
-1. **No operators assumed.** `charts/capstone/` relies on the Strimzi Kafka
+1. **No operators assumed.** `charts/datamesh/` relies on the Strimzi Kafka
    operator and the CloudNativePG Postgres operator both being pre-installed.
    This chart doesn't assume either is on the target cluster: Postgres and
    Kafka are **plain StatefulSets** (single-broker KRaft for Kafka, no
@@ -50,15 +50,15 @@ openshift/
    and let the platform assign one. Postgres and Kafka *do* need specific
    UIDs (70 / 1000) their upstream images hardcode, so they run under a
    dedicated ServiceAccount (`datamesh-infra`) bound to the `nonroot-v2` SCC.
-3. **Routes, not NodePorts.** On minikube, `charts/capstone/` exposes services
+3. **Routes, not NodePorts.** On minikube, `charts/datamesh/` exposes services
    via NodePorts published to 127.0.0.1 (minikube has no router).
    OpenShift has one: external access here is two `Route` objects
    (graphql-gateway, apicurio) served by the cluster's router.
 4. **The integrated registry.** Images are pushed to OpenShift's internal
    registry (`image-registry.openshift-image-registry.svc:5000/datamesh/...`)
-   and referenced from there, instead of the minikube path, where `charts/capstone/` subcharts use
-   `capstone/<svc>` images loaded with `minikube image load` (no registry).
-5. **Tracing is off.** `charts/capstone/` wires every service to OTLP/Tempo.
+   and referenced from there, instead of the minikube path, where `charts/datamesh/` subcharts use
+   `datamesh/<svc>` images loaded with `minikube image load` (no registry).
+5. **Tracing is off.** `charts/datamesh/` wires every service to OTLP/Tempo.
    Since the LGTM stack isn't deployed here, the OTEL_* env vars are simply
    omitted — the services' `opentelemetry-instrument` entrypoint (where
    present) is a documented no-op with no OTEL_* env set.
@@ -104,7 +104,7 @@ probes — is carried over unchanged.
 ./openshift/build-and-push.sh -r "$REG" -n datamesh
 ```
 
-Podman is used only for this OpenShift (CRC) path; the minikube capstone uses Docker Engine.
+Podman is used only for this OpenShift (CRC) path; the minikube datamesh uses Docker Engine.
 This builds each `services/<svc>/Containerfile` with podman and pushes it to
 `$REG/datamesh/<svc>:v1` — the exact ref `values.yaml`'s
 `image.registry`/`image.tag` compose.
@@ -146,5 +146,5 @@ curl -ksI "https://$(oc get route apicurio -n datamesh -o jsonpath='{.spec.host}
 ```sh
 helm uninstall datamesh -n datamesh
 # PVCs (postgres-data, kafka-data) are retained by design; delete them to wipe state:
-oc delete pvc -l app.kubernetes.io/part-of=capstone -n datamesh
+oc delete pvc -l app.kubernetes.io/part-of=datamesh -n datamesh
 ```
