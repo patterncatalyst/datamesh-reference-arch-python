@@ -62,7 +62,7 @@ the value it delivers and the implementation pieces that realize it.
   catalog is a mesh requirement rather than an add-on.
 - [**6 · The data planes**]({{ '/docs/05-data-planes/' | relative_url }}) —
   The synchronous read layer (REST, gRPC, a GraphQL gateway) and the asynchronous event
-  backbone — and why the capstone uses all of them.
+  backbone — and why the final project uses all of them.
 - [**7 · Progressive delivery & mTLS**]({{ '/docs/06-progressive-delivery-mtls/' | relative_url }}) —
   Evolving a contract in the open with a v1→v2 canary, mTLS with no application changes, and the decision to
   mesh selectively rather than namespace-wide.

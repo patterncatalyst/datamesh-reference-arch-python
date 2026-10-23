@@ -1,8 +1,8 @@
-# kafka.yaml — OpenMetadata ingestion workflow: the capstone Kafka source.
+# kafka.yaml — OpenMetadata ingestion workflow: the datamesh Kafka source.
 #
 # Run by the openmetadata/ingestion image as `metadata ingest -c <this>`,
 # inside a one-off Job. Catalogs the Strimzi cluster's topics as Topic entities
-# under a Messaging Service named `capstone-kafka`.
+# under a Messaging Service named `datamesh-kafka`.
 #
 # DECISION C (CAP-023): BARE ingestion — bootstrap servers only, no schema
 # registry. Topics are discovered as entities; their Avro schemas are NOT
@@ -16,7 +16,7 @@
 #
 # Connection fact (verified against the kafka subchart and the services'
 # config): the Strimzi plain listener is reachable in-cluster at
-#   capstone-kafka-kafka-bootstrap:9092
+#   datamesh-kafka-kafka-bootstrap:9092
 #
 # VERIFY-POINT (OpenMetadata 2.0.5 Kafka connector schema; confirm at build
 # time): `bootstrapServers` and `MessagingMetadata` are the expected keys; the
@@ -25,18 +25,18 @@
 
 source:
   type: kafka
-  serviceName: capstone-kafka
+  serviceName: datamesh-kafka
   serviceConnection:
     config:
       type: Kafka
-      bootstrapServers: capstone-kafka-kafka-bootstrap:9092
+      bootstrapServers: datamesh-kafka-kafka-bootstrap:9092
       # schemaRegistryURL deliberately omitted (decision C — bare). The
       # consumer-side runtime contract still lives in Apicurio; the catalog
       # link to it is r27c's job.
   sourceConfig:
     config:
       type: MessagingMetadata
-      # The capstone has one topic today; an explicit include keeps the catalog
+      # The datamesh has one topic today; an explicit include keeps the catalog
       # tidy and makes the lineage spine obvious. Drop the filter to ingest all.
       topicFilterPattern:
         includes:

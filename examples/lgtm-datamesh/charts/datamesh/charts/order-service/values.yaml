@@ -1,0 +1,75 @@
+# order-service subchart values.
+
+replicas: 1
+
+image:
+  # Image is loaded into the node by build-image.sh (minikube image load); no registry.
+  repository: datamesh/order-service
+  tag: v1
+  # Never: images are loaded into the node by build-image.sh (minikube image load) and never pulled; build-image.sh restarts the Deployment so a rebuilt :v1 is used.
+  pullPolicy: Never
+
+# NodePort 30080, published on 127.0.0.1:8080 at profile creation
+# (map: demos/lib/endpoints.sh).
+service:
+  type: NodePort
+  port: 80
+  targetPort: 8080
+  nodePort: 30080
+
+# inventory-service gRPC endpoint (r23) — order-service calls CheckStock here.
+inventory:
+  grpcAddr: inventory-service:50051
+
+# Kafka (r25) — order.placed events published here.
+kafka:
+  bootstrap: datamesh-kafka-kafka-bootstrap:9092
+  orderTopic: order-placed
+
+# Apicurio schema registry (r25b) — order.placed registered + serialized as Avro.
+apicurio:
+  url: http://apicurio:8080
+  orderSubject: order-placed-value
+
+# Postgres connection. The CloudNativePG operator generates a Secret named
+# "<cluster>-app" holding the app user's credentials. We reference it by
+# key so we never hardcode the password.
+postgres:
+  clusterName: datamesh-postgres
+  # CNPG's "<cluster>-app" secret contains: username, password, dbname,
+  # host, port, uri, jdbc-uri. We map the ones order-service needs.
+  appSecret: datamesh-postgres-app
+  schema: orders
+
+tracing:
+  enabled: true
+  otlpEndpoint: http://tempo.observability.svc.cluster.local:4318
+  otlpProtocol: http/protobuf
+  serviceName: order-service
+  sampleRatio: "1.0"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 192Mi
+  limits:
+    memory: 512Mi
+
+# Probe tuning. /health is liveness, /healthz is readiness (checks Postgres).
+probes:
+  # r28: startupProbe gates liveness/readiness until the app has finished booting.
+  # Python services (imports + gRPC channels + schema build) can take 10-30s; a 5s
+  # liveness initialDelay was killing them mid-boot (and the gateway OOM-looped at
+  # 256Mi). 30 x 2s = 60s startup grace.
+  startup:
+    path: /health
+    failureThreshold: 60
+    periodSeconds: 2
+  liveness:
+    path: /health
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  readiness:
+    path: /healthz
+    initialDelaySeconds: 5
+    periodSeconds: 5

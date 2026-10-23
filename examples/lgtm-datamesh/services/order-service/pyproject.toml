@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "order-service"
 version = "0.4.0"
-description = "Order-service data product for the §17 capstone — REST + Postgres + gRPC client to inventory (GraphQL, Kafka added later)"
+description = "Order-service data product for the §17 final project — REST + Postgres + gRPC client to inventory (GraphQL, Kafka added later)"
 authors = ["patterncatalyst"]
 readme = "README.md"
 package-mode = false

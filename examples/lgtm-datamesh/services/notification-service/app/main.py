@@ -1,4 +1,4 @@
-"""notification-service — a §17 capstone data product (Kafka consumer).
+"""notification-service — a §17 final project data product (Kafka consumer).
 
 Consumes `order.placed` events from Kafka (its designed role — a consumer-only
 data product) and persists them to its `notifications` table.
@@ -37,7 +37,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="notification-service",
     version="0.3.0",
-    description="notification-service data product for the §17 capstone — consumes and persists order events.",
+    description="notification-service data product for the §17 final project — consumes and persists order events.",
     lifespan=lifespan,
 )
 

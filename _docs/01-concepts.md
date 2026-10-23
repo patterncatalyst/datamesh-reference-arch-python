@@ -72,7 +72,7 @@ rather than leaving analytical data as a stale downstream copy.
 
 ![Operational vs. analytical data planes]({{ '/assets/diagrams/17-operational-vs-analytical.svg' | relative_url }})
 
-This capstone models the **operational** side concretely — services that own their
+This final project models the **operational** side concretely — services that own their
 data and emit events — and shows how analytical consumers attach to that operational
 flow through the event backbone, rather than through a nightly extract. That's the
 loop the mesh is meant to keep closed.
@@ -81,7 +81,7 @@ loop the mesh is meant to keep closed.
 
 Dehghani's data mesh rests on four interlocking principles. They depend on each other —
 implement one without the others and you get a distributed mess rather than a mesh —
-and each shows up explicitly in this capstone:
+and each shows up explicitly in this final project:
 
 ![The four principles and how they map to Kubernetes primitives]({{ '/assets/diagrams/17-data-mesh-four-principles.svg' | relative_url }})
 
@@ -122,7 +122,7 @@ re-centralized into an approval bottleneck.
 ## The pattern is not the tools
 
 A data mesh isn't a product, a tool, or a vendor offering — it's an organizational and
-architectural pattern. The tools this capstone uses are *expressions* of the pattern,
+architectural pattern. The tools this final project uses are *expressions* of the pattern,
 chosen because each one makes a principle concrete and runnable, not because any of
 them *is* the mesh. That distinction matters enough that it's the first
 [anti-pattern]({{ '/docs/09-anti-patterns/' | relative_url }}): the most

@@ -1,7 +1,7 @@
 ---
 title: "The data planes"
 order: 6
-description: The async backbone of Kafka events and the read layer of GraphQL composing REST and gRPC — when to reach for each, and why the capstone uses all of them.
+description: The async backbone of Kafka events and the read layer of GraphQL composing REST and gRPC — when to reach for each, and why the final project uses all of them.
 duration: 25 min
 ---
 
@@ -10,7 +10,7 @@ duration: 25 min
 By the end of this chapter you can:
 
 - Match each of the four protocols — REST, gRPC, GraphQL, and events — to the job it's best suited for, and explain the "fitness, not hierarchy" framing.
-- Distinguish gateway orchestration from true subgraph federation and state the trade-off this capstone accepts by choosing orchestration.
+- Distinguish gateway orchestration from true subgraph federation and state the trade-off this final project accepts by choosing orchestration.
 - Trace the `order.placed` event flow from producer to consumers and explain why the producer doesn't block on any of them.
 - Explain why the synchronous read layer and the asynchronous event backbone are complementary planes rather than competing ones.
 
@@ -22,12 +22,12 @@ each expose a contract, and the
 them discoverable. This page is about how data actually *moves* between them — the
 planes the mesh runs on. There are two: a **synchronous read layer** (REST, gRPC, and
 a GraphQL gateway composing across them) and an **asynchronous event backbone** (the
-streaming spine that lets domains react to each other). The capstone uses all of them
+streaming spine that lets domains react to each other). The final project uses all of them
 because each one fits a different kind of data movement.
 
 ## Protocols by fitness, not by hierarchy
 
-It would be simpler to pick one protocol and use it everywhere. The capstone
+It would be simpler to pick one protocol and use it everywhere. The final project
 doesn't, because each protocol is *best at a
 different job*, and a data mesh exercises all those jobs. This isn't a ranking where
 one protocol wins; it's a matter of fitness for context:
@@ -43,7 +43,7 @@ one protocol wins; it's a matter of fitness for context:
 - **Events for everything asynchronous.** When something *happens* and other domains
   need to react without the producer waiting on them, the event backbone carries it.
 
-The capstone makes this concrete in one place: the gateway's resolvers literally call
+The final project makes this concrete in one place: the gateway's resolvers literally call
 REST and gRPC side by side, and GraphQL stitches the result — so you can see all three
 synchronous protocols cooperating rather than competing.
 
@@ -64,14 +64,14 @@ There's an important precision here about *how* the gateway composes, because th
 two ways to build a unified GraphQL graph and they're often conflated. In **true
 subgraph federation**, each service exposes its own GraphQL subgraph and a gateway
 plans queries across them into a supergraph — each domain owns and evolves its slice of
-the graph independently. That's the production-scale pattern. This capstone uses the
+the graph independently. That's the production-scale pattern. This final project uses the
 simpler **gateway orchestration** approach instead: one stateless gateway exposes the
 unified graph, and its resolvers fetch from the services over their *existing* REST and
 gRPC interfaces, with no GraphQL added to the domain services at all.
 
 ### Why orchestration, not federation, here
 
-The capstone is a learning implementation. Gateway
+The final project is a learning implementation. Gateway
 orchestration demonstrates the *value* GraphQL adds (one client query, multiple
 backends, client-shaped response) with one new service and zero changes to the five
 domain services, and it makes the protocol comparison vivid because the resolvers call
@@ -98,7 +98,7 @@ Instead it emits an event, and the interested domains consume it on their own sc
 
 ![Domain events and change-data-capture feeding the analytical side]({{ '/assets/diagrams/17-ingestion-streaming-sourcing.svg' | relative_url }})
 
-This capstone builds that spine on a Kafka cluster managed by an operator, and models
+This final project builds that spine on a Kafka cluster managed by an operator, and models
 the canonical pattern with the smallest real flow: order-service emits an
 `order.placed` event, keyed by order id, and notification-service consumes it. That one
 flow is the whole "something happened, downstreams react" shape in miniature — the

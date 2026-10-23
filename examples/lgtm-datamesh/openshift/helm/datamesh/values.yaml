@@ -1,10 +1,10 @@
-# values.yaml — the knobs for deploying the capstone data mesh's live core to
+# values.yaml — the knobs for deploying the datamesh data mesh's live core to
 # OpenShift.
 #
 # The seven application workloads are described declaratively in `services`
 # below; templates/app-deployment.yaml and app-service.yaml range over this
 # map, so the whole topology is one template driven by data (the same idiom
-# charts/capstone/charts/<svc>/ spells out one subchart per service).
+# charts/datamesh/charts/<svc>/ spells out one subchart per service).
 #
 # SCOPE: this chart packages only the live core — the 7 services, Postgres,
 # Kafka, and Apicurio. OpenMetadata, Prefect, the LGTM observability stack
@@ -14,22 +14,22 @@
 # Container image settings. On OpenShift the images live in the integrated
 # registry; in-cluster pulls use the registry's Service DNS, which is what a
 # Deployment's imagePullPolicy sees. Override `registry` for an external
-# registry (Quay, etc.). Matches the capstone's existing `:v1` mutable-tag
-# convention (charts/capstone/values.yaml), but IfNotPresent here since
+# registry (Quay, etc.). Matches the datamesh's existing `:v1` mutable-tag
+# convention (charts/datamesh/values.yaml), but IfNotPresent here since
 # OpenShift builds push a new image per `oc` build, not a dev inner-loop.
 image:
   registry: "image-registry.openshift-image-registry.svc:5000/datamesh"
   tag: "v1"
   pullPolicy: IfNotPresent
 
-# Dev-only Postgres credential. One shared cluster, database `capstone`, one
-# schema per service (mirrors charts/capstone/charts/postgres/values.yaml:
-# cluster.database=capstone, cluster.owner=capstone_app).
+# Dev-only Postgres credential. One shared cluster, database `datamesh`, one
+# schema per service (mirrors charts/datamesh/charts/postgres/values.yaml:
+# cluster.database=datamesh, cluster.owner=datamesh_app).
 # PRODUCTION: replace with a SealedSecret / ExternalSecret — never plaintext here.
 postgres:
-  username: "capstone_app"
-  password: "capstone_dev_only"
-  database: "capstone"
+  username: "datamesh_app"
+  password: "datamesh_dev_only"
+  database: "datamesh"
   # Mirrored into the internal registry: the CRC VM cannot reach Docker Hub, so
   # the upstream docker.io/library/postgres:18.6-alpine was pulled on the host
   # and pushed here. On a cluster with Docker Hub egress, use the upstream ref
@@ -41,13 +41,13 @@ postgres:
 kafka:
   # Mirrored like postgres above (upstream: docker.io/apache/kafka:4.3.1).
   # Plain KRaft StatefulSet — NOT the Strimzi `Kafka`/`KafkaNodePool` CRs the
-  # minikube capstone (charts/capstone/charts/kafka/) uses; Strimzi isn't
+  # minikube datamesh (charts/datamesh/charts/kafka/) uses; Strimzi isn't
   # assumed to be installed on the target OpenShift cluster.
   image: "image-registry.openshift-image-registry.svc:5000/datamesh/kafka:4.3.1"
   # image: "docker.io/apache/kafka:4.3.1"
   clusterId: "MkU3OEVBNTcwNTJENDM2Qk"
   storage: "2Gi"
-  # Matches charts/capstone/charts/order-service's KAFKA_ORDER_TOPIC default.
+  # Matches charts/datamesh/charts/order-service's KAFKA_ORDER_TOPIC default.
   topic: "order-placed"
 
 # Apicurio Registry 3 — schema/contract registry (CAP-018). quay.io is
@@ -121,7 +121,7 @@ services:
     db: shipping
 
 # Resource tiers referenced by each service's `size` (values carried over from
-# charts/capstone/charts/<svc>/values.yaml requests/limits).
+# charts/datamesh/charts/<svc>/values.yaml requests/limits).
 resources:
   small:
     requests: { cpu: 100m, memory: 192Mi }

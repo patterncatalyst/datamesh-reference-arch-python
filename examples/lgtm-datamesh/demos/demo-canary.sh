@@ -21,8 +21,8 @@
 
 set -uo pipefail
 
-NS="capstone"
-PROFILE="capstone"
+NS="datamesh"
+PROFILE="datamesh"
 ISTIO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../istio" && pwd)"
 V2_MANIFEST="$ISTIO_DIR/order-service-v2.yaml"
 ROUTING="$ISTIO_DIR/routing.yaml"

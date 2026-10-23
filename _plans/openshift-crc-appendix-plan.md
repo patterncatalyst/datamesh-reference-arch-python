@@ -10,7 +10,7 @@ Branch: `feat/openshift-crc-appendix`.
 
 ## Goal
 Add an appendix chapter to the datamesh-reference-arch-python tutorial teaching how to run the
-existing capstone (today: minikube via helm) on a local **CRC / OpenShift Local** cluster,
+existing final project (today: minikube via helm) on a local **CRC / OpenShift Local** cluster,
 adapting to OpenShift idioms, and **LIVE-VERIFIED** on the local CRC instance. Modeled on the
 modernizing-enterprise-applications Part 9 deployment chapters (real runnable assets, applied
 live, documenting "dry-run passed / live apply broke" learnings).

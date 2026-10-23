@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "inventory-service"
 version = "0.2.0"
-description = "inventory-service data product for the §17 capstone — REST health + gRPC CheckStock"
+description = "inventory-service data product for the §17 final project — REST health + gRPC CheckStock"
 authors = ["patterncatalyst"]
 readme = "README.md"
 package-mode = false

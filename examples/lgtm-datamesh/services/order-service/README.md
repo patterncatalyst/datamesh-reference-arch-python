@@ -1,13 +1,13 @@
 # order-service
 
-The first data product of the §17 capstone, and the **template
+The first data product of the §17 final project, and the **template
 every other service follows**. r21 scope: REST + Postgres only.
 gRPC (r23), GraphQL (r24), and Kafka event publication (r25) are
 added in later iterations.
 
 ## What it owns
 
-The `orders` schema in the shared capstone Postgres database
+The `orders` schema in the shared datamesh Postgres database
 (CAP-003). order-service is the only service that writes this
 schema — that's the per-service data-ownership boundary.
 
@@ -37,7 +37,7 @@ To run the service locally against a local Postgres container
 ```bash
 # In one terminal: a throwaway Postgres on 127.0.0.1:5432
 docker run --rm -p 127.0.0.1:5432:5432 \
-  -e POSTGRES_USER=capstone_app -e POSTGRES_PASSWORD=changeme -e POSTGRES_DB=capstone \
+  -e POSTGRES_USER=datamesh_app -e POSTGRES_PASSWORD=changeme -e POSTGRES_DB=datamesh \
   postgres:16
 
 # In another: run with the default connection settings (127.0.0.1:5432)
@@ -47,10 +47,10 @@ poetry run uvicorn app.main:app --port 8080
 ## Build
 
 The Containerfile is a UBI 10 Python 3.14 (`python-314-minimal`) multi-stage build
-(CAP-005). Build it into the capstone minikube profile:
+(CAP-005). Build it into the datamesh minikube profile:
 
 ```bash
-minikube image build -p capstone -t order-service:v1 services/order-service
+minikube image build -p datamesh -t order-service:v1 services/order-service
 ```
 
 **Recommended:** commit `poetry.lock` for reproducible builds.
@@ -85,7 +85,7 @@ follows this same shape:
 - UBI 10 multi-stage `Containerfile`
 - `app/{config,db,models,schemas,main}.py`
 - own schema in the shared Postgres
-- helm subchart under `charts/capstone/charts/<service>/`
+- helm subchart under `charts/datamesh/charts/<service>/`
 - `/health` + `/healthz` probes
 
 r22 parallelizes this across the remaining four services.

@@ -1,6 +1,6 @@
 # graphql-gateway
 
-A §17 capstone data product (read layer). Stateless — owns no data; it
+A §17 final project data product (read layer). Stateless — owns no data; it
 federates reads across services by calling them:
 
 - `order(id)` → order-service over **REST**
@@ -17,7 +17,7 @@ production-scale pattern — see the §17 prose (CAP-016).
 # from examples/lgtm-datamesh/
 ./scripts/gen-protos.sh                       # if stubs not generated yet
 ./scripts/build-image.sh services/graphql-gateway graphql-gateway v1
-helm upgrade --install graphql-gateway charts/capstone/charts/graphql-gateway -n capstone
+helm upgrade --install graphql-gateway charts/datamesh/charts/graphql-gateway -n datamesh
 ```
 
 Then open `/graphql` in a browser for the GraphiQL UI, or run

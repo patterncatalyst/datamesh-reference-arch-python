@@ -10,7 +10,7 @@
 # r21a changes:
 #   - builds with `docker build` and loads into the profile via
 #     scripts/build-image.sh (minikube image load); charts use
-#     capstone/<svc>:v1 with imagePullPolicy: Never.
+#     datamesh/<svc>:v1 with imagePullPolicy: Never.
 #   - on failure, LEAVES the failed resources in place and dumps a
 #     diagnostic bundle inline (pod status, describe events, logs) instead
 #     of tearing everything down — so a failed run hands you the evidence
@@ -20,20 +20,20 @@
 #   ./demos/demo-order.sh
 #
 # Prerequisites:
-#   - capstone minikube profile running (scripts/setup-capstone-profile.sh)
+#   - datamesh minikube profile running (scripts/setup-datamesh-profile.sh)
 #   - CloudNativePG operator installed (scripts/setup-postgres-operator.sh)
-#   - kubectl context = capstone
+#   - kubectl context = datamesh
 
 set -uo pipefail   # NOT -e: we manage failures explicitly so we can diagnose
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/endpoints.sh"
 
-NS="capstone"
-PROFILE="capstone"
-RELEASE_PG="capstone-postgres"
+NS="datamesh"
+PROFILE="datamesh"
+RELEASE_PG="datamesh-postgres"
 RELEASE_ORDER="order-service"
-PG_CHART="charts/capstone/charts/postgres"
-ORDER_CHART="charts/capstone/charts/order-service"
+PG_CHART="charts/datamesh/charts/postgres"
+ORDER_CHART="charts/datamesh/charts/order-service"
 SERVICE_DIR="services/order-service"
 IMAGE_NAME="order-service"
 IMAGE_TAG="v1"
@@ -57,7 +57,7 @@ dump_diagnostics() {
         kubectl logs -n "$NS" "$pod" --previous --tail=60 2>&1 || true
     fi
     printf '\n--- images loaded in the profile ---\n'
-    minikube -p "$PROFILE" image ls 2>&1 | grep capstone/ || echo "(no capstone/ images loaded)"
+    minikube -p "$PROFILE" image ls 2>&1 | grep datamesh/ || echo "(no datamesh/ images loaded)"
     printf '\nResources left running. To clean up manually:\n'
     printf '  helm uninstall %s inventory-service -n %s\n' "$RELEASE_ORDER" "$NS"
     printf '  helm uninstall %s -n %s   # also removes Postgres\n' "$RELEASE_PG" "$NS"
@@ -131,7 +131,7 @@ step "Building + loading inventory-service"
 ./scripts/build-image.sh services/inventory-service inventory-service "$IMAGE_TAG" \
     || fail "inventory-service build/load failed"
 step "Deploying inventory-service (seeds demo stock, including WIDGET-001)"
-helm upgrade --install inventory-service charts/capstone/charts/inventory-service -n "$NS" \
+helm upgrade --install inventory-service charts/datamesh/charts/inventory-service -n "$NS" \
     || fail "helm install of inventory-service chart failed"
 kubectl rollout status deployment/inventory-service -n "$NS" --timeout=120s \
     || fail "inventory-service did not roll out"
@@ -185,7 +185,7 @@ step "Verify the row actually persisted in Postgres (direct query)"
 pg_pod=$(kubectl get pods -n "$NS" -l "cnpg.io/cluster=$RELEASE_PG,cnpg.io/instanceRole=primary" \
     -o jsonpath='{.items[0].metadata.name}')
 row_count=$(kubectl exec -n "$NS" "$pg_pod" -- \
-    psql -U postgres -d capstone -tAc \
+    psql -U postgres -d datamesh -tAc \
     "SELECT count(*) FROM orders.orders WHERE id = '$order_id';" 2>/dev/null | tr -d '[:space:]')
 [[ "$row_count" == "1" ]] || fail "expected 1 row in orders.orders, found '$row_count'"
 printf '    confirmed: 1 row in orders.orders for id=%s\n' "$order_id"

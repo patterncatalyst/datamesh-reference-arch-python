@@ -15,7 +15,7 @@
 # This is a TEMPORARY demo product; `down` leaves no trace. Reuses the proven
 # discovery machinery (publish pattern, ingest-openmetadata.sh, get_token.py).
 #
-# Assumes the capstone is up (Apicurio, OpenMetadata, Postgres, inventory-service
+# Assumes the datamesh is up (Apicurio, OpenMetadata, Postgres, inventory-service
 # all running — the products lineage target is inventory.stock). Run from
 # examples/lgtm-datamesh/:  ./demos/demo-add-data-product.sh up   (then ... down)
 
@@ -23,16 +23,16 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/endpoints.sh"
 
-NS="capstone"
+NS="datamesh"
 RELEASE="review-service"
-CHART="charts/capstone/charts/review-service"
+CHART="charts/datamesh/charts/review-service"
 SERVICE_DIR="services/review-service"
 IMAGE="review-service"; TAG="v1"
 
 GROUP="default"
 ARTIFACT_ID="review-service-openapi"
-REVIEWS_SCHEMA_FQN="capstone-postgres.capstone.reviews"
-REVIEWS_TABLE_FQN="capstone-postgres.capstone.reviews.reviews"
+REVIEWS_SCHEMA_FQN="datamesh-postgres.datamesh.reviews"
+REVIEWS_TABLE_FQN="datamesh-postgres.datamesh.reviews.reviews"
 
 L_REVIEW="$TP_REVIEW"; L_APIC="$TP_APICURIO"; L_OM="$TP_OM"
 
@@ -56,11 +56,11 @@ MODE="${1:-}"
 
 # ─── Pre-flight ──────────────────────────────────────────────────────────────
 step "Pre-flight"
-[[ "$(kubectl config current-context 2>/dev/null)" == "capstone" ]] \
-    || fail "kubectl context is not 'capstone'"
+[[ "$(kubectl config current-context 2>/dev/null)" == "datamesh" ]] \
+    || fail "kubectl context is not 'datamesh'"
 for svc in apicurio openmetadata; do
     kubectl get svc "$svc" -n "$NS" >/dev/null 2>&1 \
-        || fail "$svc not found — bring the capstone up (./scripts/cluster-up.sh)"
+        || fail "$svc not found — bring the datamesh up (./scripts/cluster-up.sh)"
 done
 
 if [[ "$MODE" == "up" ]]; then
@@ -165,10 +165,10 @@ else
 
     # 5. Drop the Postgres schema (so a future re-ingest won't re-add it)
     step "Dropping the reviews Postgres schema"
-    primary="$(kubectl get pods -n "$NS" -l cnpg.io/cluster=capstone-postgres,cnpg.io/instanceRole=primary -o name 2>/dev/null | head -1)"
+    primary="$(kubectl get pods -n "$NS" -l cnpg.io/cluster=datamesh-postgres,cnpg.io/instanceRole=primary -o name 2>/dev/null | head -1)"
     if [[ -n "$primary" ]]; then
         kubectl exec -n "$NS" "$primary" -c postgres -- \
-            psql -U postgres -d capstone -c 'DROP SCHEMA IF EXISTS reviews CASCADE' >/dev/null 2>&1 \
+            psql -U postgres -d datamesh -c 'DROP SCHEMA IF EXISTS reviews CASCADE' >/dev/null 2>&1 \
             && ok "reviews schema dropped" || warn "could not drop reviews schema (verify-point: pod/user)"
     else
         warn "could not find the Postgres primary to drop the schema"

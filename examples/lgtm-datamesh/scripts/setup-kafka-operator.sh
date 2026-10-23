@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # setup-kafka-operator.sh — install the Strimzi Kafka operator into the
-# capstone namespace via Helm (the operator pattern, same as CloudNativePG
+# datamesh namespace via Helm (the operator pattern, same as CloudNativePG
 # in CAP-002). Pinned to a specific Strimzi version for reproducibility.
 #
 # Strimzi runs Kafka in KRaft mode (no ZooKeeper) since 0.46; the cluster CR
@@ -12,7 +12,7 @@
 
 set -euo pipefail
 
-NS="capstone"
+NS="datamesh"
 STRIMZI_VERSION="1.2.0"
 
 step() { printf '\n==> %s\n' "$1"; }

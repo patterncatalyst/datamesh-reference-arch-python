@@ -1,4 +1,4 @@
-"""review-service — a §17 capstone data product: product reviews/ratings.
+"""review-service — a §17 final project data product: product reviews/ratings.
 
 A minimal REST data product, added (and backed out) as a Phase A demonstration
 of the add-a-data-product-to-the-mesh workflow: stand up the product, publish
@@ -46,7 +46,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="review-service",
     version="1.0.0",
-    description="review-service data product for the §17 capstone data mesh: product reviews/ratings.",
+    description="review-service data product for the §17 final project data mesh: product reviews/ratings.",
     lifespan=lifespan,
 )
 

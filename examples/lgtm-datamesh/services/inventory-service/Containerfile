@@ -41,7 +41,7 @@ WORKDIR /opt/app-root/src
 
 COPY --from=builder --chown=1001:0 /opt/venv /opt/venv
 COPY --chown=1001:0 app/ ./app/
-# Committed gRPC stubs (capstone.inventory.v1). app/ adds this to sys.path.
+# Committed gRPC stubs (datamesh.inventory.v1). app/ adds this to sys.path.
 COPY --chown=1001:0 gen/ ./gen/
 
 ENV PATH="/opt/venv/bin:$PATH" \

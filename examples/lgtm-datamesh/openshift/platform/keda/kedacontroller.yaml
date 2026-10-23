@@ -1,7 +1,7 @@
 # kedacontroller.yaml — the KedaController operand for the Custom Metrics
 # Autoscaler (CMA) operator, Red Hat's KEDA distribution (OpenShift's
 # supported equivalent of upstream `helm install kedacore/keda` used on the
-# minikube capstone — see ../subscriptions/cma-subscription.yaml for the
+# minikube datamesh — see ../subscriptions/cma-subscription.yaml for the
 # Subscription that installs the operator itself).
 #
 # PREREQUISITE: the operator's CSV in namespace openshift-keda must be

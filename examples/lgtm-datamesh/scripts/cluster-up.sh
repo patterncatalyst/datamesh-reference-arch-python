@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# cluster-up.sh — bring the capstone cluster up cleanly, and heal the two
+# cluster-up.sh — bring the datamesh cluster up cleanly, and heal the two
 # failure modes that bit us hard during r29c:
 #
 #   1. A wedged control plane. After a long uptime with many redeploys, etcd can
@@ -25,7 +25,7 @@
 #   ./scripts/cluster-up.sh
 
 set -uo pipefail
-PROFILE="${MINIKUBE_PROFILE:-capstone}"
+PROFILE="${MINIKUBE_PROFILE:-datamesh}"
 TAG="v1"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"; cd "$ROOT"   # build-image.sh takes cwd-relative services/<svc>
@@ -55,7 +55,7 @@ else
     # spending minutes starting a node that can never be reached from the host.
     if profile_container_exists; then
         check_published_ports \
-            || fail "stopped profile does not publish the required NodePorts on 127.0.0.1 — recreate it (deletes the cluster; re-run ./scripts/bootstrap-capstone.sh afterwards): ./scripts/setup-capstone-profile.sh --replace"
+            || fail "stopped profile does not publish the required NodePorts on 127.0.0.1 — recreate it (deletes the cluster; re-run ./scripts/bootstrap-datamesh.sh afterwards): ./scripts/setup-datamesh-profile.sh --replace"
     fi
     # A stopped profile holds no listeners: every host port must be free, or
     # docker fails with a raw bind error. A node container that is still running
@@ -67,13 +67,13 @@ else
     assert_host_ports_free "$own_ports" || fail "host ports are not free (see above); stop other clusters and compose stacks, then re-run"
     printf '    starting (this also clears a stopped/wedged node)...\n'
     minikube start -p "$PROFILE" >/dev/null 2>&1 \
-        || fail "minikube start failed — run ./scripts/setup-capstone-profile.sh for first-time provisioning"
+        || fail "minikube start failed — run ./scripts/setup-datamesh-profile.sh for first-time provisioning"
     ok "profile started"
 fi
 
 # Host access is NodePorts published on 127.0.0.1 at profile creation; verify.
 check_published_ports \
-    || fail "profile does not publish the required NodePorts on 127.0.0.1 — recreate it with ./scripts/setup-capstone-profile.sh --replace (deletes the cluster; re-run ./scripts/bootstrap-capstone.sh afterwards)"
+    || fail "profile does not publish the required NodePorts on 127.0.0.1 — recreate it with ./scripts/setup-datamesh-profile.sh --replace (deletes the cluster; re-run ./scripts/bootstrap-datamesh.sh afterwards)"
 ok "NodePorts published on 127.0.0.1"
 ensure_node_forwarding || fail "could not reset the node FORWARD policy (pod traffic would be dropped)"
 
@@ -112,12 +112,12 @@ fi
 # ─── 3. Rebuild + load ONLY images missing from the profile ──────────────────
 step "Checking the profile for missing service images"
 missing=()
-for svc in "${CAPSTONE_SERVICES[@]}"; do
+for svc in "${DATAMESH_SERVICES[@]}"; do
     image_in_profile "$svc" "$TAG" || missing+=("$svc")
 done
 
 if [[ ${#missing[@]} -eq 0 ]]; then
-    ok "all ${#CAPSTONE_SERVICES[@]} images present (:${TAG}) — nothing to rebuild"
+    ok "all ${#DATAMESH_SERVICES[@]} images present (:${TAG}) — nothing to rebuild"
 else
     warn "missing: ${missing[*]} — rebuilding (only these)"
     for svc in "${missing[@]}"; do
@@ -130,11 +130,11 @@ fi
 
 # ─── 4. Bounce pods stuck on image pulls so they pick up now-loaded images ───
 step "Restarting any pods stuck on image pulls"
-stuck="$(kubectl get pods -n capstone 2>/dev/null \
+stuck="$(kubectl get pods -n datamesh 2>/dev/null \
     | grep -iE 'ImagePullBackOff|ErrImagePull|ErrImageNeverPull' | awk '{print $1}' || true)"
 if [[ -n "$stuck" ]]; then
     printf '%s\n' "$stuck" | while read -r pod; do
-        [[ -n "$pod" ]] && kubectl delete pod -n capstone "$pod" >/dev/null 2>&1 \
+        [[ -n "$pod" ]] && kubectl delete pod -n datamesh "$pod" >/dev/null 2>&1 \
             && printf '    restarted %s\n' "$pod"
     done
     ok "bounced stuck pods (they will start from the loaded images)"

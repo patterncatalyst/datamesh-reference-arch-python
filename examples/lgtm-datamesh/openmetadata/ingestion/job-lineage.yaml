@@ -9,11 +9,11 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: om-declare-lineage
-  namespace: capstone
+  namespace: datamesh
   labels:
-    app.kubernetes.io/part-of: capstone
+    app.kubernetes.io/part-of: datamesh
     app.kubernetes.io/component: openmetadata-ingestion
-    capstone.ingestion/source: lineage
+    datamesh.ingestion/source: lineage
 spec:
   backoffLimit: 2
   template:
@@ -27,7 +27,7 @@ spec:
         # this opts them out. (r34)
         sidecar.istio.io/inject: "false"
       labels:
-        app.kubernetes.io/part-of: capstone
+        app.kubernetes.io/part-of: datamesh
         app.kubernetes.io/component: openmetadata-ingestion
     spec:
       restartPolicy: Never

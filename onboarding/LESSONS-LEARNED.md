@@ -1,7 +1,7 @@
 # Lessons learned
 
 This document distills the hard-won lessons from building this reference,
-drawn from the decisions in `_plans/archive/capstone-decisions.md`
+drawn from the decisions in `_plans/archive/final-project-decisions.md`
 (CAP-001 through CAP-047) and from the July 2026 smoke-test campaign that
 brought the full stack up from nothing on a fresh Fedora 44 host and ran
 every demo script to green (commits `5403d06`–`e22b318`). It's organised
@@ -275,7 +275,7 @@ long-lived dev machine would surface:
   registry addon pinned a `kube-registry-proxy` digest that no longer existed
   on gcr.io, so the addon could never come up on that minikube version
   regardless of configuration. The fix then was upgrading minikube, not
-  debugging the cluster. The capstone no longer uses the registry addon (images
+  debugging the cluster. The final project no longer uses the registry addon (images
   are loaded with `minikube image load`), but the lesson stands for any addon
   that pins an image by digest.
 
@@ -290,7 +290,7 @@ same machine can't expose.
 On the Docker-driver profile, every `POST /orders` failed with `503 inventory-service
 unreachable ... DEADLINE_EXCEEDED`, although inventory answered its own `CheckStock` in
 10 ms. Timing the call from the order pod isolated it: `inventory-service:50051` took
-3.01 s, while the fully qualified `inventory-service.capstone.svc.cluster.local:50051`
+3.01 s, while the fully qualified `inventory-service.datamesh.svc.cluster.local:50051`
 took 0.01 s, and `getaddrinfo` resolved the short name instantly. gRPC Python resolves
 names with its bundled c-ares resolver, which walks the search list itself and waited
 about 3 s on one lookup, exactly the client's 3 s deadline. `GRPC_DNS_RESOLVER=native`
@@ -316,15 +316,15 @@ does to the components that talk to it, not only to the component itself.
 
 ### Pushing to a loopback registry only works on a native engine
 
-A push to a registry on the host's loopback port is made by the container engine's daemon, so the address is resolved from the daemon's network namespace. On a native Docker Engine that is the host. On a VM-based engine (Docker Desktop) the daemon runs inside a VM whose `127.0.0.1` is not the host's, and the push fails with `dial tcp [::1]:5000: i/o timeout`. `minikube image load` hands the image to the profile directly and works with any engine, which is why the capstone uses it and runs no registry.
+A push to a registry on the host's loopback port is made by the container engine's daemon, so the address is resolved from the daemon's network namespace. On a native Docker Engine that is the host. On a VM-based engine (Docker Desktop) the daemon runs inside a VM whose `127.0.0.1` is not the host's, and the push fails with `dial tcp [::1]:5000: i/o timeout`. `minikube image load` hands the image to the profile directly and works with any engine, which is why the final project uses it and runs no registry.
 
 ### Local images: `imagePullPolicy: Never` plus a restart on rebuild
 
-Images loaded with `minikube image load` are tagged `capstone/<svc>:v1`, and the charts set `imagePullPolicy: Never`. A missing image then fails fast with `ErrImageNeverPull` instead of falling through to a Docker Hub lookup that can never succeed. The other half of the rule: a mutable `:v1` tag means running pods keep the old image after a rebuild, so `scripts/build-image.sh` restarts the Deployments that use the image it just loaded.
+Images loaded with `minikube image load` are tagged `datamesh/<svc>:v1`, and the charts set `imagePullPolicy: Never`. A missing image then fails fast with `ErrImageNeverPull` instead of falling through to a Docker Hub lookup that can never succeed. The other half of the rule: a mutable `:v1` tag means running pods keep the old image after a rebuild, so `scripts/build-image.sh` restarts the Deployments that use the image it just loaded.
 
 ### A fresh node can drop all pod traffic: reset the `FORWARD` policy
 
-On minikube v1.38.1, a new capstone profile came up Ready, yet CoreDNS timed out
+On minikube v1.38.1, a new datamesh profile came up Ready, yet CoreDNS timed out
 and the Istio ingress gateway never passed its readiness probe. A busybox pod
 could not ping, TCP-connect, or send UDP to any other pod. The cause was inside the
 node: the node image starts Docker once at first boot, and Docker 29 sets the
@@ -347,7 +347,7 @@ These describe the earlier rootless-podman setup. They are kept for the reasonin
 
 ### Why minikube moved off rootless podman (historical) <!-- forbidden-ok -->
 
-The capstone ran minikube with the rootless podman driver from r20 to October 2026. <!-- forbidden-ok -->
+The final project ran minikube with the rootless podman driver from r20 to October 2026. <!-- forbidden-ok -->
 On 2026-10-08, recreating the profile on minikube v1.38.1 (Fedora 44, podman 5.8.7) <!-- forbidden-ok -->
 surfaced a run of problems, each needing its own workaround, while the sibling <!-- forbidden-ok -->
 Quarkus reference ran the same platform on the docker driver with none of them:
@@ -362,7 +362,7 @@ Quarkus reference ran the same platform on the docker driver with none of them:
 | Rootless plumbing <!-- forbidden-ok --> | `sudo podman` prompts without `MINIKUBE_ROOTLESS=true`; hostPort pods failing without host iptables modules; PID exhaustion at the default `pids_limit` | Env var on every script, host kernel-module and pids pre-flights |
 
 Each workaround worked, but together they made the minikube path fragile and <!-- forbidden-ok -->
-unlike what learners run elsewhere. DRA-019 moved the minikube capstone to Docker <!-- forbidden-ok -->
+unlike what learners run elsewhere. DRA-019 moved the final project's minikube setup to Docker <!-- forbidden-ok -->
 Engine with containerd and runc, and kept podman only for the optional <!-- forbidden-ok -->
 OpenShift Local (CRC) appendix, where it is the native Red Hat tool. <!-- forbidden-ok -->
 The entries below record each problem in detail.
@@ -381,13 +381,13 @@ at node creation, not after.
 
 The podman driver runs the node container with crun. Pairing it with <!-- forbidden-ok -->
 `--container-runtime=containerd` puts runc under the pods, so the stack used two
-OCI runtimes. For a short time the capstone switched to CRI-O, whose minikube default is crun (DRA-018, since superseded by DRA-019). <!-- forbidden-ok -->
+OCI runtimes. For a short time the final project switched to CRI-O, whose minikube default is crun (DRA-018, since superseded by DRA-019). <!-- forbidden-ok -->
 One side effect: `minikube addons enable` fails under CRI-O + crun because its <!-- forbidden-ok -->
 paused-container check calls `runc list`; enable addons in `minikube start --addons=`
 instead.
 Another: minikube's hostpath provisioner creates volume directories `0755 root`, so
 non-root pods cannot write to them (CloudNativePG's `initdb`, running as uid 26, failed
-with `Permission denied`). The capstone made the local-path provisioner, which
+with `Permission denied`). The final project made the local-path provisioner, which
 creates them `0777`, the default StorageClass.
 
 ### Rootless-podman minikube has its own image-distribution model (historical) <!-- forbidden-ok -->

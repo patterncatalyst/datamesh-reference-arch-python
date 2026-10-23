@@ -1,0 +1,51 @@
+# review-service subchart values.
+
+replicas: 1
+
+image:
+  # Image is loaded into the node by build-image.sh (minikube image load); no registry.
+  repository: datamesh/review-service
+  tag: v1
+  # Never: images are loaded into the node by build-image.sh (minikube image load) and never pulled; build-image.sh restarts the Deployment so a rebuilt :v1 is used.
+  pullPolicy: Never
+
+# NodePort 30086, published on 127.0.0.1:8086 at profile creation
+# (map: demos/lib/endpoints.sh).
+service:
+  type: NodePort
+  port: 80
+  targetPort: 8080
+  nodePort: 30086
+
+# Postgres connection. The CloudNativePG operator generates a Secret named
+# "<cluster>-app" holding the app user's credentials; we reference it by key.
+postgres:
+  clusterName: datamesh-postgres
+  appSecret: datamesh-postgres-app
+  schema: reviews
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 192Mi
+  limits:
+    memory: 512Mi
+
+# /health is liveness; /healthz is readiness (checks Postgres).
+probes:
+  # r28 calibration: a startupProbe gates liveness/readiness until the app has
+  # finished booting. Python services (imports + schema build + seed) can take
+  # 10-30s; a 5s liveness initialDelay alone would kill them mid-boot.
+  # 30 x 2s = 60s startup grace.
+  startup:
+    path: /health
+    failureThreshold: 30
+    periodSeconds: 2
+  liveness:
+    path: /health
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  readiness:
+    path: /healthz
+    initialDelaySeconds: 5
+    periodSeconds: 5

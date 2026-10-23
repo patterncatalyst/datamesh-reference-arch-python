@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # demo-service.sh — build, deploy, and verify the health surface of a
-# scaffolded capstone service (r22). Generic counterpart to demo-order.sh
+# scaffolded datamesh service (r22). Generic counterpart to demo-order.sh
 # (which also asserts order-service's domain endpoints).
 #
 # What it does:
@@ -26,15 +26,15 @@ SERVICE="${BASE}-service"
 PURGE_DB=0
 [[ "${2:-}" == "--purge-db" ]] && PURGE_DB=1
 
-PROFILE="capstone"
-NS="capstone"
+PROFILE="datamesh"
+NS="datamesh"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 SVC_DIR="services/${SERVICE}"
-CHART="charts/capstone/charts/${SERVICE}"
-PG_RELEASE="capstone-postgres"
-PG_CHART="charts/capstone/charts/postgres"   # the Cluster CR chart (r21)
+CHART="charts/datamesh/charts/${SERVICE}"
+PG_RELEASE="datamesh-postgres"
+PG_CHART="charts/datamesh/charts/postgres"   # the Cluster CR chart (r21)
 # The endpoint name is the short service name ($BASE), e.g. "order", "review".
 LOCAL_PORT="$(endpoint_port "$BASE")" || { echo "no endpoint mapping for $BASE"; exit 1; }
 
@@ -57,21 +57,21 @@ diagnostics() {
     printf '\n--- previous logs (if crashed) ---\n' >&2
     kubectl logs -n "$NS" -l "app.kubernetes.io/name=${SERVICE}" --previous --tail=50 2>&1 || true
     printf '\n--- images loaded in the profile ---\n' >&2
-    minikube -p "$PROFILE" image ls 2>&1 | grep capstone/ >&2 || echo "(no capstone/ images loaded)" >&2
+    minikube -p "$PROFILE" image ls 2>&1 | grep datamesh/ >&2 || echo "(no datamesh/ images loaded)" >&2
 }
 
 [[ -d "$SVC_DIR" ]] || fail "service dir $SVC_DIR not found — scaffold it first: ./scripts/scaffold-service.sh $BASE <schema>"
 [[ -d "$CHART"   ]] || fail "chart dir $CHART not found"
 
-step "Sanity: chart image.repository is capstone/<svc> with pullPolicy Never"
+step "Sanity: chart image.repository is datamesh/<svc> with pullPolicy Never"
 if chart_repo_ok "$CHART/values.yaml" "$SERVICE"; then
     printf '    \xe2\x9c\x93 %s -> %s\n' "$SERVICE" "$(image_ref "$SERVICE")"
 else
-    fail "$SERVICE chart must use image.repository capstone/$SERVICE with pullPolicy Never"
+    fail "$SERVICE chart must use image.repository datamesh/$SERVICE with pullPolicy Never"
 fi
 
 step "Pre-flight: profile + context"
-minikube status -p "$PROFILE" >/dev/null 2>&1 || fail "profile '$PROFILE' not running — ./scripts/setup-capstone-profile.sh"
+minikube status -p "$PROFILE" >/dev/null 2>&1 || fail "profile '$PROFILE' not running — ./scripts/setup-datamesh-profile.sh"
 kubectl config use-context "$PROFILE" >/dev/null
 
 step "Build + load ${SERVICE}:v1 into the profile"
@@ -121,7 +121,7 @@ SCHEMA="$(helm get values "$SERVICE" -n "$NS" -a 2>/dev/null | awk '/schema:/{pr
 SCHEMA="${SCHEMA:-$BASE}"
 PRIMARY="$(kubectl get pods -n "$NS" -l "cnpg.io/cluster=${PG_RELEASE},cnpg.io/instanceRole=primary" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)"
 if [[ -n "$PRIMARY" ]]; then
-    if kubectl exec -n "$NS" "$PRIMARY" -- psql -U postgres -d capstone -tAc \
+    if kubectl exec -n "$NS" "$PRIMARY" -- psql -U postgres -d datamesh -tAc \
         "SELECT 1 FROM information_schema.schemata WHERE schema_name='${SCHEMA}'" 2>/dev/null | grep -q 1; then
         printf '    confirmed: schema "%s" exists\n' "$SCHEMA"
     else

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 #
-# ingest-openmetadata.sh — populate the OpenMetadata catalog from the capstone's
+# ingest-openmetadata.sh — populate the OpenMetadata catalog from the datamesh's
 # data sources and declare the cross-product lineage (r27b, CAP-023).
 #
 # Runs three one-off Kubernetes Jobs, in order:
-#   1. om-ingest-postgres — catalog the capstone Postgres schemas as Tables
-#      (Database Service "capstone-postgres")
+#   1. om-ingest-postgres — catalog the datamesh Postgres schemas as Tables
+#      (Database Service "datamesh-postgres")
 #   2. om-ingest-kafka    — catalog the Strimzi topics as Topics
-#      (Messaging Service "capstone-kafka"); bare, no schema registry
+#      (Messaging Service "datamesh-kafka"); bare, no schema registry
 #   3. om-declare-lineage — PUT the two edges that connect them:
 #         orders -> order-placed -> notifications
 #
@@ -19,10 +19,10 @@
 # and the lineage PUT is idempotent, so re-running is safe.
 #
 # Prerequisites:
-#   * capstone profile running, kubectl context = capstone
+#   * datamesh profile running, kubectl context = datamesh
 #   * scripts/setup-openmetadata.sh has been run (the server is up and serving)
-#   * the data sources exist: the capstone-postgres Cluster with the service
-#     schemas, and the capstone-kafka cluster with the order-placed topic
+#   * the data sources exist: the datamesh-postgres Cluster with the service
+#     schemas, and the datamesh-kafka cluster with the order-placed topic
 #     (i.e. the app has been deployed and at least one order placed). Ingestion
 #     reflects whatever exists at run time.
 #
@@ -34,7 +34,7 @@
 
 set -euo pipefail
 
-NS="capstone"
+NS="datamesh"
 JOB_TIMEOUT="10m"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -55,9 +55,9 @@ for f in postgres.yaml kafka.yaml get_token.py lineage.py \
 done
 
 current_context="$(kubectl config current-context 2>/dev/null || echo "")"
-if [[ "$current_context" != "capstone" ]]; then
-    printf 'WARNING: current kubectl context is "%s", not "capstone".\n' "$current_context" >&2
-    printf 'Switch with: kubectl config use-context capstone\n' >&2
+if [[ "$current_context" != "datamesh" ]]; then
+    printf 'WARNING: current kubectl context is "%s", not "datamesh".\n' "$current_context" >&2
+    printf 'Switch with: kubectl config use-context datamesh\n' >&2
     printf 'Continue anyway? [y/N] ' >&2
     read -r answer
     [[ "$answer" =~ ^[Yy] ]] || exit 1
@@ -112,7 +112,7 @@ printf '\n==> Catalog populated and lineage declared.\n\n'
 printf 'Browse it:\n'
 printf '  ./scripts/show-endpoints.sh    # OpenMetadata is published on 127.0.0.1:8585\n'
 printf '  open http://127.0.0.1:8585  (admin@open-metadata.org / admin)\n'
-printf '  → Services shows capstone-postgres (Database) and capstone-kafka (Messaging)\n'
+printf '  → Services shows datamesh-postgres (Database) and datamesh-kafka (Messaging)\n'
 printf '  → the order-placed topic'\''s Lineage tab shows orders upstream, notifications downstream\n\n'
 printf 'Verify end-to-end:\n'
 printf '  ./demos/demo-om-lineage.sh\n'

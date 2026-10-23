@@ -1,4 +1,4 @@
-"""payment-service — a §17 capstone data product (r22 skeleton).
+"""payment-service — a §17 final project data product (r22 skeleton).
 
 r22 scope: the service stands up, connects to its Postgres schema
 (`payments`), and serves health probes. Its domain surface (REST/gRPC/
@@ -32,7 +32,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="payment-service",
     version="0.1.0",
-    description="payment-service data product for the §17 capstone data mesh (skeleton).",
+    description="payment-service data product for the §17 final project data mesh (skeleton).",
     lifespan=lifespan,
 )
 

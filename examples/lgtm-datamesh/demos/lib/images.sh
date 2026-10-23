@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
-# images.sh — image pipeline helpers for the capstone cluster.
+# images.sh — image pipeline helpers for the datamesh cluster.
 #
 # There is no registry. Images are built on the host with `docker build`,
 # loaded into the node's containerd with `minikube image load`, and named
-# capstone/<svc>:v1. Charts reference them with `imagePullPolicy: Never`, so
+# datamesh/<svc>:v1. Charts reference them with `imagePullPolicy: Never`, so
 # the kubelet only ever uses what was loaded into the profile.
 #
 #   source "$(dirname "${BASH_SOURCE[0]}")/lib/images.sh"
@@ -13,14 +13,14 @@
 #
 # Safe to `source` under `set -euo pipefail`: only definitions, no side effects.
 
-IMAGE_PREFIX="capstone"
+IMAGE_PREFIX="datamesh"
 IMAGE_TAG_DEFAULT="v1"
-IMAGE_PROFILE="${MINIKUBE_PROFILE:-capstone}"
+IMAGE_PROFILE="${MINIKUBE_PROFILE:-datamesh}"
 
-CAPSTONE_SERVICES=(graphql-gateway inventory-service notification-service
+DATAMESH_SERVICES=(graphql-gateway inventory-service notification-service
                    order-service payment-service shipping-service)
 
-# image_ref <svc> [tag] → capstone/<svc>:<tag>
+# image_ref <svc> [tag] → datamesh/<svc>:<tag>
 image_ref() { printf '%s/%s:%s\n' "$IMAGE_PREFIX" "$1" "${2:-$IMAGE_TAG_DEFAULT}"; }
 
 # image_in_profile <svc> [tag] → 0 if the image is loaded in the profile's containerd
@@ -42,7 +42,7 @@ docker_engine_ok() {
     return 1
 }
 
-# chart_repo_ok <values-file> <svc> → 0 if image.repository is capstone/<svc>
+# chart_repo_ok <values-file> <svc> → 0 if image.repository is datamesh/<svc>
 # and pullPolicy is Never; else prints what was found on stderr and returns 1.
 chart_repo_ok() {
     local file="$1" svc="$2" repo pol

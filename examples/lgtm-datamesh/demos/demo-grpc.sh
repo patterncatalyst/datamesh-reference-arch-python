@@ -22,11 +22,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/endpoints.sh"
 source "${SCRIPT_DIR}/lib/images.sh"
 
-PROFILE="capstone"; NS="capstone"
+PROFILE="datamesh"; NS="datamesh"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
-PG_RELEASE="capstone-postgres"; PG_CHART="charts/capstone/charts/postgres"
-INV_CHART="charts/capstone/charts/inventory-service"
-ORD_CHART="charts/capstone/charts/order-service"
+PG_RELEASE="datamesh-postgres"; PG_CHART="charts/datamesh/charts/postgres"
+INV_CHART="charts/datamesh/charts/inventory-service"
+ORD_CHART="charts/datamesh/charts/order-service"
 LOCAL_PORT=$TP_ORDER
 PURGE_DB=0; [[ "${1:-}" == "--purge-db" ]] && PURGE_DB=1
 
@@ -45,24 +45,24 @@ fail() {
 # ── 1. stubs present? ─────────────────────────────────────────────────────────
 step "Checking for committed gRPC stubs"
 for svc in inventory-service order-service; do
-    if [[ ! -f "services/${svc}/gen/capstone/inventory/v1/inventory_pb2_grpc.py" ]]; then
+    if [[ ! -f "services/${svc}/gen/datamesh/inventory/v1/inventory_pb2_grpc.py" ]]; then
         fail "missing stubs for ${svc} — generate them first: ./scripts/gen-protos.sh"
     fi
 done
 printf '    ✓ stubs present in both services\n'
 
-# ── 1b. charts use local capstone/<svc> images? ──────────────────────────────
-step "Sanity: chart image.repository is capstone/<svc> with pullPolicy Never"
+# ── 1b. charts use local datamesh/<svc> images? ──────────────────────────────
+step "Sanity: chart image.repository is datamesh/<svc> with pullPolicy Never"
 for svc in inventory-service order-service; do
-    if chart_repo_ok "charts/capstone/charts/${svc}/values.yaml" "$svc"; then
+    if chart_repo_ok "charts/datamesh/charts/${svc}/values.yaml" "$svc"; then
         printf '    ✓ %s → %s\n' "$svc" "$(image_ref "$svc")"
     else
-        fail "${svc} chart must use image.repository capstone/${svc} with pullPolicy Never"
+        fail "${svc} chart must use image.repository datamesh/${svc} with pullPolicy Never"
     fi
 done
 
 # ── 2. build + load both images ───────────────────────────────────────────────
-minikube status -p "$PROFILE" >/dev/null 2>&1 || fail "profile '$PROFILE' not running — ./scripts/setup-capstone-profile.sh"
+minikube status -p "$PROFILE" >/dev/null 2>&1 || fail "profile '$PROFILE' not running — ./scripts/setup-datamesh-profile.sh"
 kubectl config use-context "$PROFILE" >/dev/null
 step "Building + loading inventory-service"
 ./scripts/build-image.sh services/inventory-service inventory-service v1 || fail "inventory build/load failed"
