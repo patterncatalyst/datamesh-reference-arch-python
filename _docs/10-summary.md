@@ -5,10 +5,23 @@ description: A closing summary — for each of the four data-mesh principles, th
 duration: 10 min
 ---
 
+## Learning objectives
+
+By the end of this chapter you can:
+
+- Restate each of Dehghani's four data-mesh principles in terms of the value it delivers.
+- Map each principle to the concrete Kubernetes-native implementation pieces in this reference (namespaces, Apicurio, OpenMetadata, the operator pattern, Istio, admission policies).
+- Identify the failure mode that appears when each principle is missing.
+- Explain why a trusted base image (UBI) underlies all four principles rather than standing apart as a separate concern.
+
+## Why this matters
+
 The reading set has worked through the data mesh implementation by
 *concern* — substrate, services, contracts, planes, mesh, scaling,
 observability, failure modes. This closing page reorganizes the same
-material by *principle*. For each of Dehghani's four principles, you'll
+material by *principle*.
+
+For each of Dehghani's four principles, you'll
 see the value the principle delivers when it's honored, the concrete
 implementation pieces in this reference that realize it, and the failure
 mode that shows up when the principle is missing.
@@ -18,7 +31,9 @@ The diagrams on this page are reproduced from the implementation deck at
 with OpenShift specifically, the diagrams use OpenShift vocabulary in a few
 places — *Project* for namespace, *SCCs* for PodSecurity, *OperatorHub /
 OLM* for the operator install path, *AMQ Streams* for Strimzi, *CNPG* for
-CloudNativePG. The principles and the implementation pieces themselves are
+CloudNativePG.
+
+The principles and the implementation pieces themselves are
 runtime-agnostic; the OpenShift framing is one concrete instance of the
 same shape. If your runtime is something else (vanilla Kubernetes, EKS,
 GKE, AKS, minikube), the substitutions are direct: read *Project* as
@@ -128,6 +143,7 @@ OpenShift) makes Kafka available *as a custom resource*: a domain
 declares its consumer group; the operator handles the cluster.
 CloudNativePG (CNPG) does the same for Postgres: a domain declares its
 database; the operator handles the cluster, the backups, the failover.
+
 KEDA makes elastic scaling — including scale-to-zero — available as a
 ScaledObject, the same way: declare the demand signal, the operator
 handles the scaling. GitOps closes the loop by making the whole mesh
@@ -162,7 +178,9 @@ about TLS. Istio's traffic-management primitives (VirtualService,
 DestinationRule, the canary subset routing the reference uses for the
 v1→v2 contract demo) make *progressive delivery* a platform capability —
 a contract evolves under controlled traffic, weight-shifted live, with
-the application layer unchanged. Kubernetes admission policies (ValidatingAdmissionPolicy
+the application layer unchanged.
+
+Kubernetes admission policies (ValidatingAdmissionPolicy
 on modern K8s, OPA/Gatekeeper or Kyverno on older clusters) enforce
 mesh-wide invariants: every data product carries an owner annotation,
 every namespace carries a domain label, every Deployment has its
@@ -192,7 +210,9 @@ Red Hat Universal Base Image (UBI) — `ubi10/python-314-minimal` is the base fo
 every Python service in the reference. UBI is freely redistributable
 and enterprise-maintained, which means a domain team gets a base image
 they can use without licensing constraints and that's patched on a
-regular cadence by Red Hat. Language dependencies come from Red Hat's
+regular cadence by Red Hat.
+
+Language dependencies come from Red Hat's
 verified channels or PyPI, with known provenance; the resulting images
 are signed and have an SBOM, and admission policies verify both before
 the image runs. The domain's data product layers its FastAPI / gRPC /
@@ -240,3 +260,10 @@ their implementation pieces are *visible together*. Conceptual material
 gives you the principles; vendor material gives you the pieces. This
 reference's job is to be the bridge — concrete enough to be runnable,
 explicit enough about its choices to be portable.
+
+## For deeper coverage
+
+- *Data Mesh* by Zhamak Dehghani — the four principles this closing page reorganizes the reference by.
+- *Cloud Native Patterns* by Cornelia Davis — the platform patterns (self-serve, federated governance) behind this summary's implementation pieces.
+- *Kubernetes Patterns* by Bilgin Ibryam & Roland Huß — the operator and CRD shapes that make each principle self-serve.
+- *GitOps and Kubernetes* by Billy Yuen et al. — reproducing the whole mesh from a Git repository, the practice Principle 03's GitOps piece rests on.

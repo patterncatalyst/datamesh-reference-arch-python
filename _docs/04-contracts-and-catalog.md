@@ -5,6 +5,17 @@ description: Versioned contracts in Apicurio and discovery plus lineage in OpenM
 duration: 25 min
 ---
 
+## Learning objectives
+
+By the end of this chapter you can:
+
+- Classify a given contract as a runtime contract or a discovery contract, and explain why the coupling differs between the two.
+- Name the four contract types each service produces and where each one lives in Apicurio.
+- Trace how OpenMetadata ingests from the registry, the database, and Kafka to assemble a catalog with lineage.
+- Explain why a catalog is a requirement in a data mesh rather than optional tooling, and what a mesh degrades into without one.
+
+## Why this matters
+
 The [previous page]({{ '/docs/03-services-and-data-products/' | relative_url }})
 established that each service is a data product. But a data product is only useful to
 *other* domains if they can find it, understand its shape, trust that it won't change
@@ -38,21 +49,25 @@ it's worth getting clear because the two jobs have very different coupling.
 
 ![How a contract flows — the runtime path versus the discovery path]({{ '/assets/diagrams/17-capstone-contract-flow.svg' | relative_url }})
 
-A **runtime contract** is load-bearing on the hot path. The event schema is the
+### Runtime contracts
+
+A **runtime contract** is essential on the hot path. The event schema is the
 example: the producer serializes an event against the registered schema and the
 consumer deserializes against it, so the event literally won't encode or decode
 correctly if the contract is wrong or missing. The registry is in the live path of
 every event. (The gRPC Protobuf definitions are similar in spirit, though compiled
 ahead of time rather than fetched at runtime.) Because a runtime contract is
-load-bearing, the registry can enforce real governance on it: reject a
+essential to execution, the registry can enforce real governance on it: reject a
 schema-incompatible change at publish time, before it can break a single consumer.
+
+### Discovery contracts
 
 A **discovery contract** is different. The OpenAPI document and the GraphQL SDL are
 published as the source of truth for a product's shape, but nothing fails at runtime
 if they're absent — they exist for humans reading the API, for breaking-change checks
 in CI, and for the catalog to ingest. They describe; they don't serialize.
 
-The same registry does both jobs, but the coupling is the thing to internalize: the
+The same registry does both jobs, but the coupling differs: the
 runtime path is tightly coupled and online, the discovery path is loosely coupled and
 offline. Conflating them — treating a discovery contract as if it were enforced at
 runtime, or a runtime contract as if it were just documentation — is how teams get
@@ -82,17 +97,19 @@ exist before lineage over them can be built.
 ## Why this is a requirement, not an add-on
 
 It's tempting to treat a catalog as a nice-to-have you bolt on once the "real" system
-works. In a data mesh it's the opposite, and this is the conceptually load-bearing
+works. In a data mesh it's the opposite, and this is the central
 point of the page. The entire premise of a mesh is that domains own their data
 independently and other domains consume it without a central team brokering access.
 That premise *only works* if products are discoverable and their contracts are
-trustworthy. Without a registry, contracts drift and consumers break silently. Without
+trustworthy.
+
+Without a registry, contracts drift and consumers break silently. Without
 a catalog, nobody can find products or understand lineage, so in practice they fall
 back to asking the central team — which reintroduces exactly the bottleneck the mesh
 exists to remove.
 
-So discovery infrastructure isn't decoration on top of a mesh; it's load-bearing
-structure. A mesh without a usable catalog degrades into the
+So discovery infrastructure isn't decoration on top of a mesh; it's structural to
+it. A mesh without a usable catalog degrades into the
 [proxy anti-pattern]({{ '/docs/09-anti-patterns/' | relative_url }}) — a
 central team back in the middle of every cross-domain question — even if every other
 piece is in place. The registry and catalog are what let federated governance be
@@ -108,3 +125,10 @@ ingestion has a deployment subtlety when a mesh is in play.
 With products that describe themselves and a catalog that makes them discoverable, the
 next question is how data actually moves between them — the synchronous read paths and
 the asynchronous event backbone.
+
+## For deeper coverage
+
+- *Data Mesh* by Zhamak Dehghani — data-as-a-product and federated computational governance, the two principles this chapter makes operational.
+- *Designing Data-Intensive Applications, 2nd ed.* by Martin Kleppmann & Chris Riccomini — schema evolution and the compatibility guarantees a registry enforces.
+- *Cloud Native Anti-Patterns* by Gerald Bachlmayr et al. — the proxy anti-pattern a mesh degrades into without a usable catalog.
+- Apicurio Registry documentation — contract versioning and compatibility rules across schemas, Protobuf, OpenAPI, and GraphQL SDL.

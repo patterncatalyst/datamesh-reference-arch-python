@@ -5,6 +5,20 @@ description: What a data mesh is, operational vs. analytical data, and Dehghani'
 duration: 20 min
 ---
 
+## Learning objectives
+
+By the end of this chapter you can:
+
+- State what a data mesh is and the failure it responds to, in your own words.
+- Distinguish operational data from analytical data and explain how a mesh
+  reorganizes that boundary by domain rather than by technology layer.
+- Name Dehghani's four principles and give a one-line example of each from this
+  build.
+- Recognize the difference between the data-mesh pattern and the specific tools this
+  reference uses to express it.
+
+## Why this matters
+
 The [previous page]({{ '/docs/01-data-architectures/' | relative_url }}) covered the
 landscape of data architectures — pipelines, warehouses, and lakes — and where the mesh
 sits in relation to all of them. This page goes deeper into what a data mesh actually
@@ -13,7 +27,7 @@ is and the four principles it rests on.
 Before any commands, it's worth being precise about what a data mesh actually is —
 because the term gets attached to a lot of things it isn't. This page is a working
 grounding in the idea and its four principles, enough to make the rest of the set
-make sense. It's deliberately brief: if you want the full conceptual treatment —
+make sense. It's brief: if you want the full conceptual treatment —
 the history, the operating-model shifts, the worked argument for decentralization —
 that's what the *Data Mesh 101* material in the presentation is for. Here we cover
 just enough to build on.
@@ -41,7 +55,7 @@ let them interoperate.
 
 ## Operational vs. analytical data
 
-One distinction underlies everything and is worth stating plainly, because blurring it
+One distinction underlies everything, and blurring it
 is itself a common mistake. **Operational data** is the current-state data behind a
 domain's running services — the rows a microservice reads and writes to do its job,
 transactional and live. **Analytical data** is the historical, aggregated view used to
@@ -117,3 +131,17 @@ common way these efforts fail is mistaking the tooling for the transformation.
 With the vocabulary in place, the next page looks at why Kubernetes is a natural
 substrate for all of this — and how each of the four principles maps onto concrete
 Kubernetes primitives.
+
+## For deeper coverage
+
+- *Data Mesh* by Zhamak Dehghani — the primary source for the four principles and the
+  domain-ownership argument this page summarizes.
+- *Learning Domain-Driven Design* by Vlad Khononov — the bounded-context thinking
+  behind domain ownership and why a data product maps to a domain, not a table.
+- *Implementing Domain-Driven Design* by Vaughn Vernon — a deeper, implementation-level
+  treatment of the same domain boundaries.
+- *Designing Data-Intensive Applications, 2nd ed.* by Martin Kleppmann & Chris
+  Riccomini — the operational-versus-analytical data distinction from the systems
+  side.
+- *Cloud Native Patterns* by Cornelia Davis — the self-serve platform principle made
+  concrete in cloud-native infrastructure terms.

@@ -5,10 +5,23 @@ description: Seeing what the mesh is doing — metrics, distributed traces acros
 duration: 20 min
 ---
 
+## Learning objectives
+
+By the end of this chapter you can:
+
+- Name the three observability signals (metrics, traces, logs) and the question each answers about a request crossing products.
+- Explain why the service mesh's sidecars provide inter-product metrics without any application instrumentation.
+- Trace a single GraphQL query as a multi-span trace crossing three protocols — HTTP, REST, and gRPC — through the gateway.
+- Explain what a live mesh-visualization tool like Kiali adds beyond metrics and traces.
+
+## Why this matters
+
 The [previous page]({{ '/docs/07-elastic-and-resilient/' | relative_url }})
 ended on scaling and recovery — the platform doing things automatically in response to
 demand and failure. But "the platform does things automatically" is only reassuring if
-you can *see* it happening. This page is about observability: the metrics that show a
+you can *see* it happening.
+
+This page is about observability: the metrics that show a
 product's load and the autoscaler's response, the distributed traces that follow a
 single request across several products, and the live view of traffic moving through the
 mesh. In a system of independently-owned products talking to each other, observability
@@ -35,20 +48,22 @@ one product owns in full.
 
 ![The three signals — metrics, traces, and logs — and the question each answers about a request crossing products]({{ '/assets/diagrams/17-three-signals.svg' | relative_url }})
 
-## Metrics, for free from the mesh
+## Metrics from the mesh, no instrumentation needed
 
 The first pleasant surprise is how much you get without instrumenting anything. Because
 the services are in the [service mesh]({{ '/docs/06-progressive-delivery-mtls/' | relative_url }}),
 the sidecars already emit request-level metrics — counts, latencies, error rates for
 the traffic flowing between products — and a Prometheus that scrapes them gets a
 detailed picture of inter-product traffic without a single line of metrics code in the
-services. This capstone leans on exactly that: the metrics half of observability adds
+services.
+
+This capstone leans on exactly that: the metrics half of observability adds
 *nothing* to the application code, because the mesh is already measuring the traffic it
 carries. Grafana then turns those metrics into the dashboards you'd actually watch —
 the gateway's request volume rising, KEDA spinning up replicas in response, the canary's
 traffic split landing where the weights say it should.
 
-That "for free" property is the self-serve platform principle showing up again: a domain
+That property is the self-serve platform principle showing up again: a domain
 team gets request metrics for its product because the platform's mesh provides them, not
 because the team instrumented anything.
 
@@ -62,13 +77,15 @@ boundaries, so the work each product does on its behalf becomes a connected tree
 **spans** — one request, many products, one trace.
 
 This capstone collects traces in Tempo and instruments the **gateway** as the trace
-source, and that choice is deliberate. The gateway is the entry point for the federated
+source. The gateway is the entry point for the federated
 read path, so a single GraphQL query there produces the most instructive trace there is
 in this system: an HTTP server span for the query itself, a REST client span for the
 call out to order-service, and a gRPC client span for the call to inventory-service —
 all three protocols from
 [the data planes page]({{ '/docs/05-data-planes/' | relative_url }})
-appearing as nested spans in one trace. You can *see* the composition happen: the
+appearing as nested spans in one trace.
+
+You can *see* the composition happen: the
 gateway fanning out to two products over two different protocols and assembling the
 result. One well-chosen instrumentation point illuminates the whole read path.
 
@@ -83,6 +100,7 @@ with a mesh is a *live* picture of the topology — which products are talking t
 right now, with traffic rates and health on the edges between them. That's what a
 mesh-visualization layer such as Kiali provides: a real-time graph of the products and
 the traffic between them, drawn from the same mesh telemetry the metrics come from.
+
 During a canary it shows the v1/v2 split as live traffic on the graph; when a product is
 struggling, the unhealthy edges are visible in the topology. For a system whose
 defining behavior is products talking to each other, a live map of exactly that is the
@@ -96,7 +114,9 @@ Put the pieces together and the mesh becomes legible end to end. A single GraphQ
 appears as a trace whose spans cross three products and three protocols. The metrics
 show the gateway's load and the autoscaler's response to it. The catalog records the
 lineage of which products feed which. The mesh view shows the live topology, canary
-split and all. None of these is the system — they're the *instruments* through which you
+split and all.
+
+None of these is the system — they're the *instruments* through which you
 understand a system too distributed for any single vantage point to capture. That's the
 acceptance bar the capstone is built toward: not just that the mesh runs, but that you
 can watch it run — see a request thread across products, see a product scale to meet
@@ -110,3 +130,10 @@ elastic scaling with recovery, and the observability to see all of it. The one t
 left is to step back from *how* and look at *what goes wrong* — the conceptual and
 organizational failure modes that derail data-mesh efforts even when the technology is
 sound.
+
+## For deeper coverage
+
+- *Designing Data-Intensive Applications, 2nd ed.* by Martin Kleppmann & Chris Riccomini — reasoning about the behavior of distributed systems built from independently-owned parts.
+- [OpenTelemetry documentation](https://opentelemetry.io/docs/) — the metrics/traces/logs signal model this chapter applies to a mesh.
+- [Grafana documentation](https://grafana.com/docs/) — Tempo for traces, Mimir/Prometheus for metrics, and correlating the two.
+- *Cloud Native Patterns* by Cornelia Davis — observability as a platform-provided concern rather than a per-service add-on.

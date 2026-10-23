@@ -5,12 +5,24 @@ description: Evolving a contract in the open with an Istio v1→v2 canary, and t
 duration: 25 min
 ---
 
+## Learning objectives
+
+By the end of this chapter you can:
+
+- Explain how a `DestinationRule`, a `VirtualService`, and a `Gateway` work together to canary a contract version rather than just a binary.
+- Read a weighted traffic-split result and judge whether it falls within the expected band.
+- Explain how Istio provides mTLS between meshed sidecars with no change to application code.
+- Identify the three workload categories that should opt out of mesh injection and why each one breaks under it.
+- Articulate the trade-off between namespace-wide injection and selective injection.
+
+## Why this matters
+
 Data products evolve. A product that can never change its contract is a product nobody
 will build on for long — but a product that changes its contract *carelessly* breaks
 every consumer downstream. This page is about evolving safely: shifting traffic
 gradually between an old and a new version of a product's contract, with the service
 mesh both routing the split and securing the traffic. It's also where the capstone
-makes a genuine architectural decision that the rest of the set has been alluding to —
+makes an architectural decision that the rest of the set has been alluding to —
 to mesh **selectively** rather than meshing everything — and explains why, from
 experience.
 
@@ -33,10 +45,12 @@ them, and a `Gateway` admits the traffic. Shifting the canary is just re-applyin
 progressive rollout is a sequence of one-line weight changes, and rolling back is the
 same operation in reverse.
 
-A couple of honest simplifications worth naming. v1 and v2 here run the *same image*
-with an environment toggle and a different `version` label, rather than two images from
-two commits — that keeps the demo focused on the traffic-management mechanism rather
-than an image pipeline, and the Istio mechanics are identical either way. And traffic
+Two simplifications here: v1 and v2 run the *same image* with an environment toggle
+and a different `version` label, rather than two images from two commits — that
+keeps the demo focused on the traffic-management mechanism rather than an image
+pipeline, and the Istio mechanics are identical either way.
+
+And traffic
 enters through the ingress gateway (reached on its NodePort, published to
 127.0.0.1:8088 when the profile is created, DRA-017) rather than from a meshed client, so no client needs
 to join the mesh for the canary to work.
@@ -48,7 +62,7 @@ under controlled traffic, exactly as the pattern intends.
 
 ![The capstone's mesh in canary mode — sidecars beside each product, mTLS between them, weights moving traffic from v1 to v2]({{ '/assets/diagrams/17-service-mesh.svg' | relative_url }})
 
-## mTLS for free
+## mTLS without code changes
 
 The same mesh that routes the canary also secures it. When two services are in the
 mesh, Istio establishes mutual TLS between their sidecars automatically — each service
@@ -91,14 +105,16 @@ Beyond those specific breakages, there's a systemic reason: with namespace-wide
 injection, *every* pod creation in the namespace depends on the injection webhook being
 reachable. If the mesh control plane has a bad moment, you can't create a database pod,
 a job, or anything else — workloads that have nothing to do with the mesh are now
-coupled to its health. Selective injection contains that blast radius: only the
-workloads that actually need the mesh depend on it.
+coupled to its health.
 
-So the capstone meshes the services that participate in mesh-managed traffic — the ones
-doing the canary, the ones that benefit from mTLS and traffic management — and keeps the
-database, the batch jobs, and other operator-managed infrastructure *out* of the mesh by
-opting them out explicitly. The trade-off is real and worth stating plainly:
-namespace-wide injection is genuinely simpler to reason about and gives blanket mTLS
+Selective injection contains that blast radius: only the
+workloads that actually need the mesh depend on it. So the capstone meshes the services
+that participate in mesh-managed traffic — the ones doing the canary, the ones that
+benefit from mTLS and traffic management — and keeps the database, the batch jobs, and
+other operator-managed infrastructure *out* of the mesh by opting them out explicitly.
+
+The trade-off is real:
+namespace-wide injection is simpler to reason about and gives blanket mTLS
 with one label, while selective injection is more work to configure and means you have
 to decide, per workload, whether it belongs in the mesh. The capstone takes that
 configuration cost in exchange for resilience and correctness — because the failures
@@ -120,3 +136,11 @@ liability: applied where it helps, kept away from where it hurts.
 
 Next, the other half of operating a mesh under real conditions: scaling products to
 match demand — including down to zero — and recovering when things fail.
+
+## For deeper coverage
+
+- [Istio documentation](https://istio.io/latest/docs/) — `DestinationRule`, `VirtualService`, `Gateway`, and automatic mutual TLS between sidecars.
+- *Kubernetes Patterns* by Bilgin Ibryam & Roland Huß — the Sidecar pattern and the trade-offs of attaching one to every workload.
+- *Platform Engineering on Kubernetes* by Mauricio Salatino — treating mesh injection as a platform policy decision rather than a blanket default.
+- *GitOps and Kubernetes* by Billy Yuen et al. — progressive delivery workflows for shifting traffic between versions.
+- *Cloud Native Anti-Patterns* by Gerald Bachlmayr et al. — the failure modes of meshing workloads that don't belong in the mesh.
