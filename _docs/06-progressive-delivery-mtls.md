@@ -50,7 +50,7 @@ environment toggle and a different `version` label, rather than two images from 
 commits. That keeps the demo focused on the traffic-management mechanism rather than
 an image pipeline, and the Istio mechanics are identical either way. And traffic
 enters through the ingress gateway (reached on its NodePort, published to
-127.0.0.1:8088 when the profile is created, DRA-017) rather than from a meshed client,
+127.0.0.1:8088 when the profile is created) rather than from a meshed client,
 so no client needs to join the mesh for the canary to work.
 
 This was verified end to end: with the split set to 90/10, a run of 100 requests

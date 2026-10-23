@@ -247,11 +247,7 @@ your own data mesh on Kubernetes, the pattern is:
 2. **Run the example tree** to see the cross-product behaviors live:
    the trace tree across three products, the canary contract evolution
    under live traffic, the autoscaler reacting to a Kafka backlog.
-3. **Use the decision log** at `_plans/archive/final-project-decisions.md`
-   to understand the *reasoning* for each implementation choice, not
-   just the choice itself. The rejected alternatives are where the
-   institutional memory of the build lives.
-4. **Adapt to your runtime** by swapping the substitutions: namespace
+3. **Adapt to your runtime** by swapping the substitutions: namespace
    for Project, PodSecurity for SCCs, `helm install` for OperatorHub.
    The reference's chart structure is set up to make this tractable;
    the bootstrap script is one of the natural places to fork.
