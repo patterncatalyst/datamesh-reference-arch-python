@@ -146,11 +146,11 @@ is published and reachable.
 
 ## For deeper coverage
 
-- *Kubernetes Patterns* by Bilgin Ibryam & Roland Huß: the primitive-by-primitive
+- [*Kubernetes Patterns*](https://www.oreilly.com/library/view/-/9781098131678/) by Bilgin Ibryam & Roland Huß: the primitive-by-primitive
   treatment (namespaces, operators, CRDs) this chapter's mapping draws on.
-- *Platform Engineering on Kubernetes* by Mauricio Salatino: the self-serve platform
+- [*Platform Engineering on Kubernetes*](https://www.manning.com/books/platform-engineering-on-kubernetes) by Mauricio Salatino: the self-serve platform
   principle built out as an operating model, not just a set of operators.
-- *Cloud Native Patterns* by Cornelia Davis: the broader cloud-native platform
+- [*Cloud Native Patterns*](https://www.manning.com/books/cloud-native-patterns) by Cornelia Davis: the broader cloud-native platform
   patterns this final project's shared infrastructure tier follows.
 - [Kubernetes documentation](https://kubernetes.io/docs/): namespaces, RBAC, CRDs,
   and admission control, straight from the source.

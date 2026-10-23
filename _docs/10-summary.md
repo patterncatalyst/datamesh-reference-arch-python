@@ -264,7 +264,7 @@ explicit enough about its choices to be portable.
 
 ## For deeper coverage
 
-- *Data Mesh* by Zhamak Dehghani: the four principles this closing page reorganizes the reference by.
-- *Cloud Native Patterns* by Cornelia Davis: the platform patterns (self-serve, federated governance) behind this summary's implementation pieces.
-- *Kubernetes Patterns* by Bilgin Ibryam & Roland Huß: the operator and CRD shapes that make each principle self-serve.
-- *GitOps and Kubernetes* by Billy Yuen et al.: reproducing the whole mesh from a Git repository, the practice Principle 03's GitOps piece rests on.
+- [*Data Mesh*](https://www.oreilly.com/library/view/data-mesh/9781492092384/) by Zhamak Dehghani: the four principles this closing page reorganizes the reference by.
+- [*Cloud Native Patterns*](https://www.manning.com/books/cloud-native-patterns) by Cornelia Davis: the platform patterns (self-serve, federated governance) behind this summary's implementation pieces.
+- [*Kubernetes Patterns*](https://www.oreilly.com/library/view/-/9781098131678/) by Bilgin Ibryam & Roland Huß: the operator and CRD shapes that make each principle self-serve.
+- [*GitOps and Kubernetes*](https://www.manning.com/books/gitops-and-kubernetes) by Billy Yuen et al.: reproducing the whole mesh from a Git repository, the practice Principle 03's GitOps piece rests on.

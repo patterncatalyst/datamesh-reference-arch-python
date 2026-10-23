@@ -218,8 +218,8 @@ themselves so others can find and trust them: contracts and the catalog.
 
 ## For deeper coverage
 
-- *Data Mesh* by Zhamak Dehghani: the architectural quantum and why a data product's boundary should match a service's boundary.
-- *Cloud Native Patterns* by Cornelia Davis: packaging and runtime patterns for services that double as data products.
-- *Kubernetes Patterns* by Bilgin Ibryam & Roland Huß: container image and workload patterns behind the build-load-deploy sequence.
+- [*Data Mesh*](https://www.oreilly.com/library/view/data-mesh/9781492092384/) by Zhamak Dehghani: the architectural quantum and why a data product's boundary should match a service's boundary.
+- [*Cloud Native Patterns*](https://www.manning.com/books/cloud-native-patterns) by Cornelia Davis: packaging and runtime patterns for services that double as data products.
+- [*Kubernetes Patterns*](https://www.oreilly.com/library/view/-/9781098131678/) by Bilgin Ibryam & Roland Huß: container image and workload patterns behind the build-load-deploy sequence.
 - [Kubernetes documentation](https://kubernetes.io/docs/): image pull policies and the kubelet's image lifecycle.
 - [FastAPI](https://fastapi.tiangolo.com/): the framework order-service and its siblings are built on.

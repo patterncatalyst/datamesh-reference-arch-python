@@ -237,13 +237,13 @@ the others produces a distributed mess rather than a mesh.
 
 ## For deeper coverage
 
-- *Data Mesh* by Zhamak Dehghani: the full argument for why pipelines, warehouses,
+- [*Data Mesh*](https://www.oreilly.com/library/view/data-mesh/9781492092384/) by Zhamak Dehghani: the full argument for why pipelines, warehouses,
   and lakes hit an organizational ceiling, and what the mesh changes.
-- *Designing Data-Intensive Applications, 2nd ed.* by Martin Kleppmann & Chris
+- [*Designing Data-Intensive Applications, 2nd ed.*](https://www.oreilly.com/library/view/designing-data-intensive-applications/9781098119058/) by Martin Kleppmann & Chris
   Riccomini: the systems-level treatment of batch and stream processing, ETL/ELT,
   and the storage engines behind warehouses and lakes.
-- *Cloud Native Anti-Patterns* by Gerald Bachlmayr et al.: common organizational and
+- [*Cloud Native Anti-Patterns*](https://www.packtpub.com/en-us/product/cloud-native-anti-patterns-9781836200581) by Gerald Bachlmayr et al.: common organizational and
   architectural failure modes, including the centralized-ownership trap this chapter
   describes.
-- *Cloud Native Patterns* by Cornelia Davis: the platform-level patterns a self-serve
+- [*Cloud Native Patterns*](https://www.manning.com/books/cloud-native-patterns) by Cornelia Davis: the platform-level patterns a self-serve
   data platform draws on once the organizational shift is underway.

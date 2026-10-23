@@ -1,7 +1,7 @@
 ---
 title: "The data mesh: start here"
 order: 0
-description: "The map: what this reference builds, the reading order, and a link to each page in the set. Start here."
+description: "The map: what this reference builds, the reading order, and a link to each chapter in the set. Start here."
 duration: 5 min
 ---
 
@@ -9,45 +9,45 @@ duration: 5 min
 
 By the end of this chapter you can:
 
-- Name the four movements the reference set is organized into and which pages fall
+- Name the four movements the reference set is organized into and which chapters fall
   into each one.
 - Pick the reading order that matches how you want to use the set: straight through,
   or jumping to one topic.
-- Identify the three pages that cover the pattern's shape if you only have time for a
+- Identify the three chapters that cover the pattern's shape if you only have time for a
   few.
-- Locate the page that answers a specific question without re-reading the whole set.
+- Locate the chapter that answers a specific question without re-reading the whole set.
 
 ## Why this matters
 
-Page 2 names Dehghani's four principles. Page 3 takes the same four and maps each one
+Chapter 2 names Dehghani's four principles. Chapter 3 takes the same four and maps each one
 to a Kubernetes primitive: namespaces, operators, RBAC. That's the shape of this whole
 set. A concept gets introduced, then you watch it land in a running piece of the
-system a few pages later. This page is the map, nothing more: what the reference
-covers, the order to read it in, and a link to each page.
+system a few chapters later. This chapter is the map, nothing more: what the reference
+covers, the order to read it in, and a link to each chapter.
 
 The reference builds one working system end to end. A data mesh of services that own
 their data as products, that talk over a deliberate mix of protocols, that evolve their
 contracts safely, that scale to demand, and that stay observable throughout.
 
-Read it straight through the first time if you can. Each page picks up where the last
+Read it straight through the first time if you can. Each chapter picks up where the last
 left off, and the cross-references assume you've seen the earlier material. If you're
 back here looking for one specific thing, the descriptions below point at the right
-page.
+chapter.
 
 ## How the set is organized
 
-The eleven pages fall into four movements. **Conceptual grounding** (pages 1 to 3)
+The eleven chapters fall into four movements. **Conceptual grounding** (chapters 1 to 3)
 covers the landscape of data architectures, what a data mesh actually is, and why
-Kubernetes turns out to be a natural substrate for one. **Implementation** (pages 4 to
+Kubernetes turns out to be a natural substrate for one. **Implementation** (chapters 4 to
 9) builds the system: the services and their data products, the contracts and catalog
 that make them discoverable, the data planes they talk over, progressive delivery with
 mutual TLS, elastic scaling and recovery, and the observability to see all of it.
-**Failure modes** (page 10) steps back to the conceptual and organizational
+**Failure modes** (chapter 10) steps back to the conceptual and organizational
 anti-patterns that derail data-mesh efforts even when the technology is sound. The
-**summary** (page 11) closes by reorganizing the same material by principle: for each
+**summary** (chapter 11) closes by reorganizing the same material by principle: for each
 of the four, the value it delivers and the implementation pieces that realize it.
 
-## The pages
+## The chapters
 
 - [**1 · Data architectures**]({{ '/docs/01-data-architectures/' | relative_url }}):
   the landscape from pipelines to lakes to mesh, what each pattern is, the problem
@@ -96,12 +96,12 @@ Start with [concepts & principles]({{ '/docs/01-concepts/' | relative_url }}).
 
 ## For deeper coverage
 
-- *Data Mesh* by Zhamak Dehghani: the full argument this reference implements, including
+- [*Data Mesh*](https://www.oreilly.com/library/view/data-mesh/9781492092384/) by Zhamak Dehghani: the full argument this reference implements, including
   the history and the operating-model shifts this set only summarizes.
-- *Designing Data-Intensive Applications, 2nd ed.* by Martin Kleppmann & Chris
+- [*Designing Data-Intensive Applications, 2nd ed.*](https://www.oreilly.com/library/view/designing-data-intensive-applications/9781098119058/) by Martin Kleppmann & Chris
   Riccomini: the data-systems foundations (storage, replication, consistency) that sit
   underneath every data product in this build.
-- *Cloud Native Patterns* by Cornelia Davis: the platform patterns this reference's
+- [*Cloud Native Patterns*](https://www.manning.com/books/cloud-native-patterns) by Cornelia Davis: the platform patterns this reference's
   self-serve tier draws on.
-- *Kubernetes Patterns* by Bilgin Ibryam & Roland Huß: the Kubernetes-native building
-  blocks the implementation pages rely on throughout.
+- [*Kubernetes Patterns*](https://www.oreilly.com/library/view/-/9781098131678/) by Bilgin Ibryam & Roland Huß: the Kubernetes-native building
+  blocks the implementation chapters rely on throughout.

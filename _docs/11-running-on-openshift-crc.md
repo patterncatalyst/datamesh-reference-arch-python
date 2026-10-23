@@ -839,4 +839,4 @@ top of a resized instance and re-capturing the same evidence files under
 - [Strimzi documentation](https://strimzi.io/documentation/): the Kafka-on-Kubernetes operator model that AMQ Streams, referenced throughout this appendix, is built on.
 - [Istio documentation](https://istio.io/latest/docs/): mTLS and the `VirtualService`/`DestinationRule` traffic shaping the platform tier's mesh section uses.
 - [KEDA documentation](https://keda.sh/docs/): the upstream API the Custom Metrics Autoscaler operator packages.
-- *Platform Engineering on Kubernetes* by Mauricio Salatino: operator-based platform capabilities (OperatorHub/OLM) and SCCs as policy, the pattern this appendix's chart is built around.
+- [*Platform Engineering on Kubernetes*](https://www.manning.com/books/platform-engineering-on-kubernetes) by Mauricio Salatino: operator-based platform capabilities (OperatorHub/OLM) and SCCs as policy, the pattern this appendix's chart is built around.

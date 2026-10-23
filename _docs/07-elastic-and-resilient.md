@@ -130,7 +130,7 @@ products.
 
 ## For deeper coverage
 
-- *Kubernetes Patterns* by Bilgin Ibryam & Roland Huß: autoscaling and self-healing patterns on Kubernetes.
-- *Cloud Native Patterns* by Cornelia Davis: elasticity and recoverability as platform-provided properties.
-- *Platform Engineering on Kubernetes* by Mauricio Salatino: self-serve platform capabilities and what domains should and shouldn't operate themselves.
+- [*Kubernetes Patterns*](https://www.oreilly.com/library/view/-/9781098131678/) by Bilgin Ibryam & Roland Huß: autoscaling and self-healing patterns on Kubernetes.
+- [*Cloud Native Patterns*](https://www.manning.com/books/cloud-native-patterns) by Cornelia Davis: elasticity and recoverability as platform-provided properties.
+- [*Platform Engineering on Kubernetes*](https://www.manning.com/books/platform-engineering-on-kubernetes) by Mauricio Salatino: self-serve platform capabilities and what domains should and shouldn't operate themselves.
 - [KEDA documentation](https://keda.sh/docs/): scalers, `ScaledObject`s, and the HTTP add-on used in this chapter.

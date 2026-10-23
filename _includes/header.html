@@ -6,10 +6,12 @@
     </a>
     <nav class="site-nav" aria-label="Primary">
       <a href="{{ '/docs/00-index/' | relative_url }}"
-         {% if page.url contains '/docs/' %}aria-current="page"{% endif %}>Start here</a>
+         {% if page.url contains '/docs/' %}aria-current="page"{% endif %}>Contents</a>
       <a href="{{ '/docs/10-summary/' | relative_url }}">Summary</a>
       <a href="{{ '/demos/' | relative_url }}"
          {% if page.url == '/demos/' or page.url == '/setup/' %}aria-current="page"{% endif %}>Demos</a>
+      <a href="{{ '/bibliography/' | relative_url }}"
+         {% if page.url contains '/bibliography/' %}aria-current="page"{% endif %}>Bibliography</a>
       <a href="https://github.com/{{ site.github_username }}/{{ site.github_repo }}"
          rel="noopener">GitHub ↗</a>
     </nav>

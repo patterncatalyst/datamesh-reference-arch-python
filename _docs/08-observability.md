@@ -136,7 +136,7 @@ sound.
 
 ## For deeper coverage
 
-- *Designing Data-Intensive Applications, 2nd ed.* by Martin Kleppmann & Chris Riccomini: reasoning about the behavior of distributed systems built from independently-owned parts.
+- [*Designing Data-Intensive Applications, 2nd ed.*](https://www.oreilly.com/library/view/designing-data-intensive-applications/9781098119058/) by Martin Kleppmann & Chris Riccomini: reasoning about the behavior of distributed systems built from independently-owned parts.
 - [OpenTelemetry documentation](https://opentelemetry.io/docs/): the metrics/traces/logs signal model this chapter applies to a mesh.
 - [Grafana documentation](https://grafana.com/docs/): Tempo for traces, Mimir/Prometheus for metrics, and correlating the two.
-- *Cloud Native Patterns* by Cornelia Davis: observability as a platform-provided concern rather than a per-service add-on.
+- [*Cloud Native Patterns*](https://www.manning.com/books/cloud-native-patterns) by Cornelia Davis: observability as a platform-provided concern rather than a per-service add-on.
