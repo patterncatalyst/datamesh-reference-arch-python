@@ -50,7 +50,7 @@ environment toggle and a different `version` label, rather than two images from 
 commits. That keeps the demo focused on the traffic-management mechanism rather than
 an image pipeline, and the Istio mechanics are identical either way. And traffic
 enters through the ingress gateway (reached on its NodePort, published to
-127.0.0.1:8088 when the profile is created, DRA-017) rather than from a meshed client,
+127.0.0.1:8088 when the profile is created) rather than from a meshed client,
 so no client needs to join the mesh for the canary to work.
 
 This was verified end to end: with the split set to 90/10, a run of 100 requests
@@ -138,7 +138,7 @@ match demand, including down to zero, and recovering when things fail.
 ## For deeper coverage
 
 - [Istio documentation](https://istio.io/latest/docs/): `DestinationRule`, `VirtualService`, `Gateway`, and automatic mutual TLS between sidecars.
-- *Kubernetes Patterns* by Bilgin Ibryam & Roland Huß: the Sidecar pattern and the trade-offs of attaching one to every workload.
-- *Platform Engineering on Kubernetes* by Mauricio Salatino: treating mesh injection as a platform policy decision rather than a blanket default.
-- *GitOps and Kubernetes* by Billy Yuen et al.: progressive delivery workflows for shifting traffic between versions.
-- *Cloud Native Anti-Patterns* by Gerald Bachlmayr et al.: the failure modes of meshing workloads that don't belong in the mesh.
+- [*Kubernetes Patterns*](https://www.oreilly.com/library/view/-/9781098131678/) by Bilgin Ibryam & Roland Huß: the Sidecar pattern and the trade-offs of attaching one to every workload.
+- [*Platform Engineering on Kubernetes*](https://www.manning.com/books/platform-engineering-on-kubernetes) by Mauricio Salatino: treating mesh injection as a platform policy decision rather than a blanket default.
+- [*GitOps and Kubernetes*](https://www.manning.com/books/gitops-and-kubernetes) by Billy Yuen et al.: progressive delivery workflows for shifting traffic between versions.
+- [*Cloud Native Anti-Patterns*](https://www.packtpub.com/en-us/product/cloud-native-anti-patterns-9781836200581) by Gerald Bachlmayr et al.: the failure modes of meshing workloads that don't belong in the mesh.

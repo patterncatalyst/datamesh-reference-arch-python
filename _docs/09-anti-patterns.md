@@ -205,7 +205,7 @@ single-node cluster rather than to data mesh as an idea.
 
 ## For deeper coverage
 
-- *Data Mesh* by Zhamak Dehghani: the four principles and the failure modes that appear when each is skipped.
-- *Cloud Native Anti-Patterns* by Gerald Bachlmayr et al.: recognizable failure shapes in cloud-native platform adoption generally.
-- *Learning Domain-Driven Design* by Vlad Khononov: bounded contexts and why fuzzy domain boundaries cascade into mesh failures.
-- *Implementing Domain-Driven Design* by Vaughn Vernon: the ownership and autonomy a real data product needs to avoid the "dumb data product" trap.
+- [*Data Mesh*](https://www.oreilly.com/library/view/data-mesh/9781492092384/) by Zhamak Dehghani: the four principles and the failure modes that appear when each is skipped.
+- [*Cloud Native Anti-Patterns*](https://www.packtpub.com/en-us/product/cloud-native-anti-patterns-9781836200581) by Gerald Bachlmayr et al.: recognizable failure shapes in cloud-native platform adoption generally.
+- [*Learning Domain-Driven Design*](https://www.oreilly.com/library/view/learning-domain-driven-design/9781098100124/) by Vlad Khononov: bounded contexts and why fuzzy domain boundaries cascade into mesh failures.
+- [*Implementing Domain-Driven Design*](https://www.informit.com/store/implementing-domain-driven-design-9780133039894) by Vaughn Vernon: the ownership and autonomy a real data product needs to avoid the "dumb data product" trap.

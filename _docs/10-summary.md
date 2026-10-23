@@ -247,11 +247,7 @@ your own data mesh on Kubernetes, the pattern is:
 2. **Run the example tree** to see the cross-product behaviors live:
    the trace tree across three products, the canary contract evolution
    under live traffic, the autoscaler reacting to a Kafka backlog.
-3. **Use the decision log** at `_plans/archive/final-project-decisions.md`
-   to understand the *reasoning* for each implementation choice, not
-   just the choice itself. The rejected alternatives are where the
-   institutional memory of the build lives.
-4. **Adapt to your runtime** by swapping the substitutions: namespace
+3. **Adapt to your runtime** by swapping the substitutions: namespace
    for Project, PodSecurity for SCCs, `helm install` for OperatorHub.
    The reference's chart structure is set up to make this tractable;
    the bootstrap script is one of the natural places to fork.
@@ -264,7 +260,7 @@ explicit enough about its choices to be portable.
 
 ## For deeper coverage
 
-- *Data Mesh* by Zhamak Dehghani: the four principles this closing page reorganizes the reference by.
-- *Cloud Native Patterns* by Cornelia Davis: the platform patterns (self-serve, federated governance) behind this summary's implementation pieces.
-- *Kubernetes Patterns* by Bilgin Ibryam & Roland Huß: the operator and CRD shapes that make each principle self-serve.
-- *GitOps and Kubernetes* by Billy Yuen et al.: reproducing the whole mesh from a Git repository, the practice Principle 03's GitOps piece rests on.
+- [*Data Mesh*](https://www.oreilly.com/library/view/data-mesh/9781492092384/) by Zhamak Dehghani: the four principles this closing page reorganizes the reference by.
+- [*Cloud Native Patterns*](https://www.manning.com/books/cloud-native-patterns) by Cornelia Davis: the platform patterns (self-serve, federated governance) behind this summary's implementation pieces.
+- [*Kubernetes Patterns*](https://www.oreilly.com/library/view/-/9781098131678/) by Bilgin Ibryam & Roland Huß: the operator and CRD shapes that make each principle self-serve.
+- [*GitOps and Kubernetes*](https://www.manning.com/books/gitops-and-kubernetes) by Billy Yuen et al.: reproducing the whole mesh from a Git repository, the practice Principle 03's GitOps piece rests on.

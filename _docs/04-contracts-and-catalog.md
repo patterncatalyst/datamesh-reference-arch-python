@@ -129,7 +129,7 @@ and the asynchronous event backbone.
 
 ## For deeper coverage
 
-- *Data Mesh* by Zhamak Dehghani: data-as-a-product and federated computational governance, the two principles this chapter makes operational.
-- *Designing Data-Intensive Applications, 2nd ed.* by Martin Kleppmann & Chris Riccomini: schema evolution and the compatibility guarantees a registry enforces.
-- *Cloud Native Anti-Patterns* by Gerald Bachlmayr et al.: the proxy anti-pattern a mesh degrades into without a usable catalog.
+- [*Data Mesh*](https://www.oreilly.com/library/view/data-mesh/9781492092384/) by Zhamak Dehghani: data-as-a-product and federated computational governance, the two principles this chapter makes operational.
+- [*Designing Data-Intensive Applications, 2nd ed.*](https://www.oreilly.com/library/view/designing-data-intensive-applications/9781098119058/) by Martin Kleppmann & Chris Riccomini: schema evolution and the compatibility guarantees a registry enforces.
+- [*Cloud Native Anti-Patterns*](https://www.packtpub.com/en-us/product/cloud-native-anti-patterns-9781836200581) by Gerald Bachlmayr et al.: the proxy anti-pattern a mesh degrades into without a usable catalog.
 - Apicurio Registry documentation: contract versioning and compatibility rules across schemas, Protobuf, OpenAPI, and GraphQL SDL.

@@ -84,7 +84,7 @@ This appendix uses podman (and `oc`) on the host to build and push to the integr
    This is the sizing the **full platform tier** actually needs: Istio sidecars on
    every app pod, the otel-lgtm observability backend, KEDA's operands, and Prefect's
    and OpenMetadata's dependencies, all on top of the live core (see "The full platform
-   tier, live" below, and DRA-008 in `_plans/decisions.md`). If you only want the **live
+   tier, live" below). If you only want the **live
    core** (the seven services, Postgres, Kafka, and Apicurio, with none of the platform
    tier applied), the smaller footprint this chart originally shipped with still works:
 
@@ -787,7 +787,7 @@ endpoint. The full capture is committed at
   cooldown once the backlog cleared.
   (`examples/lgtm-datamesh/openshift/evidence/keda-verification.txt`)
 - **Observability**: grafana/otel-lgtm all-in-one under the `anyuid` SCC, root with no
-  seccomp profile or capabilities (see DRA-016): Grafana reports `"database": "ok"`
+  seccomp profile or capabilities: Grafana reports `"database": "ok"`
   through its Route, and Tempo is ingesting per-service traces from `graphql-gateway`,
   `order-service`, `inventory-service`, and `notification-service`.
   (`examples/lgtm-datamesh/openshift/evidence/observability-verification.txt`)
@@ -815,8 +815,8 @@ endpoint. The full capture is committed at
   (`postgres:16-alpine`, `kafka:3.8.0`, Apicurio 3.2.4, otel-lgtm 0.8.1, Prefect
   `3-latest`, OpenMetadata 1.12.8). On 2026-10-09 the pins moved to the newest
   stable tags (`postgres:18.6-alpine`, `kafka:4.3.1`, Apicurio 3.3.3, otel-lgtm
-  0.36.0, Prefect 3.8.8-python3.14, OpenMetadata 2.0.5 with OpenSearch 3.4.0;
-  DRA-020); they have
+  0.36.0, Prefect 3.8.8-python3.14, OpenMetadata 2.0.5 with OpenSearch 3.4.0);
+  they have
   not been run on CRC yet. Postgres 18 cannot open a 16 data directory, so an
   existing install needs a fresh PVC. The operator CSVs (Service Mesh 3, Custom
   Metrics Autoscaler) and the OSSM3 Istio version can't be resolved without a
@@ -839,4 +839,4 @@ top of a resized instance and re-capturing the same evidence files under
 - [Strimzi documentation](https://strimzi.io/documentation/): the Kafka-on-Kubernetes operator model that AMQ Streams, referenced throughout this appendix, is built on.
 - [Istio documentation](https://istio.io/latest/docs/): mTLS and the `VirtualService`/`DestinationRule` traffic shaping the platform tier's mesh section uses.
 - [KEDA documentation](https://keda.sh/docs/): the upstream API the Custom Metrics Autoscaler operator packages.
-- *Platform Engineering on Kubernetes* by Mauricio Salatino: operator-based platform capabilities (OperatorHub/OLM) and SCCs as policy, the pattern this appendix's chart is built around.
+- [*Platform Engineering on Kubernetes*](https://www.manning.com/books/platform-engineering-on-kubernetes) by Mauricio Salatino: operator-based platform capabilities (OperatorHub/OLM) and SCCs as policy, the pattern this appendix's chart is built around.

@@ -138,14 +138,14 @@ Kubernetes primitives.
 
 ## For deeper coverage
 
-- *Data Mesh* by Zhamak Dehghani: the primary source for the four principles and the
+- [*Data Mesh*](https://www.oreilly.com/library/view/data-mesh/9781492092384/) by Zhamak Dehghani: the primary source for the four principles and the
   domain-ownership argument this page summarizes.
-- *Learning Domain-Driven Design* by Vlad Khononov: the bounded-context thinking
+- [*Learning Domain-Driven Design*](https://www.oreilly.com/library/view/learning-domain-driven-design/9781098100124/) by Vlad Khononov: the bounded-context thinking
   behind domain ownership and why a data product maps to a domain, not a table.
-- *Implementing Domain-Driven Design* by Vaughn Vernon: a deeper, implementation-level
+- [*Implementing Domain-Driven Design*](https://www.informit.com/store/implementing-domain-driven-design-9780133039894) by Vaughn Vernon: a deeper, implementation-level
   treatment of the same domain boundaries.
-- *Designing Data-Intensive Applications, 2nd ed.* by Martin Kleppmann & Chris
+- [*Designing Data-Intensive Applications, 2nd ed.*](https://www.oreilly.com/library/view/designing-data-intensive-applications/9781098119058/) by Martin Kleppmann & Chris
   Riccomini: the operational-versus-analytical data distinction from the systems
   side.
-- *Cloud Native Patterns* by Cornelia Davis: the self-serve platform principle made
+- [*Cloud Native Patterns*](https://www.manning.com/books/cloud-native-patterns) by Cornelia Davis: the self-serve platform principle made
   concrete in cloud-native infrastructure terms.

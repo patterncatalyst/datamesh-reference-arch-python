@@ -134,8 +134,8 @@ the consumers depending on it.
 
 ## For deeper coverage
 
-- *Data Mesh* by Zhamak Dehghani: polyglot access and the synchronous/asynchronous planes a mesh runs on.
-- *Designing Data-Intensive Applications, 2nd ed.* by Martin Kleppmann & Chris Riccomini: event-driven architecture and the derived-data reasoning behind the backbone.
-- *Cloud Native Patterns* by Cornelia Davis: composing services at the edge versus internally.
+- [*Data Mesh*](https://www.oreilly.com/library/view/data-mesh/9781492092384/) by Zhamak Dehghani: polyglot access and the synchronous/asynchronous planes a mesh runs on.
+- [*Designing Data-Intensive Applications, 2nd ed.*](https://www.oreilly.com/library/view/designing-data-intensive-applications/9781098119058/) by Martin Kleppmann & Chris Riccomini: event-driven architecture and the derived-data reasoning behind the backbone.
+- [*Cloud Native Patterns*](https://www.manning.com/books/cloud-native-patterns) by Cornelia Davis: composing services at the edge versus internally.
 - [grpc.io documentation](https://grpc.io/docs/): gRPC for internal, low-latency service-to-service calls.
 - [Strawberry GraphQL](https://strawberry.rocks/): the library behind the gateway's composed graph.
