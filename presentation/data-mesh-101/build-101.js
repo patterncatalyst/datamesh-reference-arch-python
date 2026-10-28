@@ -18,7 +18,7 @@ const C = {
   paleR: "FFD9D9", paleR2: "F9E3E3",
 };
 const F = {
-  head: "Overpass SemiBold", body: "Red Hat Text", mono: "Red Hat Mono",
+  head: "Red Hat Display", body: "Red Hat Text", mono: "Red Hat Mono",
 };
 
 const pres = new pptxgen();

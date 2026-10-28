@@ -32,7 +32,7 @@ const C = {
   codemut:   "8A8A8A", // lang label
 };
 const F = {
-  head: "Overpass SemiBold",  // headers/eyebrows/titles
+  head: "Red Hat Display",    // headers/eyebrows/titles
   body: "Red Hat Text",       // body
   mono: "Red Hat Mono",       // code + section numbers
 };
