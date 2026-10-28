@@ -1,4 +1,4 @@
-// deck-lib.js — design-system helpers matched to the reference deck
+// deck-lib.js: design-system helpers matched to the reference deck
 // "Designing Cloud-Native APIs" (Red Hat brand). Reuses the extracted brand
 // assets (illustration + logo) so branding is pixel-identical.
 const pptxgen = require("pptxgenjs");
@@ -9,13 +9,13 @@ const IMG = (name) => `dpng/${name}.png`;
 
 // brand assets extracted from the reference deck
 const ILLUS = "brand-illustration.png"; // 2500x1407: left ~37% icon collage, right solid dark-red
-const LOGO_DARK = "brand-logo-dark.png";   // black wordmark — for WHITE slides
-const LOGO_LIGHT = "brand-logo-light.png";  // white wordmark — for DARK slides
+const LOGO_DARK = "brand-logo-dark.png";   // black wordmark, for WHITE slides
+const LOGO_LIGHT = "brand-logo-light.png";  // white wordmark, for DARK slides
 const LOGO_AR = 496 / 117;
 
 // ---- palette (from the reference deck) ----
 const C = {
-  red:    "EE0000",  // Red Hat Red — eyebrows, title-slide accents
+  red:    "EE0000",  // Red Hat Red: eyebrows, title-slide accents
   dkred:  "8A0000",  // (illustration's right side reads ~8A0000)
   ink:    "151515",  // near-black titles/body
   body:   "242424",  // body text
@@ -32,7 +32,7 @@ const C = {
   codemut:   "8A8A8A", // lang label
 };
 const F = {
-  head: "Overpass SemiBold",  // headers/eyebrows/titles
+  head: "Red Hat Display",    // headers/eyebrows/titles
   body: "Red Hat Text",       // body
   mono: "Red Hat Mono",       // code + section numbers
 };
@@ -191,7 +191,7 @@ function buildCodeRuns(code) {
   const lines = code.split("\n");
   lines.forEach((ln, i) => {
     const br = i < lines.length - 1;
-    // find inline comment (# not inside quotes — simple heuristic)
+    // find inline comment (# not inside quotes, simple heuristic)
     const hashIdx = findComment(ln);
     if (hashIdx === 0) {
       runs.push({ text: ln, options: { color: C.codecmt, fontFace: F.mono, breakLine: br } });
