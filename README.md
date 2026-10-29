@@ -144,3 +144,17 @@ This repo is a fork of the §17 final project from
 The parent repo's tutorial (§1–§16) remains the canonical Minikube-on-Fedora
 guide; this repo is the data-mesh reference broken out for its own audience.
 The fork was made as of r28 of the parent (June 2026).
+
+## License
+
+This project is dual-licensed to separate the code from the writing:
+
+- **Code** — everything under `examples/`, plus build and helper scripts and
+  inline code snippets — is licensed under the **Apache License 2.0**
+  ([`LICENSE`](LICENSE)).
+- **Content** — the tutorial and book prose (chapters under `_docs/`),
+  diagrams and images under `assets/`, and the slide decks under
+  `presentation/` — is licensed under **Creative Commons Attribution 4.0
+  International (CC BY 4.0)** ([`LICENSE-docs.md`](LICENSE-docs.md)).
+
+Copyright 2026 PatternCatalyst (Robert Sedor).
