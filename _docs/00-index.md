@@ -19,6 +19,11 @@ By the end of this chapter you can:
 
 ## Why this matters
 
+> **Coming from the minikube on Fedora tutorial?** You have already built this
+> system: it is the §17 capstone of that tutorial. This reference takes the same
+> running mesh further, with the data-architecture background, a deeper look at
+> governance and the self-serve platform, and an OpenShift Local path.
+
 Chapter 2 names Dehghani's four principles. Chapter 3 takes the same four and maps each one
 to a Kubernetes primitive: namespaces, operators, RBAC. That's the shape of this whole
 set. A concept gets introduced, then you watch it land in a running piece of the

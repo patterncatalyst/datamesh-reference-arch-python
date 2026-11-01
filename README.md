@@ -145,6 +145,11 @@ The parent repo's tutorial (§1–§16) remains the canonical Minikube-on-Fedora
 guide; this repo is the data-mesh reference broken out for its own audience.
 The fork was made as of r28 of the parent (June 2026).
 
+This repo is the **source of truth for the shared data-mesh service code**.
+Fixes to the services land here first; the §17 capstone in the parent is a
+teaching snapshot that may lag. Backport changes from here to the parent, not
+the other way around.
+
 ## License
 
 This project is dual-licensed to separate the code from the writing:
