@@ -1,0 +1,72 @@
+---
+layout: default
+title: Diagrams
+description: "Every figure from the book on one page, with its editable Excalidraw source."
+permalink: /diagrams/
+---
+
+<style>
+  .diagram-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(28rem, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+  }
+  .diagram-gallery .excalidraw-embed { margin: 0; }
+  @media (max-width: 40rem) {
+    .diagram-gallery { grid-template-columns: 1fr; }
+  }
+</style>
+
+<section class="section">
+  <div class="container">
+    <span class="hero__eyebrow">Diagrams</span>
+    <h1>Every figure, on one page.</h1>
+    <p class="hero__lead">
+      The 34 diagrams from Data Mesh Reference Architecture: Python, in reading order. Each one renders
+      inline here and ships a paired <code>.excalidraw</code> source you can
+      open on excalidraw.com and edit.
+    </p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="diagram-gallery">
+      {%- include excalidraw.html file="17-monolith-to-mesh" alt="From a monolithic data platform to a mesh of data products" caption="" -%}
+      {%- include excalidraw.html file="17-operational-vs-analytical" alt="Operational vs. analytical data planes" caption="" -%}
+      {%- include excalidraw.html file="17-data-mesh-four-principles" alt="The four principles and how they map to Kubernetes primitives" caption="" -%}
+      {%- include excalidraw.html file="01-data-pipeline-architecture" alt="A network of point-to-point pipelines connecting operational systems to analytical consumers, illustrating the combinatorial growth of pipeline sprawl" caption="Figure 1.1: Pipeline sprawl: each source-destination pair requires its own pipeline, and the total grows as the product of sources and destinations." -%}
+      {%- include excalidraw.html file="01-data-warehouse-architecture" alt="A centralized data warehouse receiving data from multiple operational systems through ingestion pipelines, with a central team owning the schema and all analytical consumers querying one governed store" caption="Figure 1.2: The data warehouse: a centralized, schema-on-write analytical store that solves the truth problem but concentrates ownership in a single team." -%}
+      {%- include excalidraw.html file="01-data-lake-architecture" alt="A data lake with raw, curated, and refined zones, showing heterogeneous data formats flowing in and the risk of the lake becoming a swamp without active governance" caption="Figure 1.3: The data lake: schema-on-read and format flexibility, but without governance, the lake becomes a swamp, and the central-team bottleneck remains." -%}
+      {%- include excalidraw.html file="01-data-mesh-decentralized" alt="A data mesh with domain teams owning their data as products, a shared self-serve platform underneath, and federated governance keeping the products interoperable" caption="Figure 1.4: The data mesh: domain teams own their data as products, a shared platform provides infrastructure, and federated governance keeps the products interoperable." -%}
+      {%- include excalidraw.html file="01-architecture-evolution" alt="The evolution from pipelines to warehouses to lakes to mesh, showing the problem each pattern solves and the bottleneck each one leaves behind" caption="Figure 1.5: The evolution: each pattern solves a different problem, and each remains the right answer when that problem is the dominant one." -%}
+      {%- include excalidraw.html file="17-platform-planes" alt="The three planes of the self-serve data platform" caption="" -%}
+      {%- include excalidraw.html file="17-principles-to-pieces" alt="Each of the four principles and the OpenShift/Kubernetes pieces that deliver it: one picture of the mapping" caption="" -%}
+      {%- include excalidraw.html file="17-final-project-data-mesh" alt="The final project's architecture: data mesh on minikube" caption="" -%}
+      {%- include excalidraw.html file="17-data-product-anatomy" alt="Anatomy of a data product: ports in, ports out, transformation and governance inside" caption="" -%}
+      {%- include excalidraw.html file="17-final-project-contracts" alt="Each service's contract surface: OpenAPI, Protobuf, schema, SDL" caption="" -%}
+      {%- include excalidraw.html file="17-final-project-contract-flow" alt="How a contract flows: the runtime path versus the discovery path" caption="" -%}
+      {%- include excalidraw.html file="17-contracts-registry-catalog" alt="Contracts in the registry, discovery and lineage in the catalog" caption="" -%}
+      {%- include excalidraw.html file="17-api-implementations" alt="Four protocols and where each one fits: REST at the edge, gRPC between services, GraphQL composing reads, events on the async backbone" caption="" -%}
+      {%- include excalidraw.html file="17-analytical-data-composition" alt="How analytical data is composed across domains into a served product" caption="" -%}
+      {%- include excalidraw.html file="17-ingestion-streaming-sourcing" alt="Domain events and change-data-capture feeding the analytical side" caption="" -%}
+      {%- include excalidraw.html file="11-istio-mesh" alt="The service mesh: sidecars, mTLS, and traffic management" caption="" -%}
+      {%- include excalidraw.html file="17-service-mesh" alt="The final project's mesh in canary mode: sidecars beside each product, mTLS between them, weights moving traffic from v1 to v2" caption="" -%}
+      {%- include excalidraw.html file="12-hpa-vs-keda" alt="Standard CPU/memory autoscaling versus event-driven scaling" caption="" -%}
+      {%- include excalidraw.html file="17-keda-lag" alt="KEDA scaling notification-service on Kafka consumer-group lag: scaling to zero when the backlog is empty, back up as events arrive" caption="" -%}
+      {%- include excalidraw.html file="12-keda-http-addon" alt="Scaling on HTTP request volume with the KEDA HTTP add-on" caption="" -%}
+      {%- include excalidraw.html file="17-keda-http" alt="Why the HTTP scaler goes on the gateway and not on the canaried order-service: matching the scaler to the workload" caption="" -%}
+      {%- include excalidraw.html file="17-three-signals" alt="The three signals: metrics, traces, and logs, and the question each answers about a request crossing products" caption="" -%}
+      {%- include excalidraw.html file="17-observability-stack" alt="The observability stack: sidecars emit, Prometheus scrapes metrics, Tempo stores spans, Grafana correlates them, Kiali shows the live topology" caption="" -%}
+      {%- include excalidraw.html file="17-reference-data-mesh-architecture" alt="A reference data-mesh architecture: products, planes, and the observability that spans them" caption="" -%}
+      {%- include excalidraw.html file="17-value-domain-ownership" alt="Principle 01 realized: domain ownership and the implementation pieces that deliver it" caption="" -%}
+      {%- include excalidraw.html file="17-value-data-product" alt="Principle 02 realized: data as a product and the implementation pieces that deliver it" caption="" -%}
+      {%- include excalidraw.html file="17-value-self-serve" alt="Principle 03 realized: self-serve platform and the implementation pieces that deliver it" caption="" -%}
+      {%- include excalidraw.html file="17-value-governance" alt="Principle 04 realized: federated computational governance and the implementation pieces that deliver it" caption="" -%}
+      {%- include excalidraw.html file="17-trusted-supply-chain" alt="A trusted base for every data product: the supply chain the platform gives each domain" caption="" -%}
+      {%- include excalidraw.html file="18-crc-openshift-topology" alt="The chart's topology on CRC: app pods under restricted-v2, infra pods under nonroot-v2, the integrated registry, and two edge-TLS Routes" caption="" -%}
+      {%- include excalidraw.html file="19-crc-image-delivery" alt="Building and pushing: the host bridges the CRC VM's Docker Hub egress gap; Apicurio pulls from quay.io directly" caption="" -%}
+    </div>
+  </div>
+</section>
