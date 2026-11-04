@@ -5,7 +5,7 @@ import grpc
 from datamesh.inventory.v1 import inventory_pb2 as datamesh_dot_inventory_dot_v1_dot_inventory__pb2
 
 
-class InventoryServiceStub:
+class InventoryServiceStub(object):
     """InventoryService answers stock questions for the order flow. r23 ships the
     single synchronous call order-service needs when placing an order; more
     RPCs are added as the inventory domain grows.
@@ -24,7 +24,7 @@ class InventoryServiceStub:
                 _registered_method=True)
 
 
-class InventoryServiceServicer:
+class InventoryServiceServicer(object):
     """InventoryService answers stock questions for the order flow. r23 ships the
     single synchronous call order-service needs when placing an order; more
     RPCs are added as the inventory domain grows.
@@ -54,7 +54,7 @@ def add_InventoryServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class InventoryService:
+class InventoryService(object):
     """InventoryService answers stock questions for the order flow. r23 ships the
     single synchronous call order-service needs when placing an order; more
     RPCs are added as the inventory domain grows.
