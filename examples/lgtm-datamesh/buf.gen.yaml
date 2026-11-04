@@ -3,8 +3,15 @@ version: v2
 # (_pb2_grpc.py) from the protos. Output goes to a staging dir that
 # gen-protos.sh then copies into each service that needs the stubs
 # (option b: per-service committed copies, no buf in the image).
+#
+# Plugin versions are PINNED to the protobuf 5.29 line. Each service pins
+# protobuf >=5.26,<6, and a _pb2.py carries a runtime-version guard: the
+# runtime must be >= the gencode version that stamped it. The unpinned
+# `latest` plugin stamps a protobuf-6 gencode (7.x), which the 5.29.6
+# runtime rejects at import. protocolbuffers/python v29.x maps to python
+# protobuf 5.29.x; grpc/python v1.70.x is the last gRPC plugin on that line.
 plugins:
-  - remote: buf.build/protocolbuffers/python
+  - remote: buf.build/protocolbuffers/python:v29.3
     out: .gen-staging
-  - remote: buf.build/grpc/python
+  - remote: buf.build/grpc/python:v1.70.0
     out: .gen-staging
